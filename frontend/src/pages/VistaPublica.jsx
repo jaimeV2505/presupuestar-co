@@ -16,6 +16,8 @@ export default function VistaPublica() {
   const [showFirma, setShowFirma] = useState(false)
   const [firma, setFirma] = useState({ nombre: '', documento: '' })
   const [firmaInfo, setFirmaInfo] = useState(null)
+  const [contrato, setContrato] = useState(null)
+  const [leido, setLeido] = useState(false)
   const [avances, setAvances] = useState(null)
 
   useEffect(() => {
@@ -43,7 +45,11 @@ export default function VistaPublica() {
     } catch (e) { alert(e.message) }
   }
 
-  const aceptar = () => setShowFirma(true)
+  const aceptar = () => {
+    setShowFirma(true)
+    setLeido(false)
+    if (!contrato) shareAPI.contrato(token).then(setContrato).catch(() => {})
+  }
 
   const confirmarFirma = async () => {
     if (firma.nombre.trim().length < 5) { alert('Escribe tu nombre completo'); return }
@@ -118,6 +124,10 @@ export default function VistaPublica() {
                   Firmado por <strong className="text-slate-500">{firmaInfo.nombre}</strong> · {firmaInfo.fecha}
                 </p>
               )}
+              <a href={`/api/share/publico/${token}/contrato.pdf`} target="_blank" rel="noreferrer"
+                 className="inline-block mt-2 text-[11px] font-medium text-navy-600 border border-navy-200 rounded-lg px-3 py-1.5">
+                📄 Descargar contrato firmado (PDF)
+              </a>
             </div>
           )}
           {rechazado && !aceptado && (
@@ -283,15 +293,47 @@ export default function VistaPublica() {
               <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-100 rounded-2xl mb-2">
                 <CheckCircle2 className="w-6 h-6 text-emerald-600" />
               </div>
-              <h3 className="font-semibold text-slate-800">Aceptar presupuesto</h3>
+              <h3 className="font-semibold text-slate-800">Contrato de Ejecución de Obra Civil</h3>
+              <p className="text-[10px] text-slate-400">Revisa y firma digitalmente</p>
             </div>
 
-            <div className="bg-slate-50 rounded-xl p-3 text-[11px] text-slate-500 leading-relaxed">
-              Al firmar aceptas el presupuesto <strong>{data.numero}</strong> "{data.proyecto}"
-              por valor de <strong>{COP(t.total)}</strong>, emitido por{' '}
-              <strong>{c.empresa || c.nombre}</strong>. Este registro con fecha y hora
-              constituye una manifestación de acuerdo entre ambas partes.
-            </div>
+            {/* CONTRATO COMPLETO scrolleable */}
+            {contrato ? (
+              <div className="border border-slate-200 rounded-xl max-h-64 overflow-y-auto p-3 bg-slate-50">
+                <p className="text-xs font-bold text-slate-700 text-center mb-2">
+                  {contrato.titulo} — {contrato.numero}
+                </p>
+                <p className="text-[10px] text-slate-500 leading-relaxed mb-2">{contrato.encabezado}</p>
+                {contrato.clausulas.map((cl, i) => (
+                  <div key={i} className="mb-2">
+                    <p className="text-[10px] font-bold text-slate-600">{cl.titulo}.</p>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">{cl.texto}</p>
+                    {cl.incluye_tabla && (
+                      <div className="mt-1 border border-slate-200 rounded-lg overflow-hidden bg-white">
+                        {contrato.tabla.map(r => (
+                          <div key={r.item} className="flex justify-between gap-2 px-2 py-1 border-b border-slate-50 text-[9px]">
+                            <span className="text-slate-500 truncate">{r.item}. {r.descripcion}</span>
+                            <span className="text-slate-600 whitespace-nowrap shrink-0">
+                              {r.cantidad} {r.unidad} · {COP(r.subtotal)}
+                            </span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between px-2 py-1.5 bg-blue-50 text-[10px] font-bold text-slate-700">
+                          <span>TOTAL A PAGAR</span><span>{COP(contrato.total)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-xs text-slate-400 py-6">Cargando contrato...</div>
+            )}
+
+            <label className="flex items-start gap-2 text-[11px] text-slate-600 cursor-pointer">
+              <input type="checkbox" className="mt-0.5" checked={leido} onChange={e => setLeido(e.target.checked)} />
+              <span>He leído el contrato completo y acepto sus cláusulas</span>
+            </label>
 
             <div className="space-y-3">
               <div>
@@ -315,9 +357,9 @@ export default function VistaPublica() {
                       className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium">
                 Cancelar
               </button>
-              <button onClick={confirmarFirma} disabled={aceptando}
-                      className="flex-[2] py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold disabled:opacity-50">
-                {aceptando ? 'Firmando...' : 'Firmar y aceptar'}
+              <button onClick={confirmarFirma} disabled={aceptando || !leido}
+                      className="flex-[2] py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold disabled:opacity-40">
+                {aceptando ? 'Firmando...' : 'Firmar contrato'}
               </button>
             </div>
           </div>

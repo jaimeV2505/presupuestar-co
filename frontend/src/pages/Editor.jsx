@@ -13,6 +13,7 @@ export default function Editor() {
   const [p, setP] = useState(null)
   const [items, setItems] = useState([])
   const [aiu, setAiu] = useState({ admin: 15, imprevistos: 5, utilidad: 8, aplicar: true, iva_sobre_utilidad: true })
+  const [contrato, setContrato] = useState({ plazo_dias: 45, anticipo_pct: 50, fecha_inicio: '', lugar: '' })
   const [totales, setTotales] = useState(null)
   const [guardando, setGuardando] = useState(false)
 
@@ -50,6 +51,7 @@ export default function Editor() {
       setP(data)
       setItems(data.items || [])
       setAiu(data.aiu || aiu)
+      if (data.contrato && Object.keys(data.contrato).length) setContrato(c => ({ ...c, ...data.contrato }))
       setTotales(data.totales)
       if (data.share_token) shareAPI.eventos(id).then(setEventos).catch(() => {})
     }).catch(e => { toast.error(e.message); nav('/') })
@@ -94,6 +96,15 @@ export default function Editor() {
       guardar(next, aiu)
       return next
     })
+  }
+
+  const timerContrato = useRef(null)
+  const setContratoYGuardar = (nuevo) => {
+    setContrato(nuevo)
+    clearTimeout(timerContrato.current)
+    timerContrato.current = setTimeout(() => {
+      proyectosAPI.actualizar(id, { contrato: nuevo }).catch(e => toast.error(e.message))
+    }, 800)
   }
 
   const setAiuYGuardar = (nuevo) => {
@@ -451,6 +462,56 @@ export default function Editor() {
                   </span>
                 </label>
               </>
+            )}
+          </div>
+        )}
+
+        {/* Condiciones del contrato */}
+        {items.length > 0 && (
+          <div className="bg-white rounded-xl border border-slate-200 p-4 mb-5">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-sm font-semibold text-slate-700">Contrato de obra</h3>
+              {p.estado === 'aceptado' && p.share_token && (
+                <a href={`/api/share/publico/${p.share_token}/contrato.pdf`} target="_blank" rel="noreferrer"
+                   className="text-[11px] font-medium text-navy-600 border border-navy-200 rounded-lg px-2.5 py-1">
+                  📄 Contrato firmado (PDF)
+                </a>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400 mb-3">
+              Al aceptar, tu cliente firma un Contrato de Ejecución de Obra Civil generado con estas condiciones.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-1">Plazo (días hábiles)</label>
+                <input type="number" min="1" max="720" className="input !py-2 text-sm"
+                       value={contrato.plazo_dias}
+                       onChange={e => setContratoYGuardar({ ...contrato, plazo_dias: parseInt(e.target.value) || 45 })} />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-1">Anticipo %</label>
+                <input type="number" min="0" max="90" step="5" className="input !py-2 text-sm"
+                       value={contrato.anticipo_pct}
+                       onChange={e => setContratoYGuardar({ ...contrato, anticipo_pct: parseFloat(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-1">Fecha de inicio</label>
+                <input type="text" placeholder="15 de agosto de 2026" className="input !py-2 text-sm"
+                       value={contrato.fecha_inicio}
+                       onChange={e => setContratoYGuardar({ ...contrato, fecha_inicio: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-1">Lugar / Municipio</label>
+                <input type="text" placeholder="Coveñas, Sucre" className="input !py-2 text-sm"
+                       value={contrato.lugar}
+                       onChange={e => setContratoYGuardar({ ...contrato, lugar: e.target.value })} />
+              </div>
+            </div>
+            {totales && contrato.anticipo_pct > 0 && (
+              <p className="text-[11px] text-slate-500 mt-2.5 bg-slate-50 rounded-lg p-2">
+                Forma de pago: anticipo {contrato.anticipo_pct}% = <strong>{COP(totales.total * contrato.anticipo_pct / 100)}</strong>
+                {' · '}saldo {100 - contrato.anticipo_pct}% = <strong>{COP(totales.total * (100 - contrato.anticipo_pct) / 100)}</strong>
+              </p>
             )}
           </div>
         )}

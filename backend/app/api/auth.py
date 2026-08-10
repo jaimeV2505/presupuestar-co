@@ -129,6 +129,8 @@ def _user_out(u: Usuario) -> dict:
         "tiene_logo": bool(u.logo_b64),
         "logo_b64": u.logo_b64 or "",
         "condiciones": getattr(u, "condiciones", "") or "",
+        "documento": getattr(u, "documento", "") or "",
+        "pago_info": getattr(u, "pago_info", "") or "",
     }
 
 
@@ -179,6 +181,8 @@ class PerfilUpdate(BaseModel):
     ciudad: str = None
     logo_b64: str = None  # data URL o base64 del logo
     condiciones: str = None  # condiciones estandar del contratista
+    documento: str = None     # cedula/NIT (aparece en el contrato)
+    pago_info: str = None     # cuenta bancaria (forma de pago del contrato)
 
 
 @router.put("/perfil")
@@ -193,5 +197,9 @@ def actualizar_perfil(req: PerfilUpdate, user: Usuario = Depends(usuario_actual)
         user.logo_b64 = req.logo_b64
     if req.condiciones is not None:
         user.condiciones = req.condiciones[:3000]
+    if req.documento is not None:
+        user.documento = req.documento.strip()[:30]
+    if req.pago_info is not None:
+        user.pago_info = req.pago_info.strip()[:200]
     db.commit()
     return _user_out(user)

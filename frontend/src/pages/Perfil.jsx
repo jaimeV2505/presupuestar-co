@@ -12,7 +12,7 @@ Cualquier trabajo adicional se cotizara por separado.`
 
 export default function Perfil() {
   const nav = useNavigate()
-  const [form, setForm] = useState({ nombre: '', empresa: '', telefono: '', ciudad: 'bogota', condiciones: '' })
+  const [form, setForm] = useState({ nombre: '', empresa: '', telefono: '', ciudad: 'bogota', condiciones: '', documento: '', pago_info: '' })
   const [logo, setLogo] = useState('')
   const [guardando, setGuardando] = useState(false)
   const fileRef = useRef(null)
@@ -23,6 +23,8 @@ export default function Perfil() {
         nombre: u.nombre || '', empresa: u.empresa || '',
         telefono: u.telefono || '', ciudad: u.ciudad || 'bogota',
         condiciones: u.condiciones || '',
+        documento: u.documento || '',
+        pago_info: u.pago_info || '',
       })
       setLogo(u.logo_b64 || '')
     }).catch(e => toast.error(e.message))
@@ -106,6 +108,14 @@ export default function Perfil() {
             <input className="input" placeholder="Construcciones López SAS" value={form.empresa} onChange={set('empresa')} />
           </div>
           <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] text-slate-400 block mb-1">Cédula / NIT (para el contrato)</label>
+              <input className="input" placeholder="1.102.843.140" value={form.documento} onChange={set('documento')} />
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-400 block mb-1">Cuenta para pagos (opcional)</label>
+              <input className="input" placeholder="Ahorros Bancolombia 550-249242-88" value={form.pago_info} onChange={set('pago_info')} />
+            </div>
             <div>
               <label className="text-[11px] text-slate-400 block mb-1">WhatsApp</label>
               <input className="input" placeholder="300 123 4567" value={form.telefono} onChange={set('telefono')} />

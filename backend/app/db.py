@@ -43,6 +43,8 @@ class Usuario(Base):
     ciudad = Column(String(60), default="bogota")
     logo_b64 = Column(Text, default="")          # logo en base64 para PDF/Excel
     condiciones = Column(Text, default="")       # condiciones estandar auto-incluidas
+    documento = Column(String(30), default="")   # cedula/NIT del contratista (para el contrato)
+    pago_info = Column(String(200), default="")  # cuenta bancaria para forma de pago
     plan = Column(String(20), default="gratis")  # gratis | pro | pro_ia
     presupuestos_mes = Column(Integer, default=0)
     mes_actual = Column(String(7), default="")   # "2026-08" para reset mensual
@@ -63,6 +65,7 @@ class Proyecto(Base):
     items_json = Column(Text, default="[]")     # lista de items del presupuesto
     aiu_json = Column(Text, default='{"admin":15,"imprevistos":5,"utilidad":8,"aplicar":true,"iva_sobre_utilidad":true}')
     notas = Column(Text, default="")
+    contrato_json = Column(Text, default="{}")  # {plazo_dias, anticipo_pct, fecha_inicio, lugar}
     share_token = Column(String(40), unique=True, index=True, nullable=True)
     creado = Column(DateTime, default=utcnow)
     actualizado = Column(DateTime, default=utcnow, onupdate=utcnow)
@@ -106,6 +109,9 @@ def init_db():
                     "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS documento_firma VARCHAR(30) DEFAULT ''",
                     "ALTER TABLE avances ADD COLUMN IF NOT EXISTS valor_ejecutado INTEGER DEFAULT 0",
                     "ALTER TABLE avances ADD COLUMN IF NOT EXISTS items_json TEXT DEFAULT '[]'",
+                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS documento VARCHAR(30) DEFAULT ''",
+                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pago_info VARCHAR(200) DEFAULT ''",
+                    "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS contrato_json TEXT DEFAULT '{}'",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -117,6 +123,9 @@ def init_db():
                     ("eventos_share", "documento_firma", "ALTER TABLE eventos_share ADD COLUMN documento_firma VARCHAR(30) DEFAULT ''"),
                     ("avances", "valor_ejecutado", "ALTER TABLE avances ADD COLUMN valor_ejecutado INTEGER DEFAULT 0"),
                     ("avances", "items_json", "ALTER TABLE avances ADD COLUMN items_json TEXT DEFAULT '[]'"),
+                    ("usuarios", "documento", "ALTER TABLE usuarios ADD COLUMN documento VARCHAR(30) DEFAULT ''"),
+                    ("usuarios", "pago_info", "ALTER TABLE usuarios ADD COLUMN pago_info VARCHAR(200) DEFAULT ''"),
+                    ("proyectos", "contrato_json", "ALTER TABLE proyectos ADD COLUMN contrato_json TEXT DEFAULT '{}'"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]

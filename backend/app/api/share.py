@@ -264,3 +264,126 @@ def rechazar_publico(token: str, request: Request, db: Session = Depends(get_db)
     db.commit()
     logger.info(f"Presupuesto {p.id} rechazado por el cliente")
     return {"ok": True, "mensaje": "Gracias por tu respuesta. El contratista sera notificado."}
+
+
+# ── CONTRATO DE EJECUCION DE OBRA ────────────────────────────────────────────
+from fastapi.responses import StreamingResponse
+from app.services.contrato_service import generar_contrato
+
+
+def _contrato_de_token(token: str, db: Session):
+    p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if not p:
+        raise HTTPException(404, "Enlace no valido")
+    user = db.query(Usuario).filter(Usuario.id == p.user_id).first()
+    items = json.loads(p.items_json or "[]")
+    aiu = json.loads(p.aiu_json or "{}")
+    totales = calcular_totales(items, aiu)
+    firma_ev = (
+        db.query(EventoShare)
+        .filter(EventoShare.proyecto_id == p.id, EventoShare.tipo == "aceptado")
+        .first()
+    )
+    firma = None
+    if firma_ev and firma_ev.nombre_firma:
+        firma = {
+            "nombre": firma_ev.nombre_firma,
+            "documento": firma_ev.documento_firma or "",
+            "fecha": firma_ev.creado.strftime("%d/%m/%Y %H:%M"),
+        }
+    return p, user, generar_contrato(p, user, items, totales, firma)
+
+
+@router.get("/publico/{token}/contrato")
+def ver_contrato(token: str, db: Session = Depends(get_db)):
+    """El contrato completo — se muestra en el modal antes de firmar."""
+    _, _, contrato = _contrato_de_token(token, db)
+    return contrato
+
+
+@router.get("/publico/{token}/contrato.pdf")
+def contrato_pdf(token: str, db: Session = Depends(get_db)):
+    """PDF del contrato — descargable por cliente y contratista."""
+    p, user, c = _contrato_de_token(token, db)
+    try:
+        import io
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import (SimpleDocTemplate, Table, TableStyle,
+                                        Paragraph, Spacer)
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=1.8*cm,
+                                bottomMargin=1.8*cm, leftMargin=2*cm, rightMargin=2*cm)
+        st = getSampleStyleSheet()
+        titulo = ParagraphStyle("t", parent=st["Title"], fontSize=13, spaceAfter=14)
+        clau_t = ParagraphStyle("ct", parent=st["Normal"], fontSize=9.5,
+                                fontName="Helvetica-Bold", spaceBefore=10, spaceAfter=3)
+        cuerpo = ParagraphStyle("cu", parent=st["Normal"], fontSize=9,
+                                leading=13, alignment=4)  # justificado
+        story = [Paragraph(f"{c['titulo']} — {c['numero']}", titulo),
+                 Paragraph(c["encabezado"], cuerpo), Spacer(1, 6)]
+
+        for cl in c["clausulas"]:
+            story.append(Paragraph(cl["titulo"] + ".", clau_t))
+            story.append(Paragraph(cl["texto"], cuerpo))
+            if cl.get("incluye_tabla"):
+                data = [["ITEM", "DESCRIPCION", "UND", "CANT", "V. UNITARIO", "SUBTOTAL"]]
+                for r in c["tabla"]:
+                    data.append([
+                        str(r["item"]),
+                        Paragraph(r["descripcion"][:120], ParagraphStyle("d", parent=st["Normal"], fontSize=7.5)),
+                        r["unidad"], f"{r['cantidad']:g}",
+                        f"${r['v_unitario']:,}".replace(",", "."),
+                        f"${r['subtotal']:,}".replace(",", "."),
+                    ])
+                data.append(["", "", "", "", "TOTAL A PAGAR",
+                             f"${c['total']:,}".replace(",", ".")])
+                t = Table(data, colWidths=[1*cm, 8*cm, 1.2*cm, 1.4*cm, 2.4*cm, 2.6*cm],
+                          repeatRows=1)
+                t.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1C3A5E")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
+                    ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                    ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#EFF6FF")),
+                ]))
+                story.append(Spacer(1, 5))
+                story.append(t)
+
+        # Firmas
+        story.append(Spacer(1, 22))
+        f = c["firmas"]
+        firmas_data = [[
+            Paragraph(f"<b>EL CONTRATANTE</b><br/>{f['contratante']['nombre'] or '________________'}"
+                      f"<br/>Doc: {f['contratante']['documento'] or '________________'}"
+                      f"<br/><font size=7 color='#64748B'>{f['contratante']['estado']}"
+                      f"{(' · ' + f['contratante']['fecha']) if f['contratante']['fecha'] else ''}</font>", cuerpo),
+            Paragraph(f"<b>EL CONTRATISTA</b><br/>{f['contratista']['nombre']}"
+                      f"<br/>Doc: {f['contratista']['documento']}"
+                      f"<br/><font size=7 color='#64748B'>{f['contratista']['estado']}"
+                      f" · {f['contratista']['fecha']}</font>", cuerpo),
+        ]]
+        tf = Table(firmas_data, colWidths=[8.3*cm, 8.3*cm])
+        tf.setStyle(TableStyle([
+            ("LINEABOVE", (0, 0), (0, 0), 0.7, colors.black),
+            ("LINEABOVE", (1, 0), (1, 0), 0.7, colors.black),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(tf)
+
+        doc.build(story)
+        buf.seek(0)
+        return StreamingResponse(
+            buf, media_type="application/pdf",
+            headers={"Content-Disposition":
+                     f'attachment; filename="contrato_{p.numero or p.id}.pdf"'})
+    except Exception as e:
+        logger.error(f"PDF contrato: {e}", exc_info=True)
+        raise HTTPException(500, "Error generando el contrato PDF")

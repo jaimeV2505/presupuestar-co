@@ -54,6 +54,7 @@ export const shareAPI = {
   verPublico: (token) => api.get(`/share/publico/${token}`).then(r => r.data),
   aceptar: (token, firma) => api.post(`/share/publico/${token}/aceptar`, firma).then(r => r.data),
   rechazar: (token) => api.post(`/share/publico/${token}/rechazar`).then(r => r.data),
+  contrato: (token) => api.get(`/share/publico/${token}/contrato`).then(r => r.data),
 }
 
 export const avancesAPI = {

@@ -59,6 +59,7 @@ def _proyecto_out(p: Proyecto, incluir_items: bool = False) -> Dict:
         "estado": p.estado,
         "num_items": len(items),
         "aiu": aiu,
+        "contrato": json.loads(p.contrato_json or "{}"),
         "totales": calcular_totales(items, aiu),
         "share_token": p.share_token,
         "notas": p.notas,
@@ -88,6 +89,7 @@ class ProyectoUpdate(BaseModel):
     notas: Optional[str] = None
     items: Optional[List[Dict]] = None
     aiu: Optional[Dict] = None
+    contrato: Optional[Dict] = None
 
 
 @router.get("")
@@ -147,10 +149,24 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
     if req.notas is not None: p.notas = req.notas[:2000]
 
     if req.items is not None:
+        if p.estado == "aceptado":
+            raise HTTPException(400, "Este presupuesto ya fue firmado — para cambios, duplica el proyecto")
         items_validos = validar_items(req.items)
         p.items_json = json.dumps(items_validos, ensure_ascii=False)
 
+    if req.contrato is not None:
+        c = req.contrato
+        cfg = {
+            "plazo_dias": max(1, min(720, int(c.get("plazo_dias") or 45))),
+            "anticipo_pct": max(0, min(90, float(c.get("anticipo_pct") or 50))),
+            "fecha_inicio": str(c.get("fecha_inicio") or "")[:60],
+            "lugar": str(c.get("lugar") or "")[:150],
+        }
+        p.contrato_json = json.dumps(cfg, ensure_ascii=False)
+
     if req.aiu is not None:
+        if p.estado == "aceptado":
+            raise HTTPException(400, "Este presupuesto ya fue firmado — para cambios, duplica el proyecto")
         aiu_limpio = {
             "admin": max(0, min(50, float(req.aiu.get("admin", 15) or 0))),
             "imprevistos": max(0, min(30, float(req.aiu.get("imprevistos", 5) or 0))),
