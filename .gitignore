@@ -1,1 +1,12 @@
 .env
+*.env
+!.env.example
+backend/data_db/
+*.db
+.jwt_secret
+__pycache__/
+*.pyc
+node_modules/
+frontend/dist/
+.DS_Store
+.vscode/
