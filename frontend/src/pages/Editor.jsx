@@ -31,7 +31,9 @@ export default function Editor() {
   // Avances de obra (cuando el presupuesto esta aceptado)
   const [showAvances, setShowAvances] = useState(false)
   const [avances, setAvances] = useState([])
-  const [nuevoAvance, setNuevoAvance] = useState({ titulo: '', descripcion: '', porcentaje: 0, fotos: [] })
+  const [nuevoAvance, setNuevoAvance] = useState({ titulo: '', descripcion: '', fotos: [] })
+  const [avanceItems, setAvanceItems] = useState({})  // {itemId: pct}
+  const [valorTotalDirecto, setValorTotalDirecto] = useState(0)
   const [subiendoAvance, setSubiendoAvance] = useState(false)
 
   // Share
@@ -259,7 +261,18 @@ export default function Editor() {
               <FileText className="w-4 h-4 text-red-500" />
             </button>
             {p.estado === 'aceptado' && (
-              <button onClick={() => { setShowAvances(true); avancesAPI.listar(id).then(setAvances).catch(() => {}) }}
+              <button onClick={() => {
+                        setShowAvances(true)
+                        avancesAPI.listar(id).then(res => {
+                          setAvances(res.avances || [])
+                          setValorTotalDirecto(res.valor_total_directo || 0)
+                          // Prefill: continuar desde el ultimo avance publicado
+                          const ultimo = (res.avances || [])[0]
+                          const map = {}
+                          if (ultimo?.items) ultimo.items.forEach(it => { map[it.id] = it.pct })
+                          setAvanceItems(map)
+                        }).catch(() => {})
+                      }}
                       className="flex items-center gap-1.5 border border-amber-300 bg-amber-50 text-amber-700 text-sm font-medium px-3 py-2 rounded-xl transition"
                       title="Avances de obra">
                 <HardHat className="w-4 h-4" /> <span className="hidden sm:inline">Avances</span>
@@ -536,13 +549,54 @@ export default function Editor() {
               <textarea className="input min-h-[60px] text-xs" placeholder="Descripción del avance (opcional)"
                         value={nuevoAvance.descripcion}
                         onChange={e => setNuevoAvance(a => ({ ...a, descripcion: e.target.value }))} />
-              <div className="flex items-center gap-3">
-                <label className="text-xs text-slate-500 shrink-0">Avance total de la obra:</label>
-                <input type="range" min="0" max="100" step="5" className="flex-1"
-                       value={nuevoAvance.porcentaje}
-                       onChange={e => setNuevoAvance(a => ({ ...a, porcentaje: parseInt(e.target.value) }))} />
-                <span className="text-sm font-bold text-emerald-600 w-12 text-right">{nuevoAvance.porcentaje}%</span>
+              {/* Avance por actividad del presupuesto */}
+              <div className="bg-white rounded-xl border border-slate-200 max-h-64 overflow-y-auto">
+                <div className="px-3 py-2 border-b border-slate-100 sticky top-0 bg-white">
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase">% de avance por actividad</p>
+                </div>
+                {items.map(it => {
+                  const valorItem = Math.round((parseFloat(it.cantidad)||0) * (parseFloat(it.precio_unitario)||0))
+                  const pct = avanceItems[it.id] ?? 0
+                  return (
+                    <div key={it.id} className="px-3 py-2 border-b border-slate-50 flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] text-slate-600 leading-snug truncate">{it.descripcion}</p>
+                        <p className="text-[10px] text-slate-400">{COP(valorItem)}</p>
+                      </div>
+                      <input type="number" min="0" max="100" step="5" value={pct}
+                             onChange={e => setAvanceItems(m => ({ ...m, [it.id]: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) }))}
+                             className="w-16 text-right text-xs border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-emerald-400" />
+                      <span className="text-[10px] text-slate-400 w-4">%</span>
+                      <span className="text-[10px] text-emerald-600 font-medium w-20 text-right">
+                        {COP(Math.round(valorItem * pct / 100))}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
+
+              {/* Resumen en vivo: % ponderado + $ ejecutado */}
+              {(() => {
+                let total = 0, ejec = 0
+                items.forEach(it => {
+                  const v = Math.round((parseFloat(it.cantidad)||0) * (parseFloat(it.precio_unitario)||0))
+                  total += v
+                  ejec += Math.round(v * (avanceItems[it.id] ?? 0) / 100)
+                })
+                const pctPond = total > 0 ? Math.round(ejec / total * 1000) / 10 : 0
+                return (
+                  <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-emerald-600 uppercase font-semibold">Avance ponderado por valor</p>
+                      <p className="text-lg font-black text-emerald-700">{pctPond}%</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-emerald-600 uppercase font-semibold">Valor ejecutado</p>
+                      <p className="text-sm font-bold text-emerald-700">{COP(ejec)} <span className="font-normal text-emerald-500">de {COP(total)}</span></p>
+                    </div>
+                  </div>
+                )
+              })()}
               <div className="flex items-center gap-2">
                 <label className="flex items-center gap-2 text-xs text-navy-600 font-medium border border-navy-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-navy-50">
                   <Camera className="w-4 h-4" /> Fotos ({nuevoAvance.fotos.length}/3)
@@ -571,10 +625,14 @@ export default function Editor() {
                         if (!nuevoAvance.titulo.trim()) { toast.error('El avance necesita un título'); return }
                         setSubiendoAvance(true)
                         try {
-                          const a = await avancesAPI.crear(id, nuevoAvance)
+                          const payload = {
+                            ...nuevoAvance,
+                            items: items.map(it => ({ id: it.id, pct: avanceItems[it.id] ?? 0 })),
+                          }
+                          const a = await avancesAPI.crear(id, payload)
                           setAvances(prev => [a, ...prev])
-                          setNuevoAvance({ titulo: '', descripcion: '', porcentaje: nuevoAvance.porcentaje, fotos: [] })
-                          toast.success('Avance publicado — tu cliente ya puede verlo')
+                          setNuevoAvance({ titulo: '', descripcion: '', fotos: [] })
+                          toast.success(`Avance publicado: ${a.porcentaje}% = ${COP(a.valor_ejecutado)}`)
                         } catch (e) { toast.error(e.message) }
                         finally { setSubiendoAvance(false) }
                       }}
@@ -592,7 +650,7 @@ export default function Editor() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-medium text-slate-700">{a.titulo}</p>
-                      <p className="text-[10px] text-slate-400">{a.fecha} · {a.porcentaje}%</p>
+                      <p className="text-[10px] text-slate-400">{a.fecha} · {a.porcentaje}% · <span className="text-emerald-600 font-medium">{COP(a.valor_ejecutado)}</span></p>
                     </div>
                     <button onClick={async () => {
                               if (!confirm('¿Eliminar este avance?')) return

@@ -222,14 +222,21 @@ def avances_publico(token: str, db: Session = Depends(get_db)):
         .limit(50).all()
     )
     import json as _json
+    items_p = _json.loads(p.items_json or "[]")
+    total_directo = round(sum((i.get("cantidad") or 0) * (i.get("precio_unitario") or 0) for i in items_p))
+    ultimo = avances[0] if avances else None
     return {
         "proyecto": p.nombre,
         "numero": p.numero,
-        "porcentaje_actual": max((a.porcentaje for a in avances), default=0),
+        "porcentaje_actual": ultimo.porcentaje if ultimo else 0,
+        "valor_ejecutado_actual": (ultimo.valor_ejecutado or 0) if ultimo else 0,
+        "valor_total_directo": total_directo,
         "avances": [
             {
                 "id": a.id, "titulo": a.titulo, "descripcion": a.descripcion,
                 "porcentaje": a.porcentaje,
+                "valor_ejecutado": a.valor_ejecutado or 0,
+                "items": _json.loads(a.items_json or "[]"),
                 "fotos": _json.loads(a.fotos_json or "[]"),
                 "fecha": a.creado.strftime("%d/%m/%Y %H:%M"),
             } for a in avances

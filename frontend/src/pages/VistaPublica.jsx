@@ -206,26 +206,57 @@ export default function VistaPublica() {
         {/* Avances de obra (visible tras aceptar) */}
         {aceptado && avances && avances.avances?.length > 0 && (
           <div className="mt-4">
+            {/* Resumen: % ponderado + valor ejecutado */}
             <div className="bg-white rounded-xl p-4 mb-2">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold text-slate-700">Avance de tu obra</p>
                 <span className="text-sm font-bold text-emerald-600">{avances.porcentaje_actual}%</span>
               </div>
-              <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden mb-3">
                 <div className="h-full bg-emerald-500 rounded-full transition-all"
                      style={{ width: `${avances.porcentaje_actual}%` }} />
               </div>
+              <div className="flex justify-between text-xs bg-emerald-50 rounded-lg p-2.5">
+                <span className="text-emerald-700">Valor ejecutado</span>
+                <span className="font-bold text-emerald-700">
+                  {COP(avances.valor_ejecutado_actual)} <span className="font-normal text-emerald-500">de {COP(avances.valor_total_directo)}</span>
+                </span>
+              </div>
+              <p className="text-[9px] text-slate-300 mt-1.5">Avance ponderado por el valor de cada actividad del presupuesto (costo directo)</p>
             </div>
+
+            {/* Cortes de avance */}
             <div className="space-y-2">
               {avances.avances.map(a => (
                 <div key={a.id} className="bg-white rounded-xl p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-medium text-slate-700">{a.titulo}</p>
-                      <p className="text-[10px] text-slate-400">{a.fecha} · {a.porcentaje}% completado</p>
+                      <p className="text-[10px] text-slate-400">{a.fecha}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-emerald-600">{a.porcentaje}%</p>
+                      <p className="text-[10px] text-emerald-500">{COP(a.valor_ejecutado)}</p>
                     </div>
                   </div>
                   {a.descripcion && <p className="text-xs text-slate-500 mt-1.5 whitespace-pre-wrap">{a.descripcion}</p>}
+
+                  {/* Detalle por actividad (solo las que tienen avance) */}
+                  {a.items?.filter(it => it.pct > 0).length > 0 && (
+                    <div className="mt-2.5 border-t border-slate-50 pt-2 space-y-1">
+                      {a.items.filter(it => it.pct > 0).map((it, i) => (
+                        <div key={i} className="flex items-center gap-2 text-[10px]">
+                          <span className="flex-1 text-slate-500 truncate">{it.descripcion}</span>
+                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0">
+                            <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${it.pct}%` }} />
+                          </div>
+                          <span className="text-slate-400 w-8 text-right shrink-0">{it.pct}%</span>
+                          <span className="text-emerald-600 w-16 text-right shrink-0">{COP(it.valor_ejec)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {a.fotos?.length > 0 && (
                     <div className="grid grid-cols-3 gap-1.5 mt-2">
                       {a.fotos.map((f, i) => (

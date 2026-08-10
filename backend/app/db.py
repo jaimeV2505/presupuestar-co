@@ -85,7 +85,9 @@ class Avance(Base):
     proyecto_id = Column(Integer, ForeignKey("proyectos.id"), nullable=False, index=True)
     titulo = Column(String(160), nullable=False)
     descripcion = Column(Text, default="")
-    porcentaje = Column(Integer, default=0)        # avance acumulado de la obra 0-100
+    porcentaje = Column(Integer, default=0)        # avance ponderado por valor 0-100
+    valor_ejecutado = Column(Integer, default=0)   # $ ejecutado segun % por actividad
+    items_json = Column(Text, default="[]")        # detalle por actividad: [{id, descripcion, valor_item, pct, valor_ejec}]
     fotos_json = Column(Text, default="[]")        # lista de fotos base64 (max 3)
     creado = Column(DateTime, default=utcnow)
 
@@ -102,6 +104,8 @@ def init_db():
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS numero VARCHAR(30) DEFAULT ''",
                     "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS nombre_firma VARCHAR(160) DEFAULT ''",
                     "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS documento_firma VARCHAR(30) DEFAULT ''",
+                    "ALTER TABLE avances ADD COLUMN IF NOT EXISTS valor_ejecutado INTEGER DEFAULT 0",
+                    "ALTER TABLE avances ADD COLUMN IF NOT EXISTS items_json TEXT DEFAULT '[]'",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -111,6 +115,8 @@ def init_db():
                     ("proyectos", "numero", "ALTER TABLE proyectos ADD COLUMN numero VARCHAR(30) DEFAULT ''"),
                     ("eventos_share", "nombre_firma", "ALTER TABLE eventos_share ADD COLUMN nombre_firma VARCHAR(160) DEFAULT ''"),
                     ("eventos_share", "documento_firma", "ALTER TABLE eventos_share ADD COLUMN documento_firma VARCHAR(30) DEFAULT ''"),
+                    ("avances", "valor_ejecutado", "ALTER TABLE avances ADD COLUMN valor_ejecutado INTEGER DEFAULT 0"),
+                    ("avances", "items_json", "ALTER TABLE avances ADD COLUMN items_json TEXT DEFAULT '[]'"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]
