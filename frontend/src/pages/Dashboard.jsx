@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2 } from 'lucide-react'
-import { proyectosAPI } from '../services/api'
+import { proyectosAPI, pagosAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -22,6 +22,8 @@ export default function Dashboard() {
   const [showNuevo, setShowNuevo] = useState(false)
   const [nuevo, setNuevo] = useState({ nombre: '', cliente_nombre: '', cliente_telefono: '', region: 'bogota' })
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
+  const [infoPago, setInfoPago] = useState(null)
+  useEffect(() => { pagosAPI.info().then(setInfoPago).catch(() => {}) }, [])
 
   const cargar = async () => {
     try {
@@ -80,8 +82,19 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {usuario.plan === 'gratis' && (
-              <span className="text-xs bg-white/10 px-3 py-1.5 rounded-full">Plan Gratis</span>
+            {infoPago?.es_admin && (
+              <button onClick={() => nav('/admin')} className="text-xs bg-amber-400/20 text-amber-300 px-3 py-1.5 rounded-full font-medium">
+                Admin
+              </button>
+            )}
+            {infoPago?.plan === 'pro' ? (
+              <button onClick={() => nav('/pro')} className="text-xs bg-emerald-400/20 text-emerald-300 px-3 py-1.5 rounded-full font-bold">
+                ⭐ Pro
+              </button>
+            ) : (
+              <button onClick={() => nav('/pro')} className="text-xs bg-white/10 hover:bg-emerald-500/30 px-3 py-1.5 rounded-full transition">
+                Plan Gratis → <span className="font-bold text-emerald-300">Pasar a Pro</span>
+              </button>
             )}
             <button onClick={() => nav('/perfil')} className="p-2 hover:bg-white/10 rounded-lg" title="Perfil">
               <Settings className="w-4 h-4" />

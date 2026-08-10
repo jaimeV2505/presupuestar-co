@@ -118,6 +118,16 @@ def usuario_actual(
     user = db.query(Usuario).filter(Usuario.id == user_id).first()
     if not user:
         raise HTTPException(401, "Usuario no existe")
+    # Degradar plan Pro vencido automaticamente
+    if user.plan == "pro" and user.plan_vence:
+        vence = user.plan_vence
+        if vence.tzinfo is None:
+            from datetime import timezone as _tz
+            vence = vence.replace(tzinfo=_tz.utc)
+        if vence < datetime.now(timezone.utc):
+            user.plan = "gratis"
+            user.plan_vence = None
+            db.commit()
     return user
 
 
@@ -130,6 +140,7 @@ def _user_out(u: Usuario) -> dict:
         "logo_b64": u.logo_b64 or "",
         "condiciones": getattr(u, "condiciones", "") or "",
         "documento": getattr(u, "documento", "") or "",
+        "plan_vence": u.plan_vence.strftime("%d/%m/%Y") if getattr(u, "plan_vence", None) else None,
         "pago_info": getattr(u, "pago_info", "") or "",
     }
 
