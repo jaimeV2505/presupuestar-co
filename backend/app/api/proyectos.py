@@ -22,7 +22,8 @@ def _mes_actual() -> str:
 
 
 def _verificar_limite(user: Usuario, db: Session):
-    """Plan gratis: 3 presupuestos nuevos por mes."""
+    """Plan gratis: limite mensual. DESACTIVADO temporalmente para pruebas."""
+    return  # <- limite abierto durante fase de pruebas; quitar esta linea para reactivar
     if user.plan != "gratis":
         return
     mes = _mes_actual()
@@ -145,7 +146,7 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
     if req.cliente_telefono is not None: p.cliente_telefono = req.cliente_telefono.strip()[:30]
     if req.direccion is not None: p.direccion = req.direccion.strip()[:250]
     if req.region is not None: p.region = req.region
-    if req.estado in ("borrador", "enviado", "visto", "aceptado", "rechazado"): p.estado = req.estado
+    if req.estado in ("borrador", "enviado", "visto", "aceptado", "rechazado", "terminado"): p.estado = req.estado
     if req.notas is not None: p.notas = req.notas[:2000]
 
     if req.items is not None:

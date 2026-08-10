@@ -55,6 +55,8 @@ export const shareAPI = {
   aceptar: (token, firma) => api.post(`/share/publico/${token}/aceptar`, firma).then(r => r.data),
   rechazar: (token) => api.post(`/share/publico/${token}/rechazar`).then(r => r.data),
   contrato: (token) => api.get(`/share/publico/${token}/contrato`).then(r => r.data),
+  encuesta: (token, data) => api.post(`/share/publico/${token}/encuesta`, data).then(r => r.data),
+  verEncuesta: (id) => api.get(`/share/proyectos/${id}/encuesta`).then(r => r.data),
 }
 
 export const avancesAPI = {

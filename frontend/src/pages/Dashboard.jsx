@@ -12,6 +12,7 @@ const ESTADO_BADGE = {
   visto:     { txt: '👁 Visto', cls: 'bg-violet-100 text-violet-700' },
   aceptado:  { txt: '✓ Aceptado', cls: 'bg-emerald-100 text-emerald-700' },
   rechazado: { txt: '✕ Rechazado', cls: 'bg-red-100 text-red-600' },
+  terminado: { txt: '🏁 Terminado', cls: 'bg-amber-100 text-amber-700' },
 }
 
 export default function Dashboard() {

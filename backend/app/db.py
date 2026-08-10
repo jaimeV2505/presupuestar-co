@@ -82,6 +82,16 @@ class EventoShare(Base):
     creado = Column(DateTime, default=utcnow)
 
 
+class Encuesta(Base):
+    __tablename__ = "encuestas"
+    id = Column(Integer, primary_key=True)
+    proyecto_id = Column(Integer, ForeignKey("proyectos.id"), nullable=False, unique=True, index=True)
+    estrellas = Column(Integer, default=0)          # 1-5
+    recomendaria = Column(Boolean, default=True)
+    comentario = Column(Text, default="")
+    creado = Column(DateTime, default=utcnow)
+
+
 class Avance(Base):
     __tablename__ = "avances"
     id = Column(Integer, primary_key=True)

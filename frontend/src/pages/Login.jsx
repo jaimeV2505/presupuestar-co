@@ -74,7 +74,7 @@ export default function Login({ modo = 'login' }) {
           </p>
           {esRegistro && (
             <p className="text-xs text-slate-400 text-center">
-              Plan gratis: 3 presupuestos al mes. Sin tarjeta de crédito.
+              Gratis durante la fase de lanzamiento. Sin tarjeta de crédito.
             </p>
           )}
         </form>

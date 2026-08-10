@@ -36,6 +36,7 @@ export default function Editor() {
   const [avanceItems, setAvanceItems] = useState({})  // {itemId: pct}
   const [valorTotalDirecto, setValorTotalDirecto] = useState(0)
   const [subiendoAvance, setSubiendoAvance] = useState(false)
+  const [calificacion, setCalificacion] = useState(null)
 
   // Share
   const [showShare, setShowShare] = useState(false)
@@ -54,6 +55,7 @@ export default function Editor() {
       if (data.contrato && Object.keys(data.contrato).length) setContrato(c => ({ ...c, ...data.contrato }))
       setTotales(data.totales)
       if (data.share_token) shareAPI.eventos(id).then(setEventos).catch(() => {})
+      if (data.estado === 'terminado') shareAPI.verEncuesta(id).then(setCalificacion).catch(() => {})
     }).catch(e => { toast.error(e.message); nav('/') })
   }, [id])
 
@@ -271,6 +273,26 @@ export default function Editor() {
             <button onClick={() => exportar('pdf')} className="p-2 hover:bg-slate-100 rounded-lg" title="PDF">
               <FileText className="w-4 h-4 text-red-500" />
             </button>
+            {p.estado === 'terminado' && calificacion?.respondida && (
+              <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-full font-medium"
+                    title={calificacion.comentario || ''}>
+                ⭐ {calificacion.estrellas}/5
+              </span>
+            )}
+            {p.estado === 'aceptado' && (
+              <button onClick={async () => {
+                        if (!confirm('¿Marcar la obra como TERMINADA?\n\n• El cliente perderá acceso al detalle del presupuesto\n• Se le pedirá una calificación de tu trabajo\n• Esta acción cierra el proyecto')) return
+                        try {
+                          const d = await proyectosAPI.actualizar(id, { estado: 'terminado' })
+                          setP(d)
+                          toast.success('Obra culminada — el cliente recibirá la encuesta al abrir su enlace')
+                        } catch (e2) { toast.error(e2.message) }
+                      }}
+                      className="flex items-center gap-1.5 border border-slate-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
+                      title="Dar por culminada la obra">
+                🏁 <span className="hidden sm:inline">Terminar</span>
+              </button>
+            )}
             {p.estado === 'aceptado' && (
               <button onClick={() => {
                         setShowAvances(true)

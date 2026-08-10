@@ -19,6 +19,9 @@ export default function VistaPublica() {
   const [contrato, setContrato] = useState(null)
   const [leido, setLeido] = useState(false)
   const [avances, setAvances] = useState(null)
+  const [encuesta, setEncuesta] = useState({ estrellas: 0, recomendaria: true, comentario: '' })
+  const [encuestaEnviada, setEncuestaEnviada] = useState(false)
+  const [enviandoEncuesta, setEnviandoEncuesta] = useState(false)
 
   useEffect(() => {
     shareAPI.verPublico(token)
@@ -77,6 +80,74 @@ export default function VistaPublica() {
       Cargando presupuesto...
     </div>
   )
+
+  // ── PROYECTO TERMINADO: acceso cerrado + encuesta ────────────────────────
+  if (data.terminado) {
+    const yaRespondida = data.encuesta_respondida || encuestaEnviada
+    const enviarEncuesta = async () => {
+      if (encuesta.estrellas < 1) { alert('Selecciona una calificación de 1 a 5 estrellas'); return }
+      setEnviandoEncuesta(true)
+      try {
+        await shareAPI.encuesta(token, encuesta)
+        setEncuestaEnviada(true)
+      } catch (e) { alert(e.message) }
+      finally { setEnviandoEncuesta(false) }
+    }
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-6 text-center">
+          {data.contratista.logo_b64 ? (
+            <img src={data.contratista.logo_b64} alt="" className="w-14 h-14 rounded-xl object-contain mx-auto mb-3 border border-slate-100 p-1" />
+          ) : (
+            <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+            </div>
+          )}
+          <h1 className="font-bold text-slate-800 text-lg">¡Obra culminada! 🎉</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            El proyecto <strong>{data.proyecto}</strong> ({data.numero}) fue entregado por{' '}
+            <strong>{data.contratista.empresa || data.contratista.nombre}</strong>.
+          </p>
+          <p className="text-[11px] text-slate-400 mt-2">
+            Este enlace ya no muestra el detalle del presupuesto.
+          </p>
+
+          {yaRespondida ? (
+            <div className="mt-5 bg-emerald-50 rounded-xl p-4">
+              <p className="text-sm font-medium text-emerald-700">¡Gracias por tu calificación!</p>
+              <p className="text-[11px] text-emerald-600 mt-1">Tu opinión ayuda al contratista a mejorar.</p>
+            </div>
+          ) : (
+            <div className="mt-5 text-left space-y-3">
+              <p className="text-sm font-semibold text-slate-700 text-center">¿Cómo fue tu experiencia?</p>
+              <div className="flex justify-center gap-2">
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} onClick={() => setEncuesta(e => ({ ...e, estrellas: n }))}
+                          className={`text-3xl transition ${n <= encuesta.estrellas ? '' : 'grayscale opacity-40'}`}>
+                    ⭐
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center justify-center gap-2 text-xs text-slate-600">
+                <input type="checkbox" checked={encuesta.recomendaria}
+                       onChange={e => setEncuesta(x => ({ ...x, recomendaria: e.target.checked }))} />
+                Recomendaría a este contratista
+              </label>
+              <textarea className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-emerald-400 min-h-[70px]"
+                        placeholder="Cuéntanos cómo fue el trabajo (opcional)"
+                        value={encuesta.comentario}
+                        onChange={e => setEncuesta(x => ({ ...x, comentario: e.target.value }))} />
+              <button onClick={enviarEncuesta} disabled={enviandoEncuesta}
+                      className="w-full py-3 rounded-xl bg-emerald-500 text-white text-sm font-bold disabled:opacity-50">
+                {enviandoEncuesta ? 'Enviando...' : 'Enviar calificación'}
+              </button>
+            </div>
+          )}
+          <p className="text-[9px] text-slate-300 mt-4">Hecho con PresupuestarCO</p>
+        </div>
+      </div>
+    )
+  }
 
   const t = data.totales
   const c = data.contratista

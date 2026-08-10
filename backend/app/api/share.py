@@ -12,7 +12,7 @@ import secrets
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from app.db import get_db, Usuario, Proyecto, EventoShare, Avance
+from app.db import get_db, Usuario, Proyecto, EventoShare, Avance, Encuesta
 from pydantic import BaseModel
 from app.api.auth import usuario_actual
 from app.services.calculo_presupuesto import calcular_totales
@@ -92,6 +92,22 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
     if not p:
         raise HTTPException(404, "Este presupuesto no existe o fue retirado")
+
+    # PROYECTO TERMINADO: el acceso al presupuesto se cierra — solo encuesta
+    if p.estado == "terminado":
+        user_t = db.query(Usuario).filter(Usuario.id == p.user_id).first()
+        enc = db.query(Encuesta).filter(Encuesta.proyecto_id == p.id).first()
+        return {
+            "terminado": True,
+            "proyecto": p.nombre,
+            "numero": p.numero or "",
+            "contratista": {
+                "nombre": user_t.nombre if user_t else "",
+                "empresa": user_t.empresa if user_t else "",
+                "logo_b64": user_t.logo_b64 if user_t else "",
+            },
+            "encuesta_respondida": enc is not None,
+        }
 
     # Registrar vista + cambiar estado a "visto" automaticamente
     try:
@@ -387,3 +403,53 @@ def contrato_pdf(token: str, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"PDF contrato: {e}", exc_info=True)
         raise HTTPException(500, "Error generando el contrato PDF")
+
+
+# ── ENCUESTA DE SATISFACCION (al terminar la obra) ──────────────────────────
+class EncuestaRequest(BaseModel):
+    estrellas: int
+    recomendaria: bool = True
+    comentario: str = ""
+
+
+@router.post("/publico/{token}/encuesta")
+def responder_encuesta(token: str, req: EncuestaRequest, db: Session = Depends(get_db)):
+    p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if not p:
+        raise HTTPException(404, "Enlace no valido")
+    if p.estado != "terminado":
+        raise HTTPException(400, "La encuesta se habilita cuando la obra termina")
+
+    ya = db.query(Encuesta).filter(Encuesta.proyecto_id == p.id).first()
+    if ya:
+        return {"ok": True, "mensaje": "Ya habias enviado tu calificacion. Gracias!"}
+
+    estrellas = max(1, min(5, int(req.estrellas or 0)))
+    e = Encuesta(
+        proyecto_id=p.id,
+        estrellas=estrellas,
+        recomendaria=bool(req.recomendaria),
+        comentario=(req.comentario or "")[:1500],
+    )
+    db.add(e)
+    db.commit()
+    logger.info(f"Encuesta proyecto {p.id}: {estrellas} estrellas")
+    return {"ok": True, "mensaje": "Gracias por tu calificacion!"}
+
+
+@router.get("/proyectos/{proyecto_id}/encuesta")
+def ver_encuesta(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    """El contratista ve la calificacion que dejo su cliente."""
+    p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
+    if not p:
+        raise HTTPException(404, "Proyecto no encontrado")
+    e = db.query(Encuesta).filter(Encuesta.proyecto_id == p.id).first()
+    if not e:
+        return {"respondida": False}
+    return {
+        "respondida": True,
+        "estrellas": e.estrellas,
+        "recomendaria": e.recomendaria,
+        "comentario": e.comentario,
+        "fecha": e.creado.strftime("%d/%m/%Y"),
+    }
