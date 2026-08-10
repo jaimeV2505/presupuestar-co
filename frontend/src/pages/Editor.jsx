@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
-         Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil } from 'lucide-react'
+         Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator } from 'lucide-react'
 import { proyectosAPI, preciosAPI, shareAPI, exportarAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
@@ -23,6 +23,10 @@ export default function Editor() {
   const [categorias, setCategorias] = useState([])
   const [buscando, setBuscando] = useState(false)
   const [showBuscador, setShowBuscador] = useState(false)
+
+  // Calculadora de cantidades + Preview
+  const [calcAbierta, setCalcAbierta] = useState(null)  // idx del item con calc abierta
+  const [showPreview, setShowPreview] = useState(false)
 
   // Share
   const [showShare, setShowShare] = useState(false)
@@ -117,6 +121,37 @@ export default function Editor() {
     }
     setItemsYGuardar(prev => [...prev, nuevo])
     toast.success('Agregado', { duration: 1200 })
+  }
+
+  // Detectar que formula aplica segun la unidad del item
+  const tipoCalc = (unidad) => {
+    const u = (unidad || '').toLowerCase().replace('³','3').replace('²','2')
+    if (u.includes('m3') || u.includes('dm3')) return 'volumen'
+    if (u.includes('m2')) return 'area'
+    if (u === 'm' || u === 'ml') return 'lineal'
+    return null
+  }
+
+  // Actualizar calculadora: recalcula y auto-rellena la cantidad
+  const actualizarCalc = (idx, campo, valor) => {
+    setItemsYGuardar(prev => prev.map((it, i) => {
+      if (i !== idx) return it
+      const calc = { ...(it.calc || {}), [campo]: valor }
+      const n = parseFloat(calc.n) || 1
+      const largo = parseFloat(calc.largo) || 0
+      const ancho = parseFloat(calc.ancho) || 0
+      const alto = parseFloat(calc.alto) || 0
+      const tipo = tipoCalc(it.unidad)
+      let cantidad = it.cantidad
+      if (tipo === 'volumen' && largo > 0 && ancho > 0 && alto > 0) {
+        cantidad = Math.round(n * largo * ancho * alto * 1000) / 1000
+      } else if (tipo === 'area' && largo > 0 && ancho > 0) {
+        cantidad = Math.round(n * largo * ancho * 1000) / 1000
+      } else if (tipo === 'lineal' && largo > 0) {
+        cantidad = Math.round(n * largo * 100) / 100
+      }
+      return { ...it, calc, cantidad }
+    }))
   }
 
   const actualizarItem = (idx, campo, valor) => {
@@ -214,6 +249,11 @@ export default function Editor() {
             <button onClick={() => exportar('pdf')} className="p-2 hover:bg-slate-100 rounded-lg" title="PDF">
               <FileText className="w-4 h-4 text-red-500" />
             </button>
+            <button onClick={() => setShowPreview(true)}
+                    className="flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"
+                    title="Ver como lo verá tu cliente">
+              <Eye className="w-4 h-4" /> <span className="hidden sm:inline">Ver</span>
+            </button>
             <button onClick={compartir}
                     className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
               <MessageCircle className="w-4 h-4" /> <span className="hidden sm:inline">WhatsApp</span>
@@ -246,12 +286,27 @@ export default function Editor() {
               </div>
               <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
                 {itemsCap.map(it => (
-                  <div key={it._idx} className="p-3 flex items-center gap-3">
+                  <div key={it._idx}>
+                  <div className="p-3 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-700 leading-snug">{it.descripcion}</p>
-                      {it.precio_editado && <span className="text-[10px] text-amber-600 font-medium">precio ajustado</span>}
+                      <div className="flex items-center gap-2">
+                        {it.precio_editado && <span className="text-[10px] text-amber-600 font-medium">precio ajustado</span>}
+                        {it.calc && (it.calc.largo || it.calc.n) && (
+                          <span className="text-[10px] text-blue-500 font-medium">
+                            calc: {it.calc.n || 1} × {it.calc.largo || '?'}{tipoCalc(it.unidad) !== 'lineal' ? ` × ${it.calc.ancho || '?'}` : ''}{tipoCalc(it.unidad) === 'volumen' ? ` × ${it.calc.alto || '?'}` : ''}m
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      {tipoCalc(it.unidad) && (
+                        <button onClick={() => setCalcAbierta(calcAbierta === it._idx ? null : it._idx)}
+                                className={`p-1.5 rounded-lg transition ${calcAbierta === it._idx ? 'bg-blue-100 text-blue-600' : 'hover:bg-slate-100 text-slate-300 hover:text-blue-500'}`}
+                                title="Calcular cantidad por dimensiones">
+                          <Calculator className="w-4 h-4" />
+                        </button>
+                      )}
                       <div className="text-right">
                         <input type="number" step="any" min="0" value={it.cantidad}
                                onChange={e => actualizarItem(it._idx, 'cantidad', e.target.value)}
@@ -272,6 +327,62 @@ export default function Editor() {
                         <Trash2 className="w-3.5 h-3.5 text-slate-300 hover:text-red-500" />
                       </button>
                     </div>
+                  </div>
+
+                  {/* Calculadora de cantidades */}
+                  {calcAbierta === it._idx && tipoCalc(it.unidad) && (
+                    <div className="px-3 pb-3 bg-blue-50/50">
+                      <div className="flex items-end gap-2 flex-wrap pt-2">
+                        <div>
+                          <label className="text-[10px] text-blue-600 font-medium block mb-0.5"># Elementos</label>
+                          <input type="number" step="1" min="1" placeholder="1"
+                                 value={it.calc?.n ?? ''}
+                                 onChange={e => actualizarCalc(it._idx, 'n', e.target.value)}
+                                 className="w-20 text-sm border border-blue-200 rounded-lg px-2 py-1.5 bg-white outline-none focus:border-blue-400" />
+                        </div>
+                        <span className="text-blue-300 pb-2">×</span>
+                        <div>
+                          <label className="text-[10px] text-blue-600 font-medium block mb-0.5">Largo (m)</label>
+                          <input type="number" step="any" min="0" placeholder="0.00"
+                                 value={it.calc?.largo ?? ''}
+                                 onChange={e => actualizarCalc(it._idx, 'largo', e.target.value)}
+                                 className="w-24 text-sm border border-blue-200 rounded-lg px-2 py-1.5 bg-white outline-none focus:border-blue-400" />
+                        </div>
+                        {tipoCalc(it.unidad) !== 'lineal' && (
+                          <>
+                            <span className="text-blue-300 pb-2">×</span>
+                            <div>
+                              <label className="text-[10px] text-blue-600 font-medium block mb-0.5">{tipoCalc(it.unidad) === 'area' ? 'Ancho/Alto (m)' : 'Ancho (m)'}</label>
+                              <input type="number" step="any" min="0" placeholder="0.00"
+                                     value={it.calc?.ancho ?? ''}
+                                     onChange={e => actualizarCalc(it._idx, 'ancho', e.target.value)}
+                                     className="w-24 text-sm border border-blue-200 rounded-lg px-2 py-1.5 bg-white outline-none focus:border-blue-400" />
+                            </div>
+                          </>
+                        )}
+                        {tipoCalc(it.unidad) === 'volumen' && (
+                          <>
+                            <span className="text-blue-300 pb-2">×</span>
+                            <div>
+                              <label className="text-[10px] text-blue-600 font-medium block mb-0.5">Alto (m)</label>
+                              <input type="number" step="any" min="0" placeholder="0.00"
+                                     value={it.calc?.alto ?? ''}
+                                     onChange={e => actualizarCalc(it._idx, 'alto', e.target.value)}
+                                     className="w-24 text-sm border border-blue-200 rounded-lg px-2 py-1.5 bg-white outline-none focus:border-blue-400" />
+                            </div>
+                          </>
+                        )}
+                        <div className="pb-1 pl-2 text-sm text-blue-700">
+                          = <strong>{it.cantidad}</strong> {it.unidad}
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-blue-400 mt-1.5">
+                        {tipoCalc(it.unidad) === 'volumen' && 'Volumen: # elementos × largo × ancho × alto — la cantidad se llena sola'}
+                        {tipoCalc(it.unidad) === 'area' && 'Área: # elementos × largo × ancho — la cantidad se llena sola'}
+                        {tipoCalc(it.unidad) === 'lineal' && 'Lineal: # elementos × largo — la cantidad se llena sola'}
+                      </p>
+                    </div>
+                  )}
                   </div>
                 ))}
               </div>
@@ -382,6 +493,98 @@ export default function Editor() {
                   </button>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal VER PRESUPUESTO (preview como lo ve el cliente) */}
+      {showPreview && totales && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 pt-[4vh] overflow-y-auto" onClick={() => setShowPreview(false)}>
+          <div className="bg-slate-100 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            {/* Header estilo cliente */}
+            <div className="bg-navy-800 text-white px-5 py-6 rounded-t-2xl sticky top-0 z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-200 text-[10px] uppercase tracking-wide">Vista previa — así lo verá tu cliente</p>
+                  <h3 className="font-bold text-lg leading-tight mt-1">{p.nombre}</h3>
+                  {p.cliente_nombre && <p className="text-xs text-blue-200 mt-0.5">Para: {p.cliente_nombre}</p>}
+                </div>
+                <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-white/10 rounded-lg shrink-0">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Total */}
+            <div className="px-4 -mt-3">
+              <div className="bg-white rounded-xl shadow p-4 text-center">
+                <p className="text-[10px] text-slate-400 uppercase tracking-wide">Valor total</p>
+                <p className="text-2xl font-black text-slate-800">{COP(totales.total)}</p>
+              </div>
+            </div>
+
+            {/* Items por capitulo */}
+            <div className="px-4 py-3 space-y-2">
+              {Object.entries(grupos).map(([cap, itemsCap]) => (
+                <div key={cap} className="bg-white rounded-xl p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs font-bold text-slate-600 uppercase">{cap}</p>
+                    <p className="text-xs font-semibold text-slate-700">
+                      {COP(itemsCap.reduce((s, it) => s + (parseFloat(it.cantidad)||0) * (parseFloat(it.precio_unitario)||0), 0))}
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    {itemsCap.map(it => (
+                      <div key={it._idx} className="flex justify-between gap-2 text-[11px]">
+                        <span className="text-slate-500 leading-snug">{it.descripcion}</span>
+                        <span className="text-slate-600 whitespace-nowrap shrink-0">
+                          {it.cantidad} {it.unidad} · {COP((parseFloat(it.cantidad)||0)*(parseFloat(it.precio_unitario)||0))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Resumen financiero */}
+              <div className="bg-white rounded-xl p-4 text-xs space-y-1.5">
+                <div className="flex justify-between text-slate-500">
+                  <span>Costo directo</span><span>{COP(totales.subtotal_directo)}</span>
+                </div>
+                {aiu.aplicar && (
+                  <>
+                    <div className="flex justify-between text-slate-400">
+                      <span>Administración ({aiu.admin}%)</span><span>{COP(totales.admin_valor)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>Imprevistos ({aiu.imprevistos}%)</span><span>{COP(totales.imprevistos_valor)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>Utilidad ({aiu.utilidad}%)</span><span>{COP(totales.utilidad_valor)}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between text-slate-500">
+                  <span>IVA</span><span>{COP(totales.iva)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-slate-800 pt-1.5 border-t border-slate-100 text-sm">
+                  <span>Total</span><span>{COP(totales.total)}</span>
+                </div>
+                <p className="text-[9px] text-slate-300 pt-1">{totales.regimen_iva}</p>
+              </div>
+            </div>
+
+            {/* Acciones */}
+            <div className="sticky bottom-0 bg-white border-t border-slate-200 p-3 rounded-b-2xl flex gap-2">
+              <button onClick={() => setShowPreview(false)}
+                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium">
+                Seguir editando
+              </button>
+              <button onClick={() => { setShowPreview(false); compartir() }}
+                      className="flex-[2] flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold">
+                <MessageCircle className="w-4 h-4" /> Todo bien, enviar
+              </button>
             </div>
           </div>
         </div>

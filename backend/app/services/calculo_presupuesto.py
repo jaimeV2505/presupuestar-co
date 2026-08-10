@@ -88,7 +88,23 @@ def validar_item(item: Dict) -> Dict:
         "precio_unitario": max(0.0, _f(item.get("precio_unitario") or item.get("precio"))),
         "precio_editado": bool(item.get("precio_editado", False)),
         "notas": str(item.get("notas") or "")[:300],
+        "calc": _validar_calc(item.get("calc")),
     }
+
+
+def _validar_calc(calc) -> Dict:
+    """Persiste los datos de la calculadora de cantidades (largo/ancho/alto/n)."""
+    if not isinstance(calc, dict):
+        return None
+    out = {}
+    for k in ("largo", "ancho", "alto", "n"):
+        v = calc.get(k)
+        if v is not None and v != "":
+            try:
+                out[k] = float(str(v).replace(",", "."))
+            except (ValueError, TypeError):
+                pass
+    return out or None
 
 
 def validar_items(items: List) -> List[Dict]:
