@@ -51,7 +51,8 @@ def exportar_excel(req: ExportRequest, user: Usuario = Depends(usuario_actual), 
         # Encabezado
         ws["A1"] = user.empresa or user.nombre
         ws["A1"].font = Font(bold=True, size=14)
-        ws["A2"] = f"Presupuesto: {p.nombre}"
+        ws["A2"] = f"Cotizacion {p.numero or ''} — {p.nombre}"
+        ws["A2"].font = Font(bold=True, size=11)
         ws["A3"] = f"Cliente: {p.cliente_nombre or '-'}  |  {p.direccion or ''}"
         ws["A4"] = f"Fecha: {p.actualizado.strftime('%d/%m/%Y') if p.actualizado else ''}  |  Contacto: {user.telefono or user.email}"
 
@@ -170,7 +171,7 @@ def exportar_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual), db
 
         titulo = ParagraphStyle("t", parent=styles["Title"], fontSize=16, textColor=colors.HexColor("#1C3A5E"), alignment=0)
         story.append(Paragraph(user.empresa or user.nombre, titulo))
-        story.append(Paragraph(f"<b>Presupuesto:</b> {p.nombre}", styles["Normal"]))
+        story.append(Paragraph(f"<b>Cotizacion No.:</b> {p.numero or '-'} &nbsp;&nbsp; <b>Proyecto:</b> {p.nombre}", styles["Normal"]))
         story.append(Paragraph(f"<b>Cliente:</b> {p.cliente_nombre or '-'} | {p.direccion or ''}", styles["Normal"]))
         story.append(Paragraph(
             f"<b>Fecha:</b> {p.actualizado.strftime('%d/%m/%Y') if p.actualizado else ''} | "

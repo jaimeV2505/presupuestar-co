@@ -52,8 +52,15 @@ export const shareAPI = {
   compartir: (id) => api.post(`/share/proyectos/${id}/compartir`).then(r => r.data),
   eventos: (id) => api.get(`/share/proyectos/${id}/eventos`).then(r => r.data),
   verPublico: (token) => api.get(`/share/publico/${token}`).then(r => r.data),
-  aceptar: (token) => api.post(`/share/publico/${token}/aceptar`).then(r => r.data),
+  aceptar: (token, firma) => api.post(`/share/publico/${token}/aceptar`, firma).then(r => r.data),
   rechazar: (token) => api.post(`/share/publico/${token}/rechazar`).then(r => r.data),
+}
+
+export const avancesAPI = {
+  listar: (id) => api.get(`/avances/proyectos/${id}/avances`).then(r => r.data),
+  crear: (id, data) => api.post(`/avances/proyectos/${id}/avances`, data).then(r => r.data),
+  eliminar: (id, avanceId) => api.delete(`/avances/proyectos/${id}/avances/${avanceId}`).then(r => r.data),
+  publicos: (token) => api.get(`/share/publico/${token}/avances`).then(r => r.data),
 }
 
 export const preciosAPI = {

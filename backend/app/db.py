@@ -53,6 +53,7 @@ class Proyecto(Base):
     __tablename__ = "proyectos"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    numero = Column(String(30), default="", index=True)   # COT-2026-0001
     nombre = Column(String(200), nullable=False)
     cliente_nombre = Column(String(160), default="")
     cliente_telefono = Column(String(30), default="")
@@ -71,8 +72,21 @@ class EventoShare(Base):
     __tablename__ = "eventos_share"
     id = Column(Integer, primary_key=True)
     proyecto_id = Column(Integer, ForeignKey("proyectos.id"), nullable=False, index=True)
-    tipo = Column(String(20), nullable=False)  # visto | aceptado
+    tipo = Column(String(20), nullable=False)  # visto | aceptado | rechazado
+    nombre_firma = Column(String(160), default="")     # quien firma la aceptacion
+    documento_firma = Column(String(30), default="")   # cedula/NIT del firmante
     user_agent = Column(String(300), default="")
+    creado = Column(DateTime, default=utcnow)
+
+
+class Avance(Base):
+    __tablename__ = "avances"
+    id = Column(Integer, primary_key=True)
+    proyecto_id = Column(Integer, ForeignKey("proyectos.id"), nullable=False, index=True)
+    titulo = Column(String(160), nullable=False)
+    descripcion = Column(Text, default="")
+    porcentaje = Column(Integer, default=0)        # avance acumulado de la obra 0-100
+    fotos_json = Column(Text, default="[]")        # lista de fotos base64 (max 3)
     creado = Column(DateTime, default=utcnow)
 
 
@@ -83,15 +97,26 @@ def init_db():
     try:
         with engine.connect() as conn:
             if ES_POSTGRES:
-                conn.execute(text(
-                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS condiciones TEXT DEFAULT ''"
-                ))
+                for sql in [
+                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS condiciones TEXT DEFAULT ''",
+                    "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS numero VARCHAR(30) DEFAULT ''",
+                    "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS nombre_firma VARCHAR(160) DEFAULT ''",
+                    "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS documento_firma VARCHAR(30) DEFAULT ''",
+                ]:
+                    conn.execute(text(sql))
                 conn.commit()
             else:
-                cols = [r[1] for r in conn.execute(text("PRAGMA table_info(usuarios)"))]
-                if "condiciones" not in cols:
-                    conn.execute(text("ALTER TABLE usuarios ADD COLUMN condiciones TEXT DEFAULT ''"))
-                    conn.commit()
+                migs = [
+                    ("usuarios", "condiciones", "ALTER TABLE usuarios ADD COLUMN condiciones TEXT DEFAULT ''"),
+                    ("proyectos", "numero", "ALTER TABLE proyectos ADD COLUMN numero VARCHAR(30) DEFAULT ''"),
+                    ("eventos_share", "nombre_firma", "ALTER TABLE eventos_share ADD COLUMN nombre_firma VARCHAR(160) DEFAULT ''"),
+                    ("eventos_share", "documento_firma", "ALTER TABLE eventos_share ADD COLUMN documento_firma VARCHAR(30) DEFAULT ''"),
+                ]
+                for tabla, col, sql in migs:
+                    cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]
+                    if col not in cols:
+                        conn.execute(text(sql))
+                conn.commit()
     except Exception:
         pass
 

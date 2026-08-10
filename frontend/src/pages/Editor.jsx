@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
-         Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator } from 'lucide-react'
-import { proyectosAPI, preciosAPI, shareAPI, exportarAPI } from '../services/api'
+         Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
+import { proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -27,6 +27,12 @@ export default function Editor() {
   // Calculadora de cantidades + Preview
   const [calcAbierta, setCalcAbierta] = useState(null)  // idx del item con calc abierta
   const [showPreview, setShowPreview] = useState(false)
+
+  // Avances de obra (cuando el presupuesto esta aceptado)
+  const [showAvances, setShowAvances] = useState(false)
+  const [avances, setAvances] = useState([])
+  const [nuevoAvance, setNuevoAvance] = useState({ titulo: '', descripcion: '', porcentaje: 0, fotos: [] })
+  const [subiendoAvance, setSubiendoAvance] = useState(false)
 
   // Share
   const [showShare, setShowShare] = useState(false)
@@ -228,7 +234,10 @@ export default function Editor() {
             <div className="min-w-0">
               <h1 className="font-semibold text-slate-800 truncate">{p.nombre}</h1>
               <p className="text-xs text-slate-400">
-                {p.cliente_nombre || 'Sin cliente'} · {guardando ? 'Guardando...' : 'Guardado ✓'}
+                <span className="font-semibold text-navy-600">{p.numero}</span>
+                {' · '}{p.cliente_nombre || 'Sin cliente'}
+                {' · '}{p.actualizado ? new Date(p.actualizado).toLocaleDateString('es-CO') : ''}
+                {' · '}{guardando ? 'Guardando...' : 'Guardado ✓'}
               </p>
             </div>
           </div>
@@ -249,6 +258,13 @@ export default function Editor() {
             <button onClick={() => exportar('pdf')} className="p-2 hover:bg-slate-100 rounded-lg" title="PDF">
               <FileText className="w-4 h-4 text-red-500" />
             </button>
+            {p.estado === 'aceptado' && (
+              <button onClick={() => { setShowAvances(true); avancesAPI.listar(id).then(setAvances).catch(() => {}) }}
+                      className="flex items-center gap-1.5 border border-amber-300 bg-amber-50 text-amber-700 text-sm font-medium px-3 py-2 rounded-xl transition"
+                      title="Avances de obra">
+                <HardHat className="w-4 h-4" /> <span className="hidden sm:inline">Avances</span>
+              </button>
+            )}
             <button onClick={() => setShowPreview(true)}
                     className="flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"
                     title="Ver como lo verá tu cliente">
@@ -493,6 +509,109 @@ export default function Editor() {
                   </button>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal AVANCES DE OBRA (contratista) */}
+      {showAvances && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 pt-[5vh] overflow-y-auto" onClick={() => setShowAvances(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-slate-100 sticky top-0 bg-white z-10 flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-slate-800">Avances de obra</h3>
+                <p className="text-[11px] text-slate-400">Tu cliente los ve con su mismo enlace del presupuesto</p>
+              </div>
+              <button onClick={() => setShowAvances(false)} className="p-1.5 hover:bg-slate-100 rounded-lg">
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+
+            {/* Form nuevo avance */}
+            <div className="p-4 bg-slate-50 space-y-3">
+              <input className="input" placeholder="Título (ej: Cimentación terminada) *"
+                     value={nuevoAvance.titulo}
+                     onChange={e => setNuevoAvance(a => ({ ...a, titulo: e.target.value }))} />
+              <textarea className="input min-h-[60px] text-xs" placeholder="Descripción del avance (opcional)"
+                        value={nuevoAvance.descripcion}
+                        onChange={e => setNuevoAvance(a => ({ ...a, descripcion: e.target.value }))} />
+              <div className="flex items-center gap-3">
+                <label className="text-xs text-slate-500 shrink-0">Avance total de la obra:</label>
+                <input type="range" min="0" max="100" step="5" className="flex-1"
+                       value={nuevoAvance.porcentaje}
+                       onChange={e => setNuevoAvance(a => ({ ...a, porcentaje: parseInt(e.target.value) }))} />
+                <span className="text-sm font-bold text-emerald-600 w-12 text-right">{nuevoAvance.porcentaje}%</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-xs text-navy-600 font-medium border border-navy-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-navy-50">
+                  <Camera className="w-4 h-4" /> Fotos ({nuevoAvance.fotos.length}/3)
+                  <input type="file" accept="image/*" multiple className="hidden"
+                         onChange={e => {
+                           const files = Array.from(e.target.files || []).slice(0, 3 - nuevoAvance.fotos.length)
+                           files.forEach(file => {
+                             if (file.size > 450 * 1024) { toast.error(`${file.name}: máximo 450KB por foto`); return }
+                             const r = new FileReader()
+                             r.onload = () => setNuevoAvance(a => ({ ...a, fotos: [...a.fotos, r.result].slice(0, 3) }))
+                             r.readAsDataURL(file)
+                           })
+                           e.target.value = ''
+                         }} />
+                </label>
+                {nuevoAvance.fotos.map((f, i) => (
+                  <div key={i} className="relative">
+                    <img src={f} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                    <button onClick={() => setNuevoAvance(a => ({ ...a, fotos: a.fotos.filter((_, j) => j !== i) }))}
+                            className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 text-[9px] leading-none">×</button>
+                  </div>
+                ))}
+              </div>
+              <button disabled={subiendoAvance}
+                      onClick={async () => {
+                        if (!nuevoAvance.titulo.trim()) { toast.error('El avance necesita un título'); return }
+                        setSubiendoAvance(true)
+                        try {
+                          const a = await avancesAPI.crear(id, nuevoAvance)
+                          setAvances(prev => [a, ...prev])
+                          setNuevoAvance({ titulo: '', descripcion: '', porcentaje: nuevoAvance.porcentaje, fotos: [] })
+                          toast.success('Avance publicado — tu cliente ya puede verlo')
+                        } catch (e) { toast.error(e.message) }
+                        finally { setSubiendoAvance(false) }
+                      }}
+                      className="w-full py-2.5 rounded-xl bg-navy-600 text-white text-sm font-medium disabled:opacity-50">
+                {subiendoAvance ? 'Publicando...' : 'Publicar avance'}
+              </button>
+            </div>
+
+            {/* Lista de avances */}
+            <div className="p-4 space-y-2">
+              {avances.length === 0 ? (
+                <p className="text-center text-xs text-slate-400 py-4">Aún no has publicado avances</p>
+              ) : avances.map(a => (
+                <div key={a.id} className="border border-slate-100 rounded-xl p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">{a.titulo}</p>
+                      <p className="text-[10px] text-slate-400">{a.fecha} · {a.porcentaje}%</p>
+                    </div>
+                    <button onClick={async () => {
+                              if (!confirm('¿Eliminar este avance?')) return
+                              await avancesAPI.eliminar(id, a.id)
+                              setAvances(prev => prev.filter(x => x.id !== a.id))
+                            }}
+                            className="p-1 hover:bg-red-50 rounded">
+                      <Trash2 className="w-3.5 h-3.5 text-slate-300 hover:text-red-500" />
+                    </button>
+                  </div>
+                  {a.fotos?.length > 0 && (
+                    <div className="flex gap-1.5 mt-2">
+                      {a.fotos.map((f, i) => (
+                        <img key={i} src={f} alt="" className="w-14 h-14 rounded-lg object-cover" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>

@@ -13,6 +13,10 @@ export default function VistaPublica() {
   const [aceptando, setAceptando] = useState(false)
   const [aceptado, setAceptado] = useState(false)
   const [rechazado, setRechazado] = useState(false)
+  const [showFirma, setShowFirma] = useState(false)
+  const [firma, setFirma] = useState({ nombre: '', documento: '' })
+  const [firmaInfo, setFirmaInfo] = useState(null)
+  const [avances, setAvances] = useState(null)
 
   useEffect(() => {
     shareAPI.verPublico(token)
@@ -20,6 +24,10 @@ export default function VistaPublica() {
         setData(d)
         setAceptado(d.estado === 'aceptado')
         setRechazado(d.estado === 'rechazado')
+        if (d.firma) setFirmaInfo(d.firma)
+        if (d.estado === 'aceptado') {
+          shareAPI && import('../services/api').then(m => m.avancesAPI.publicos(token).then(setAvances).catch(() => {}))
+        }
         // Abrir el primer capitulo por defecto
         const caps = Object.keys(d.capitulos || {})
         if (caps.length) setAbiertos({ [caps[0]]: true })
@@ -35,12 +43,16 @@ export default function VistaPublica() {
     } catch (e) { alert(e.message) }
   }
 
-  const aceptar = async () => {
-    if (!confirm('¿Confirmas que aceptas este presupuesto?')) return
+  const aceptar = () => setShowFirma(true)
+
+  const confirmarFirma = async () => {
+    if (firma.nombre.trim().length < 5) { alert('Escribe tu nombre completo'); return }
     setAceptando(true)
     try {
-      await shareAPI.aceptar(token)
+      const res = await shareAPI.aceptar(token, firma)
       setAceptado(true)
+      setShowFirma(false)
+      setFirmaInfo({ nombre: res.firmado_por, fecha: new Date(res.fecha).toLocaleString('es-CO') })
     } catch (e) { alert(e.message) }
     finally { setAceptando(false) }
   }
@@ -81,7 +93,9 @@ export default function VistaPublica() {
               {c.empresa && <p className="text-xs text-blue-200">{c.nombre}</p>}
             </div>
           </div>
-          <p className="text-blue-200 text-xs uppercase tracking-wide mb-1">Presupuesto de obra</p>
+          <p className="text-blue-200 text-xs uppercase tracking-wide mb-1">
+            Presupuesto de obra {data.numero && <span className="font-bold text-white">· {data.numero}</span>}
+          </p>
           <h1 className="text-xl font-bold leading-tight">{data.proyecto}</h1>
           {data.cliente && <p className="text-sm text-blue-200 mt-1">Para: {data.cliente}</p>}
           {data.direccion && <p className="text-xs text-blue-300">{data.direccion}</p>}
@@ -95,9 +109,16 @@ export default function VistaPublica() {
           <p className="text-xs text-slate-400 uppercase tracking-wide">Valor total</p>
           <p className="text-3xl font-black text-slate-800 mt-1">{COP(t.total)}</p>
           {aceptado && (
-            <span className="inline-flex items-center gap-1.5 mt-2 text-sm text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full font-medium">
-              <CheckCircle2 className="w-4 h-4" /> Presupuesto aceptado
-            </span>
+            <div className="mt-2">
+              <span className="inline-flex items-center gap-1.5 text-sm text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full font-medium">
+                <CheckCircle2 className="w-4 h-4" /> Presupuesto aceptado
+              </span>
+              {firmaInfo && (
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  Firmado por <strong className="text-slate-500">{firmaInfo.nombre}</strong> · {firmaInfo.fecha}
+                </p>
+              )}
+            </div>
           )}
           {rechazado && !aceptado && (
             <span className="inline-flex items-center gap-1.5 mt-2 text-sm text-red-600 bg-red-50 px-3 py-1 rounded-full font-medium">
@@ -182,10 +203,95 @@ export default function VistaPublica() {
           </div>
         )}
 
+        {/* Avances de obra (visible tras aceptar) */}
+        {aceptado && avances && avances.avances?.length > 0 && (
+          <div className="mt-4">
+            <div className="bg-white rounded-xl p-4 mb-2">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-slate-700">Avance de tu obra</p>
+                <span className="text-sm font-bold text-emerald-600">{avances.porcentaje_actual}%</span>
+              </div>
+              <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full transition-all"
+                     style={{ width: `${avances.porcentaje_actual}%` }} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              {avances.avances.map(a => (
+                <div key={a.id} className="bg-white rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">{a.titulo}</p>
+                      <p className="text-[10px] text-slate-400">{a.fecha} · {a.porcentaje}% completado</p>
+                    </div>
+                  </div>
+                  {a.descripcion && <p className="text-xs text-slate-500 mt-1.5 whitespace-pre-wrap">{a.descripcion}</p>}
+                  {a.fotos?.length > 0 && (
+                    <div className="grid grid-cols-3 gap-1.5 mt-2">
+                      {a.fotos.map((f, i) => (
+                        <img key={i} src={f} alt="" className="rounded-lg object-cover aspect-square w-full" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <p className="text-center text-[10px] text-slate-400 mt-4">
           Hecho con PresupuestarCO
         </p>
       </div>
+
+      {/* Modal de firma / mutual agreement */}
+      {showFirma && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowFirma(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-100 rounded-2xl mb-2">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+              </div>
+              <h3 className="font-semibold text-slate-800">Aceptar presupuesto</h3>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-3 text-[11px] text-slate-500 leading-relaxed">
+              Al firmar aceptas el presupuesto <strong>{data.numero}</strong> "{data.proyecto}"
+              por valor de <strong>{COP(t.total)}</strong>, emitido por{' '}
+              <strong>{c.empresa || c.nombre}</strong>. Este registro con fecha y hora
+              constituye una manifestación de acuerdo entre ambas partes.
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">Tu nombre completo *</label>
+                <input className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-emerald-400"
+                       placeholder="Ej: María Fernanda López García"
+                       value={firma.nombre}
+                       onChange={e => setFirma(f => ({ ...f, nombre: e.target.value }))} autoFocus />
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">Cédula / NIT (opcional)</label>
+                <input className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-emerald-400"
+                       placeholder="1.234.567.890"
+                       value={firma.documento}
+                       onChange={e => setFirma(f => ({ ...f, documento: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowFirma(false)}
+                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium">
+                Cancelar
+              </button>
+              <button onClick={confirmarFirma} disabled={aceptando}
+                      className="flex-[2] py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold disabled:opacity-50">
+                {aceptando ? 'Firmando...' : 'Firmar y aceptar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Barra de accion fija */}
       {!aceptado && !rechazado && (

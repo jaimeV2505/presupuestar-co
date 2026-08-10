@@ -38,11 +38,19 @@ def _verificar_limite(user: Usuario, db: Session):
         )
 
 
+def _generar_numero(user_id: int, db: Session) -> str:
+    """Numero de cotizacion secuencial por usuario: COT-2026-0001"""
+    year = datetime.now(timezone.utc).year
+    total = db.query(Proyecto).filter(Proyecto.user_id == user_id).count()
+    return f"COT-{year}-{total + 1:04d}"
+
+
 def _proyecto_out(p: Proyecto, incluir_items: bool = False) -> Dict:
     items = json.loads(p.items_json or "[]")
     aiu = json.loads(p.aiu_json or "{}")
     out = {
         "id": p.id,
+        "numero": p.numero or f"COT-{p.id:04d}",
         "nombre": p.nombre,
         "cliente_nombre": p.cliente_nombre,
         "cliente_telefono": p.cliente_telefono,
@@ -100,6 +108,7 @@ def crear(req: ProyectoCreate, user: Usuario = Depends(usuario_actual), db: Sess
         raise HTTPException(400, "El proyecto necesita un nombre")
     p = Proyecto(
         user_id=user.id,
+        numero=_generar_numero(user.id, db),
         nombre=req.nombre.strip()[:200],
         cliente_nombre=req.cliente_nombre.strip()[:160],
         cliente_telefono=req.cliente_telefono.strip()[:30],
@@ -175,6 +184,7 @@ def duplicar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sess
         raise HTTPException(404, "Proyecto no encontrado")
     nuevo = Proyecto(
         user_id=user.id,
+        numero=_generar_numero(user.id, db),
         nombre=f"{p.nombre} (copia)",
         cliente_nombre=p.cliente_nombre,
         cliente_telefono=p.cliente_telefono,

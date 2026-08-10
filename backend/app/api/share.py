@@ -12,7 +12,8 @@ import secrets
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from app.db import get_db, Usuario, Proyecto, EventoShare
+from app.db import get_db, Usuario, Proyecto, EventoShare, Avance
+from pydantic import BaseModel
 from app.api.auth import usuario_actual
 from app.services.calculo_presupuesto import calcular_totales
 
@@ -135,8 +136,19 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
         .first() is not None
     ) and not ya_aceptado
 
+    firma_ev = (
+        db.query(EventoShare)
+        .filter(EventoShare.proyecto_id == p.id, EventoShare.tipo == "aceptado")
+        .first()
+    )
+
     return {
         "proyecto": p.nombre,
+        "numero": p.numero or "",
+        "firma": {
+            "nombre": firma_ev.nombre_firma,
+            "fecha": firma_ev.creado.strftime("%d/%m/%Y %H:%M"),
+        } if firma_ev and firma_ev.nombre_firma else None,
         "cliente": p.cliente_nombre,
         "direccion": p.direccion,
         "estado": "aceptado" if ya_aceptado else ("rechazado" if ya_rechazado else p.estado),
@@ -154,11 +166,20 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
     }
 
 
+class FirmaRequest(BaseModel):
+    nombre: str
+    documento: str = ""
+
+
 @router.post("/publico/{token}/aceptar")
-def aceptar_publico(token: str, request: Request, db: Session = Depends(get_db)):
+def aceptar_publico(token: str, firma: FirmaRequest, request: Request, db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
     if not p:
         raise HTTPException(404, "Este presupuesto no existe")
+
+    nombre = (firma.nombre or "").strip()
+    if len(nombre) < 5:
+        raise HTTPException(400, "Escribe tu nombre completo para aceptar")
 
     ya = (
         db.query(EventoShare)
@@ -166,14 +187,54 @@ def aceptar_publico(token: str, request: Request, db: Session = Depends(get_db))
         .first()
     )
     if ya:
-        return {"ok": True, "mensaje": "Este presupuesto ya fue aceptado"}
+        return {"ok": True, "mensaje": "Este presupuesto ya fue aceptado",
+                "firmado_por": ya.nombre_firma, "fecha": ya.creado.isoformat()}
 
     ua = (request.headers.get("user-agent") or "")[:300]
-    db.add(EventoShare(proyecto_id=p.id, tipo="aceptado", user_agent=ua))
+    ev = EventoShare(
+        proyecto_id=p.id, tipo="aceptado", user_agent=ua,
+        nombre_firma=nombre[:160],
+        documento_firma=(firma.documento or "").strip()[:30],
+    )
+    db.add(ev)
     p.estado = "aceptado"
     db.commit()
-    logger.info(f"Presupuesto {p.id} ACEPTADO por el cliente")
-    return {"ok": True, "mensaje": "Presupuesto aceptado. El contratista sera notificado."}
+    db.refresh(ev)
+    logger.info(f"Presupuesto {p.id} ACEPTADO y firmado por {nombre}")
+    return {
+        "ok": True,
+        "mensaje": "Presupuesto aceptado y firmado. El contratista sera notificado.",
+        "firmado_por": nombre,
+        "fecha": ev.creado.isoformat(),
+    }
+
+
+@router.get("/publico/{token}/avances")
+def avances_publico(token: str, db: Session = Depends(get_db)):
+    """El cliente ve los avances de su obra con el mismo enlace."""
+    p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if not p:
+        raise HTTPException(404, "Enlace no valido")
+    avances = (
+        db.query(Avance)
+        .filter(Avance.proyecto_id == p.id)
+        .order_by(Avance.creado.desc())
+        .limit(50).all()
+    )
+    import json as _json
+    return {
+        "proyecto": p.nombre,
+        "numero": p.numero,
+        "porcentaje_actual": max((a.porcentaje for a in avances), default=0),
+        "avances": [
+            {
+                "id": a.id, "titulo": a.titulo, "descripcion": a.descripcion,
+                "porcentaje": a.porcentaje,
+                "fotos": _json.loads(a.fotos_json or "[]"),
+                "fecha": a.creado.strftime("%d/%m/%Y %H:%M"),
+            } for a in avances
+        ],
+    }
 
 
 @router.post("/publico/{token}/rechazar")
