@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, CheckCircle2, Crown, Clock, Copy } from 'lucide-react'
-import { pagosAPI } from '../services/api'
+import { pagosAPI, wompiAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -21,7 +21,41 @@ export default function Pro() {
   const [referencia, setReferencia] = useState('')
   const [enviando, setEnviando] = useState(false)
 
+  const [wompi, setWompi] = useState(null)
+  const [pagando, setPagando] = useState(false)
+  const [verificando, setVerificando] = useState(false)
+
+  // Al volver del checkout (?id=...) verificar la referencia guardada
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const ref = localStorage.getItem('wompi_ref')
+    if (!params.get('id') || !ref) return
+    setVerificando(true)
+    let intentos = 0
+    const timer = setInterval(async () => {
+      intentos++
+      try {
+        const r = await wompiAPI.estado(ref)
+        if (r.estado === 'APPROVED') {
+          clearInterval(timer)
+          localStorage.removeItem('wompi_ref')
+          setVerificando(false)
+          toast.success(`🎉 ¡Pro activado hasta ${r.plan_vence}! Presupuestos ilimitados`, { duration: 8000 })
+          setTimeout(() => { window.location.href = '/' }, 2500)
+        } else if (['DECLINED', 'VOIDED', 'ERROR'].includes(r.estado)) {
+          clearInterval(timer)
+          localStorage.removeItem('wompi_ref')
+          setVerificando(false)
+          toast.error('El pago no fue aprobado — intenta de nuevo o usa el pago manual')
+        }
+      } catch { /* sigue intentando */ }
+      if (intentos >= 20) { clearInterval(timer); setVerificando(false) }
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    wompiAPI.disponible().then(setWompi).catch(() => {})
     pagosAPI.info().then(setInfo).catch(e => toast.error(e.message))
     pagosAPI.miSolicitud().then(setSolicitud).catch(() => {})
   }, [])
