@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
          Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
-import { proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI } from '../services/api'
+import { proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -40,6 +40,9 @@ export default function Editor() {
   const [showGastos, setShowGastos] = useState(false)
   const [gastosData, setGastosData] = useState(null)
   const [nuevoGasto, setNuevoGasto] = useState({ categoria: 'materiales', descripcion: '', valor: '', foto: '' })
+  const [showCobros, setShowCobros] = useState(false)
+  const [cobrosData, setCobrosData] = useState(null)
+  const [liquidacion, setLiquidacion] = useState(null)  // preview antes de crear
 
   // Share
   const [showShare, setShowShare] = useState(false)
@@ -323,6 +326,18 @@ export default function Editor() {
                       className="flex items-center gap-1.5 border border-slate-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
                       title="Gastos reales vs presupuesto">
                 💸 <span className="hidden sm:inline">Gastos</span>
+              </button>
+            )}
+            {['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado) && (
+              <button onClick={() => {
+                        setShowCobros(true)
+                        setLiquidacion(null)
+                        cuentasAPI.listar(id).then(setCobrosData).catch(e => toast.error(e.message))
+                        avancesAPI.listar(id).then(res => setAvances(res.avances || [])).catch(() => {})
+                      }}
+                      className="flex items-center gap-1.5 border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium px-3 py-2 rounded-xl transition"
+                      title="Cuentas de cobro">
+                💵 <span className="hidden sm:inline">Cobros</span>
               </button>
             )}
             {p.estado === 'aceptado' && (
@@ -637,6 +652,130 @@ export default function Editor() {
                   </button>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal COBROS */}
+      {showCobros && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowCobros(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-slate-800">💵 Cuentas de cobro</h3>
+              <button onClick={() => setShowCobros(false)} className="text-slate-400 text-lg">×</button>
+            </div>
+
+            {/* Resumen de caja del proyecto */}
+            {cobrosData && totales && (
+              <div className="bg-slate-50 rounded-xl p-3.5 mb-4">
+                <div className="flex justify-between text-[10px] text-slate-500 mb-1.5">
+                  <span>💰 Cobrado: <strong className="text-emerald-600">{COP(cobrosData.resumen.cobrado)}</strong></span>
+                  <span>⏳ Por cobrar: <strong className="text-amber-600">{COP(cobrosData.resumen.por_cobrar)}</strong></span>
+                  <span>Contrato: {COP(totales.total)}</span>
+                </div>
+                <div className="h-2 bg-white rounded-full overflow-hidden flex">
+                  <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, cobrosData.resumen.cobrado / totales.total * 100)}%` }} />
+                  <div className="h-full bg-amber-400" style={{ width: `${Math.min(100, cobrosData.resumen.por_cobrar / totales.total * 100)}%` }} />
+                </div>
+              </div>
+            )}
+
+            {/* Liquidacion preview */}
+            {liquidacion ? (
+              <div className="border-2 border-emerald-300 bg-emerald-50/50 rounded-xl p-4 mb-4">
+                <p className="text-xs font-bold text-slate-700 mb-2">Liquidación del corte</p>
+                <p className="text-[11px] text-slate-500 mb-3">"{liquidacion.avance_titulo}" · {liquidacion.avance_pct}% acumulado</p>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between"><span className="text-slate-500">Ejecutado acumulado</span><span>{COP(liquidacion.ejecutado_acumulado)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">(−) Ya cobrado en cortes previos</span><span>− {COP(liquidacion.cobrado_previo)}</span></div>
+                  <div className="flex justify-between font-medium"><span className="text-slate-600">Valor de este corte</span><span>{COP(liquidacion.valor_corte)}</span></div>
+                  {liquidacion.amortizacion > 0 && (
+                    <div className="flex justify-between"><span className="text-slate-500">(−) Amortización anticipo ({liquidacion.anticipo_pct}%)</span><span>− {COP(liquidacion.amortizacion)}</span></div>
+                  )}
+                  <div className="flex justify-between text-sm font-black text-emerald-700 border-t border-emerald-200 pt-1.5 mt-1.5">
+                    <span>NETO A COBRAR</span><span>{COP(liquidacion.neto)}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => setLiquidacion(null)}
+                          className="flex-1 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs">Cancelar</button>
+                  <button onClick={async () => {
+                            try {
+                              const c = await cuentasAPI.crear(id, liquidacion.avance_id)
+                              setLiquidacion(null)
+                              cuentasAPI.listar(id).then(setCobrosData)
+                              toast.success(`Cuenta ${c.numero} generada por ${COP(c.neto)}`)
+                            } catch (e) { toast.error(e.message) }
+                          }}
+                          className="flex-[2] py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold">
+                    ✓ Generar cuenta de cobro
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-4">
+                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1.5">Generar desde un corte de avance</p>
+                {avances.length === 0 ? (
+                  <p className="text-xs text-slate-400 bg-slate-50 rounded-xl p-3">Publica un avance primero — la cuenta se liquida sobre el valor ejecutado del corte</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {avances.slice(0, 5).map(a => (
+                      <button key={a.id}
+                              onClick={() => cuentasAPI.preview(id, a.id).then(setLiquidacion).catch(e => toast.error(e.message))}
+                              className="w-full flex items-center justify-between border border-slate-100 hover:border-emerald-300 rounded-xl px-3 py-2.5 transition text-left">
+                        <div>
+                          <p className="text-xs text-slate-600">{a.titulo}</p>
+                          <p className="text-[9px] text-slate-400">{a.fecha} · {a.porcentaje}%</p>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-600">{COP(a.valor_ejecutado)} →</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Cuentas generadas */}
+            <div className="space-y-1.5">
+              {cobrosData?.cuentas?.map(c => (
+                <div key={c.id} className={`border rounded-xl px-3 py-2.5 ${c.estado === 'pagada' ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/30'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-700">{c.numero} · {COP(c.neto)}</p>
+                      <p className="text-[9px] text-slate-400">{c.fecha}{c.fecha_pago && ` · pagada ${c.fecha_pago}`}</p>
+                    </div>
+                    <span className={`shrink-0 text-[9px] font-bold px-2 py-1 rounded-full ${c.estado === 'pagada' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {c.estado === 'pagada' ? '✓ Pagada' : '⏳ Enviada'}
+                    </span>
+                  </div>
+                  <div className="flex gap-1.5 mt-2 flex-wrap">
+                    <a href={`/api/cuentas/publico/${p.share_token}/${c.id}.pdf`} target="_blank" rel="noreferrer"
+                       className="text-[10px] font-medium text-navy-600 border border-navy-200 rounded-lg px-2 py-1">📄 PDF</a>
+                    <button onClick={() => {
+                              const url = `${window.location.origin}/api/cuentas/publico/${p.share_token}/${c.id}.pdf`
+                              avisarCliente(`Hola! Te envío la cuenta de cobro ${c.numero} por ${COP(c.neto)} del corte de obra de "${p.nombre}". Puedes verla aquí: ${url}\n\nY el avance que la sustenta:`)
+                            }}
+                            className="text-[10px] font-medium text-emerald-600 border border-emerald-200 rounded-lg px-2 py-1">📲 Enviar</button>
+                    {c.estado === 'enviada' && (
+                      <>
+                        <button onClick={async () => {
+                                  await cuentasAPI.pagada(c.id)
+                                  cuentasAPI.listar(id).then(setCobrosData)
+                                  toast.success('💰 Marcada como pagada')
+                                }}
+                                className="text-[10px] font-bold text-white bg-emerald-500 rounded-lg px-2 py-1">💰 Ya me pagaron</button>
+                        <button onClick={async () => {
+                                  if (!confirm('¿Eliminar esta cuenta de cobro?')) return
+                                  await cuentasAPI.eliminar(c.id)
+                                  cuentasAPI.listar(id).then(setCobrosData)
+                                }}
+                                className="text-[10px] text-slate-400 border border-slate-200 rounded-lg px-2 py-1">×</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

@@ -189,6 +189,9 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 px-1 text-[11px] text-slate-400">
               <span>🏗️ En ejecución: <strong className="text-slate-600">{metricas.en_ejecucion_n}</strong> ({COP(metricas.en_ejecucion_valor)})</span>
               <span>🏁 Terminadas: <strong className="text-slate-600">{metricas.n_terminados}</strong></span>
+              {(metricas.cobrado > 0 || metricas.por_cobrar > 0) && (
+                <span>💰 Cobrado: <strong className="text-emerald-600">{COP(metricas.cobrado)}</strong> · Por cobrar: <strong className="text-amber-600">{COP(metricas.por_cobrar)}</strong></span>
+              )}
               {metricas.calificacion && <span>⭐ Calificación: <strong className="text-amber-600">{metricas.calificacion}</strong> ({metricas.n_resenas} reseña{metricas.n_resenas !== 1 ? 's' : ''})</span>}
             </div>
           </div>

@@ -134,6 +134,23 @@ class Gasto(Base):
     creado = Column(DateTime, default=utcnow)
 
 
+class CuentaCobro(Base):
+    __tablename__ = "cuentas_cobro"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    proyecto_id = Column(Integer, ForeignKey("proyectos.id"), nullable=False, index=True)
+    avance_id = Column(Integer, nullable=True)         # corte que sustenta el cobro
+    numero = Column(String(20), default="")            # CC-2026-0001 consecutivo por usuario
+    concepto = Column(Text, default="")
+    valor_corte = Column(Integer, default=0)           # ejecutado de este corte
+    anticipo_pct = Column(Integer, default=0)          # % amortizado (del contrato)
+    amortizacion = Column(Integer, default=0)
+    neto = Column(Integer, default=0)                  # a cobrar
+    estado = Column(String(20), default="enviada")     # enviada | pagada
+    creado = Column(DateTime, default=utcnow)
+    pagado = Column(DateTime, nullable=True)
+
+
 class Notificacion(Base):
     __tablename__ = "notificaciones"
     id = Column(Integer, primary_key=True)

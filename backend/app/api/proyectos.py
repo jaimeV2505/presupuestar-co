@@ -125,6 +125,11 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
             en_ejecucion_valor += t["total"]
             en_ejecucion_n += 1
 
+    from app.db import CuentaCobro
+    ccs = db.query(CuentaCobro).filter(CuentaCobro.user_id == user.id).all()
+    cobrado = sum(c.neto for c in ccs if c.estado == "pagada")
+    por_cobrar = sum(c.neto for c in ccs if c.estado == "enviada")
+
     encs = (db.query(Encuesta).join(Proyecto, Proyecto.id == Encuesta.proyecto_id)
             .filter(Proyecto.user_id == user.id).all())
     calificacion = round(sum(e.estrellas for e in encs) / len(encs), 1) if encs else None
@@ -141,6 +146,8 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
         "n_terminados": sum(1 for p in proyectos if p.estado == "terminado"),
         "calificacion": calificacion,
         "n_resenas": len(encs),
+        "cobrado": cobrado,
+        "por_cobrar": por_cobrar,
     }
 
 

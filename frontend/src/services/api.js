@@ -89,6 +89,14 @@ export const pagosAPI = {
   adminPlanManual: (data) => api.post('/pagos/admin/plan-manual', data).then(r => r.data),
 }
 
+export const cuentasAPI = {
+  listar: (pid) => api.get(`/cuentas/proyectos/${pid}/cuentas`).then(r => r.data),
+  preview: (pid, avanceId) => api.get(`/cuentas/proyectos/${pid}/cuentas/preview`, { params: { avance_id: avanceId } }).then(r => r.data),
+  crear: (pid, avanceId) => api.post(`/cuentas/proyectos/${pid}/cuentas`, { avance_id: avanceId }).then(r => r.data),
+  pagada: (cid) => api.post(`/cuentas/${cid}/pagada`).then(r => r.data),
+  eliminar: (cid) => api.delete(`/cuentas/${cid}`).then(r => r.data),
+}
+
 export const gastosAPI = {
   listar: (pid) => api.get(`/gastos/proyectos/${pid}/gastos`).then(r => r.data),
   crear: (pid, data) => api.post(`/gastos/proyectos/${pid}/gastos`, data).then(r => r.data),
