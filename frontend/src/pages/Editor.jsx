@@ -315,8 +315,7 @@ export default function Editor() {
                 📄 Acta de Entrega
               </a>
             )}
-            {p.estado === 'aceptado' && (
-              <>
+            {['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado) && (
               <button onClick={() => {
                         setShowGastos(true)
                         gastosAPI.listar(id).then(setGastosData).catch(e => toast.error(e.message))
@@ -325,6 +324,8 @@ export default function Editor() {
                       title="Gastos reales vs presupuesto">
                 💸 <span className="hidden sm:inline">Gastos</span>
               </button>
+            )}
+            {p.estado === 'aceptado' && (
               <button onClick={() => {
                         setShowAvances(true)
                         avancesAPI.listar(id).then(res => {
@@ -341,7 +342,6 @@ export default function Editor() {
                       title="Avances de obra">
                 <HardHat className="w-4 h-4" /> <span className="hidden sm:inline">Avances</span>
               </button>
-              </>
             )}
             <button onClick={() => setShowPreview(true)}
                     className="flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"

@@ -47,13 +47,13 @@ def _resumen(p: Proyecto, gastos, db: Session):
         por_categoria[g.categoria] = por_categoria.get(g.categoria, 0) + g.valor
     utilidad_real = t["total"] - gastado
     return {
-        "presupuesto_directo": t["subtotal"],
+        "presupuesto_directo": t["subtotal_directo"],
         "total_contrato": t["total"],
         "gastado": gastado,
         "por_categoria": por_categoria,
         "utilidad_proyectada": t["utilidad_valor"],
         "utilidad_real": utilidad_real,
-        "pct_ejecutado_gasto": round(gastado / t["subtotal"] * 100, 1) if t["subtotal"] else 0,
+        "pct_ejecutado_gasto": round(gastado / t["subtotal_directo"] * 100, 1) if t["subtotal_directo"] else 0,
     }
 
 
