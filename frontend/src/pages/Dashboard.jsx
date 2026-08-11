@@ -196,7 +196,7 @@ export default function Dashboard() {
 
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-slate-800">Mis presupuestos</h2>
-          <button onClick={() => setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {})}
+          <button onClick={() => { setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {}) }}
                   className="flex items-center gap-2 bg-navy-600 hover:bg-navy-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition">
             <Plus className="w-4 h-4" /> Nuevo presupuesto
           </button>
@@ -209,7 +209,7 @@ export default function Dashboard() {
             <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-600 font-medium">Crea tu primer presupuesto</p>
             <p className="text-sm text-slate-400 mt-1 mb-4">Busca actividades, ajusta cantidades y comparte por WhatsApp</p>
-            <button onClick={() => setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {})}
+            <button onClick={() => { setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {}) }}
                     className="bg-navy-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl">
               Empezar
             </button>
