@@ -16,6 +16,7 @@ export default function Admin() {
   const [cargando, setCargando] = useState(true)
   const [manual, setManual] = useState({ email: '', dias: 30 })
   const [tickets, setTickets] = useState([])
+  const [respuestas, setRespuestas] = useState({})  // {ticketId: texto}
 
   const cargar = () => {
     setCargando(true)
@@ -156,16 +157,35 @@ export default function Admin() {
                         </div>
                       )}
                     </div>
-                    {t.estado === 'abierto' && (
-                      <button onClick={async () => {
-                                await soporteAPI.adminResolver(t.id)
-                                setTickets(prev => prev.map(x => x.id === t.id ? { ...x, estado: 'resuelto' } : x))
-                              }}
-                              className="shrink-0 text-xs font-medium border border-emerald-300 text-emerald-600 px-3 py-1.5 rounded-lg">
-                        Resolver
-                      </button>
-                    )}
                   </div>
+
+                  {t.respuesta && (
+                    <div className="mt-2 bg-navy-50 border border-navy-100 rounded-lg p-2.5">
+                      <p className="text-[10px] font-bold text-navy-600 mb-0.5">💬 Tu respuesta</p>
+                      <p className="text-[11px] text-slate-600 whitespace-pre-wrap">{t.respuesta}</p>
+                    </div>
+                  )}
+
+                  {t.estado === 'abierto' && (
+                    <div className="mt-3 flex gap-2">
+                      <input className="input flex-1 !py-2 text-xs"
+                             placeholder="Escribe la respuesta al usuario..."
+                             value={respuestas[t.id] || ''}
+                             onChange={e => setRespuestas(r => ({ ...r, [t.id]: e.target.value }))} />
+                      <button onClick={async () => {
+                                const txt = (respuestas[t.id] || '').trim()
+                                if (!txt) { toast.error('Escribe la respuesta'); return }
+                                try {
+                                  await soporteAPI.adminResponder({ ticket_id: t.id, respuesta: txt, resolver: true })
+                                  setTickets(prev => prev.map(x => x.id === t.id ? { ...x, estado: 'resuelto', respuesta: txt } : x))
+                                  toast.success('Respondido y resuelto — el usuario lo verá en su panel')
+                                } catch (e2) { toast.error(e2.message) }
+                              }}
+                              className="shrink-0 text-xs font-bold bg-emerald-500 text-white px-3 py-2 rounded-lg">
+                        Responder ✓
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

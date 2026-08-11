@@ -27,6 +27,8 @@ export default function Dashboard() {
   const [ticket, setTicket] = useState({ asunto: '', descripcion: '', fotos: [] })
   const [enviandoTicket, setEnviandoTicket] = useState(false)
   const [ticketEnviado, setTicketEnviado] = useState(null)
+  const [tabSoporte, setTabSoporte] = useState('nuevo')  // nuevo | mis
+  const [misTickets, setMisTickets] = useState([])
   useEffect(() => { pagosAPI.info().then(setInfoPago).catch(() => {}) }, [])
 
   const cargar = async () => {
@@ -100,7 +102,10 @@ export default function Dashboard() {
                 Plan Gratis → <span className="font-bold text-emerald-300">Pasar a Pro</span>
               </button>
             )}
-            <button onClick={() => { setShowSoporte(true); setTicketEnviado(null) }} className="p-2 hover:bg-white/10 rounded-lg" title="Soporte">
+            <button onClick={() => {
+                      setShowSoporte(true); setTicketEnviado(null); setTabSoporte('nuevo')
+                      soporteAPI.misTickets().then(setMisTickets).catch(() => {})
+                    }} className="p-2 hover:bg-white/10 rounded-lg" title="Soporte">
               <LifeBuoy className="w-4 h-4" />
             </button>
             <button onClick={() => nav('/perfil')} className="p-2 hover:bg-white/10 rounded-lg" title="Perfil">
@@ -192,17 +197,54 @@ export default function Dashboard() {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                    <LifeBuoy className="w-4 h-4 text-navy-500" /> Contactar soporte
+                    <LifeBuoy className="w-4 h-4 text-navy-500" /> Soporte
                   </h3>
                   <button onClick={() => setShowSoporte(false)} className="p-1 hover:bg-slate-100 rounded-lg">
                     <X className="w-4 h-4 text-slate-400" />
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-400 mb-4">
-                  ¿Encontraste un error o algo no funciona? Cuéntanos y lo arreglamos rápido.
-                </p>
+
+                {/* Pestañas */}
+                <div className="flex gap-1.5 mb-4 bg-slate-100 rounded-xl p-1">
+                  <button onClick={() => setTabSoporte('nuevo')}
+                          className={`flex-1 text-xs font-medium py-2 rounded-lg transition ${tabSoporte === 'nuevo' ? 'bg-white text-navy-600 shadow-sm' : 'text-slate-500'}`}>
+                    Nuevo reporte
+                  </button>
+                  <button onClick={() => { setTabSoporte('mis'); soporteAPI.misTickets().then(setMisTickets).catch(() => {}) }}
+                          className={`flex-1 text-xs font-medium py-2 rounded-lg transition ${tabSoporte === 'mis' ? 'bg-white text-navy-600 shadow-sm' : 'text-slate-500'}`}>
+                    Mis reportes {misTickets.length > 0 && `(${misTickets.length})`}
+                    {misTickets.some(t => t.estado === 'resuelto' && t.respuesta) && ' 💬'}
+                  </button>
+                </div>
+
+                {tabSoporte === 'mis' ? (
+                  <div className="space-y-2 max-h-[55vh] overflow-y-auto">
+                    {misTickets.length === 0 ? (
+                      <p className="text-center text-xs text-slate-400 py-8">Aún no has creado reportes</p>
+                    ) : misTickets.map(t => (
+                      <div key={t.id} className={`border rounded-xl p-3 ${t.estado === 'abierto' ? 'border-amber-200 bg-amber-50/40' : 'border-emerald-200 bg-emerald-50/30'}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-700">#{t.id} · {t.asunto}</p>
+                            <p className="text-[10px] text-slate-400">{t.fecha}{t.num_fotos > 0 && ` · ${t.num_fotos} 📷`}</p>
+                          </div>
+                          <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${t.estado === 'abierto' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            {t.estado === 'abierto' ? '⏳ En revisión' : '✓ Resuelto'}
+                          </span>
+                        </div>
+                        {t.descripcion && <p className="text-[11px] text-slate-500 mt-1.5 line-clamp-2">{t.descripcion}</p>}
+                        {t.respuesta && (
+                          <div className="mt-2 bg-white border border-slate-100 rounded-lg p-2.5">
+                            <p className="text-[10px] font-bold text-navy-500 mb-0.5">💬 Respuesta del equipo{t.fecha_respuesta && ` · ${t.fecha_respuesta}`}</p>
+                            <p className="text-[11px] text-slate-600 whitespace-pre-wrap">{t.respuesta}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
                 <div className="space-y-3">
                   <input className="input" placeholder="¿Qué pasó? (ej: El PDF no descarga) *"
                          value={ticket.asunto} maxLength={200}
@@ -245,6 +287,7 @@ export default function Dashboard() {
                               })
                               setTicketEnviado(res.ticket)
                               setTicket({ asunto: '', descripcion: '', fotos: [] })
+                              soporteAPI.misTickets().then(setMisTickets).catch(() => {})
                             } catch (e) { toast.error(e.message) }
                             finally { setEnviandoTicket(false) }
                           }}
@@ -252,6 +295,7 @@ export default function Dashboard() {
                     {enviandoTicket ? 'Enviando...' : 'Enviar reporte'}
                   </button>
                 </div>
+                )}
               </>
             )}
           </div>

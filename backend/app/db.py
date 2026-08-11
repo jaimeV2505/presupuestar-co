@@ -92,8 +92,10 @@ class TicketSoporte(Base):
     contexto = Column(String(300), default="")   # pagina, plan, navegador
     fotos_json = Column(Text, default="[]")      # evidencia (max 2 imagenes base64)
     estado = Column(String(20), default="abierto")  # abierto | resuelto
+    respuesta = Column(Text, default="")            # respuesta del equipo de soporte
     email_enviado = Column(Boolean, default=False)
     creado = Column(DateTime, default=utcnow)
+    respondido = Column(DateTime, nullable=True)
 
 
 class SolicitudPro(Base):
@@ -148,6 +150,8 @@ def init_db():
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pago_info VARCHAR(200) DEFAULT ''",
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS contrato_json TEXT DEFAULT '{}'",
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS plan_vence TIMESTAMP",
+                    "ALTER TABLE tickets_soporte ADD COLUMN IF NOT EXISTS respuesta TEXT DEFAULT ''",
+                    "ALTER TABLE tickets_soporte ADD COLUMN IF NOT EXISTS respondido TIMESTAMP",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -163,6 +167,8 @@ def init_db():
                     ("usuarios", "pago_info", "ALTER TABLE usuarios ADD COLUMN pago_info VARCHAR(200) DEFAULT ''"),
                     ("proyectos", "contrato_json", "ALTER TABLE proyectos ADD COLUMN contrato_json TEXT DEFAULT '{}'"),
                     ("usuarios", "plan_vence", "ALTER TABLE usuarios ADD COLUMN plan_vence TIMESTAMP"),
+                    ("tickets_soporte", "respuesta", "ALTER TABLE tickets_soporte ADD COLUMN respuesta TEXT DEFAULT ''"),
+                    ("tickets_soporte", "respondido", "ALTER TABLE tickets_soporte ADD COLUMN respondido TIMESTAMP"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]

@@ -122,6 +122,28 @@ def crear_ticket(req: TicketRequest, user: Usuario = Depends(usuario_actual),
     }
 
 
+@router.get("/mis-tickets")
+def mis_tickets(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    """El usuario ve sus propios tickets con estado y respuesta."""
+    tickets = (
+        db.query(TicketSoporte)
+        .filter(TicketSoporte.user_id == user.id)
+        .order_by(TicketSoporte.creado.desc())
+        .limit(50).all()
+    )
+    return [
+        {
+            "id": t.id, "asunto": t.asunto, "descripcion": t.descripcion,
+            "estado": t.estado,
+            "respuesta": t.respuesta or "",
+            "fecha": t.creado.strftime("%d/%m/%Y %H:%M"),
+            "fecha_respuesta": t.respondido.strftime("%d/%m/%Y %H:%M") if t.respondido else None,
+            "num_fotos": len(json.loads(t.fotos_json or "[]")),
+        }
+        for t in tickets
+    ]
+
+
 @router.get("/admin")
 def listar_tickets(admin: Usuario = Depends(admin_actual), db: Session = Depends(get_db)):
     tickets = (
@@ -134,6 +156,7 @@ def listar_tickets(admin: Usuario = Depends(admin_actual), db: Session = Depends
         {
             "id": t.id, "asunto": t.asunto, "descripcion": t.descripcion,
             "contexto": t.contexto, "estado": t.estado,
+            "respuesta": t.respuesta or "",
             "email_enviado": t.email_enviado,
             "fotos": json.loads(t.fotos_json or "[]"),
             "fecha": t.creado.strftime("%d/%m/%Y %H:%M"),
@@ -146,6 +169,31 @@ def listar_tickets(admin: Usuario = Depends(admin_actual), db: Session = Depends
 
 class ResolverTicket(BaseModel):
     ticket_id: int
+
+
+class ResponderTicket(BaseModel):
+    ticket_id: int
+    respuesta: str
+    resolver: bool = True
+
+
+@router.post("/admin/responder")
+def responder(req: ResponderTicket, admin: Usuario = Depends(admin_actual),
+              db: Session = Depends(get_db)):
+    """El admin responde el ticket — el usuario lo ve en su panel de seguimiento."""
+    from datetime import datetime, timezone
+    t = db.query(TicketSoporte).filter(TicketSoporte.id == req.ticket_id).first()
+    if not t:
+        raise HTTPException(404, "Ticket no encontrado")
+    if not req.respuesta.strip():
+        raise HTTPException(400, "Escribe una respuesta")
+    t.respuesta = req.respuesta.strip()[:3000]
+    t.respondido = datetime.now(timezone.utc)
+    if req.resolver:
+        t.estado = "resuelto"
+    db.commit()
+    logger.info(f"Ticket #{t.id} respondido por {admin.email}")
+    return {"ok": True}
 
 
 @router.post("/admin/resolver")
