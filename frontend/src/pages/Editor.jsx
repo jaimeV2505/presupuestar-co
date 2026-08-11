@@ -90,19 +90,52 @@ export default function Editor() {
     }
   }, [])
 
-  // ── Autoguardado con debounce ─────────────────────────────────────────
+  // ── Autoguardado robusto: debounce + reintentos con backoff ──────────
+  // Siempre envia la ULTIMA version (pendienteRef), reintenta 3 veces en
+  // silencio ante fallas de red, y muestra UN solo aviso deduplicado.
+  const pendienteRef = useRef(null)
+  const enviandoRef = useRef(false)
+  const [sinRed, setSinRed] = useState(false)
+
+  const _enviar = useCallback(async (intento = 0) => {
+    if (enviandoRef.current || !pendienteRef.current) return
+    enviandoRef.current = true
+    const payload = pendienteRef.current
+    pendienteRef.current = null
+    setGuardando(true)
+    try {
+      const data = await proyectosAPI.actualizar(id, payload)
+      setTotales(data.totales) // el backend es la fuente de verdad
+      setSinRed(false)
+      toast.dismiss('save-err')
+      enviandoRef.current = false
+      if (pendienteRef.current) _enviar(0) // llegaron cambios mientras guardaba
+    } catch (e) {
+      enviandoRef.current = false
+      const esRed = !e.response // sin respuesta = problema de conexion
+      // Reencolar lo que fallo (sin pisar cambios mas nuevos)
+      if (!pendienteRef.current) pendienteRef.current = payload
+      if (esRed && intento < 3) {
+        setSinRed(true)
+        setTimeout(() => _enviar(intento + 1), [1500, 4000, 8000][intento])
+      } else if (esRed) {
+        setSinRed(true)
+        toast.error('Sin conexión — tus cambios se guardarán al volver la señal', { id: 'save-err', duration: 5000 })
+        setTimeout(() => _enviar(0), 15000) // sigue intentando en segundo plano
+      } else {
+        toast.error('Error guardando: ' + e.message, { id: 'save-err' })
+      }
+    } finally {
+      setGuardando(false)
+    }
+  }, [id])
+
   const guardar = useCallback((itemsAct, aiuAct) => {
     setTotales(calcularLocal(itemsAct, aiuAct))
+    pendienteRef.current = { items: itemsAct, aiu: aiuAct }
     clearTimeout(timerGuardar.current)
-    timerGuardar.current = setTimeout(async () => {
-      setGuardando(true)
-      try {
-        const data = await proyectosAPI.actualizar(id, { items: itemsAct, aiu: aiuAct })
-        setTotales(data.totales) // el backend es la fuente de verdad
-      } catch (e) { toast.error('Error guardando: ' + e.message) }
-      finally { setGuardando(false) }
-    }, 800)
-  }, [id, calcularLocal])
+    timerGuardar.current = setTimeout(() => _enviar(0), 1000)
+  }, [calcularLocal, _enviar])
 
   const setItemsYGuardar = (fn) => {
     setItems(prev => {
@@ -271,7 +304,7 @@ export default function Editor() {
                 <span className="font-semibold text-navy-600">{p.numero}</span>
                 {' · '}{p.cliente_nombre || 'Sin cliente'}
                 {' · '}{p.actualizado ? new Date(p.actualizado).toLocaleDateString('es-CO') : ''}
-                {' · '}{guardando ? 'Guardando...' : 'Guardado ✓'}
+                {' · '}{sinRed ? '⚠️ Sin conexión — reintentando' : guardando ? 'Guardando...' : 'Guardado ✓'}
               </p>
             </div>
           </div>
