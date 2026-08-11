@@ -151,6 +151,10 @@ def eliminar(proyecto_id: int, avance_id: int,
     a = db.query(Avance).filter(Avance.id == avance_id, Avance.proyecto_id == p.id).first()
     if not a:
         raise HTTPException(404, "Avance no encontrado")
+    from app.db import CuentaCobro
+    con_cuenta = db.query(CuentaCobro).filter(CuentaCobro.avance_id == a.id).first()
+    if con_cuenta:
+        raise HTTPException(400, f"Este avance sustenta la cuenta de cobro {con_cuenta.numero} — no se puede eliminar")
     db.delete(a)
     db.commit()
     return {"ok": True}

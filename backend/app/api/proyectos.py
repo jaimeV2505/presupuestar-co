@@ -125,10 +125,14 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
             en_ejecucion_valor += t["total"]
             en_ejecucion_n += 1
 
-    from app.db import CuentaCobro
+    from app.db import CuentaCobro, Gasto
     ccs = db.query(CuentaCobro).filter(CuentaCobro.user_id == user.id).all()
     cobrado = sum(c.neto for c in ccs if c.estado == "pagada")
     por_cobrar = sum(c.neto for c in ccs if c.estado == "enviada")
+    ids_proyectos = [p.id for p in proyectos]
+    gastado_total = sum(
+        g.valor for g in db.query(Gasto).filter(Gasto.proyecto_id.in_(ids_proyectos)).all()
+    ) if ids_proyectos else 0
 
     encs = (db.query(Encuesta).join(Proyecto, Proyecto.id == Encuesta.proyecto_id)
             .filter(Proyecto.user_id == user.id).all())
@@ -148,6 +152,8 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
         "n_resenas": len(encs),
         "cobrado": cobrado,
         "por_cobrar": por_cobrar,
+        "gastado": gastado_total,
+        "caja_neta": cobrado - gastado_total,
     }
 
 
@@ -177,6 +183,8 @@ def crear(req: ProyectoCreate, user: Usuario = Depends(usuario_actual), db: Sess
         region=req.region,
     )
     db.add(p)
+    from app.api.clientes import vincular_cliente
+    vincular_cliente(p, user.id, db)
     if user.plan == "gratis":
         user.presupuestos_mes += 1
     db.commit()
@@ -240,6 +248,8 @@ def crear_desde_plantilla(req: DesdePlantillaRequest,
         region=user.ciudad,
     )
     db.add(p)
+    from app.api.clientes import vincular_cliente
+    vincular_cliente(p, user.id, db)
     db.commit()
     db.refresh(p)
     logger.info(f"Proyecto desde plantilla '{req.plantilla_id}': {len(items)} items para {user.email}")
@@ -261,7 +271,10 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
         raise HTTPException(404, "Proyecto no encontrado")
 
     if req.nombre is not None: p.nombre = req.nombre.strip()[:200]
-    if req.cliente_nombre is not None: p.cliente_nombre = req.cliente_nombre.strip()[:160]
+    if req.cliente_nombre is not None:
+        p.cliente_nombre = req.cliente_nombre.strip()[:160]
+        from app.api.clientes import vincular_cliente
+        vincular_cliente(p, user.id, db)
     if req.cliente_telefono is not None: p.cliente_telefono = req.cliente_telefono.strip()[:30]
     if req.direccion is not None: p.direccion = req.direccion.strip()[:250]
     if req.region is not None: p.region = req.region
@@ -331,6 +344,8 @@ def duplicar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sess
         notas=p.notas,
     )
     db.add(nuevo)
+    from app.api.clientes import vincular_cliente
+    vincular_cliente(nuevo, user.id, db)
     if user.plan == "gratis":
         user.presupuestos_mes += 1
     db.commit()

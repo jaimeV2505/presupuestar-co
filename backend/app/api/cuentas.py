@@ -78,10 +78,17 @@ def _cc_out(c: CuentaCobro):
 
 
 def _resumen_caja(p: Proyecto, db: Session):
+    from app.db import Gasto
     cuentas = db.query(CuentaCobro).filter(CuentaCobro.proyecto_id == p.id).all()
     cobrado = sum(c.neto for c in cuentas if c.estado == "pagada")
     por_cobrar = sum(c.neto for c in cuentas if c.estado == "enviada")
-    return {"cobrado": cobrado, "por_cobrar": por_cobrar, "n_cuentas": len(cuentas)}
+    gastado = sum(g.valor for g in db.query(Gasto).filter(Gasto.proyecto_id == p.id).all())
+    return {
+        "cobrado": cobrado, "por_cobrar": por_cobrar,
+        "gastado": gastado,
+        "caja_neta": cobrado - gastado,
+        "n_cuentas": len(cuentas),
+    }
 
 
 @router.get("/proyectos/{pid}/cuentas")

@@ -54,12 +54,23 @@ class Usuario(Base):
     creado = Column(DateTime, default=utcnow)
 
 
+class Cliente(Base):
+    __tablename__ = "clientes"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    nombre = Column(String(160), nullable=False)
+    telefono = Column(String(30), default="")
+    notas = Column(Text, default="")
+    creado = Column(DateTime, default=utcnow)
+
+
 class Proyecto(Base):
     __tablename__ = "proyectos"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     numero = Column(String(30), default="", index=True)   # COT-2026-0001
     nombre = Column(String(200), nullable=False)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True, index=True)
     cliente_nombre = Column(String(160), default="")
     cliente_telefono = Column(String(30), default="")
     direccion = Column(String(250), default="")
@@ -200,6 +211,7 @@ def init_db():
                     "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS firma_imagen TEXT DEFAULT ''",
                     "ALTER TABLE encuestas ADD COLUMN IF NOT EXISTS publico BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS firma_b64 TEXT DEFAULT ''",
+                    "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS cliente_id INTEGER",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -221,6 +233,7 @@ def init_db():
                     ("eventos_share", "firma_imagen", "ALTER TABLE eventos_share ADD COLUMN firma_imagen TEXT DEFAULT ''"),
                     ("encuestas", "publico", "ALTER TABLE encuestas ADD COLUMN publico BOOLEAN DEFAULT 0"),
                     ("usuarios", "firma_b64", "ALTER TABLE usuarios ADD COLUMN firma_b64 TEXT DEFAULT ''"),
+                    ("proyectos", "cliente_id", "ALTER TABLE proyectos ADD COLUMN cliente_id INTEGER"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]
@@ -229,6 +242,35 @@ def init_db():
                 conn.commit()
     except Exception:
         pass
+    _backfill_clientes()
+
+
+def _backfill_clientes():
+    """Convierte los cliente_nombre historicos en entidades Cliente (una vez)."""
+    db = SessionLocal()
+    try:
+        huerfanos = (db.query(Proyecto)
+                     .filter(Proyecto.cliente_id.is_(None), Proyecto.cliente_nombre != "")
+                     .limit(500).all())
+        for p in huerfanos:
+            nombre = (p.cliente_nombre or "").strip()
+            if not nombre:
+                continue
+            c = (db.query(Cliente)
+                 .filter(Cliente.user_id == p.user_id, Cliente.nombre.ilike(nombre))
+                 .first())
+            if not c:
+                c = Cliente(user_id=p.user_id, nombre=nombre,
+                            telefono=(p.cliente_telefono or "").strip()[:30])
+                db.add(c)
+                db.flush()
+            p.cliente_id = c.id
+        db.commit()
+    except Exception as e:
+        logger.warning(f"Backfill clientes: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
 
 def get_db():

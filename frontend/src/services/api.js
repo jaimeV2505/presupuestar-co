@@ -89,6 +89,10 @@ export const pagosAPI = {
   adminPlanManual: (data) => api.post('/pagos/admin/plan-manual', data).then(r => r.data),
 }
 
+export const clientesAPI = {
+  listar: () => api.get('/clientes').then(r => r.data),
+}
+
 export const cuentasAPI = {
   listar: (pid) => api.get(`/cuentas/proyectos/${pid}/cuentas`).then(r => r.data),
   preview: (pid, avanceId) => api.get(`/cuentas/proyectos/${pid}/cuentas/preview`, { params: { avance_id: avanceId } }).then(r => r.data),

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2, LifeBuoy, Camera, X, Bell, TrendingUp } from 'lucide-react'
-import { proyectosAPI, pagosAPI, soporteAPI, notificacionesAPI } from '../services/api'
+import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2, LifeBuoy, Camera, X, Bell, TrendingUp, Users } from 'lucide-react'
+import { proyectosAPI, pagosAPI, soporteAPI, notificacionesAPI, clientesAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [plantillas, setPlantillas] = useState([])
   const [plantillaSel, setPlantillaSel] = useState(null)  // null = en blanco
   const [creandoTpl, setCreandoTpl] = useState(false)
+  const [misClientes, setMisClientes] = useState([])
 
   useEffect(() => {
     proyectosAPI.metricas().then(setMetricas).catch(() => {})
@@ -117,6 +118,9 @@ export default function Dashboard() {
                 Plan Gratis → <span className="font-bold text-emerald-300">Pasar a Pro</span>
               </button>
             )}
+            <button onClick={() => nav('/clientes')} className="p-2 hover:bg-white/10 rounded-lg" title="Mis clientes">
+              <Users className="w-4 h-4" />
+            </button>
             <div className="relative">
               <button onClick={() => {
                         setShowNotifs(v => !v)
@@ -192,6 +196,9 @@ export default function Dashboard() {
               {(metricas.cobrado > 0 || metricas.por_cobrar > 0) && (
                 <span>💰 Cobrado: <strong className="text-emerald-600">{COP(metricas.cobrado)}</strong> · Por cobrar: <strong className="text-amber-600">{COP(metricas.por_cobrar)}</strong></span>
               )}
+              {(metricas.cobrado > 0 || metricas.gastado > 0) && (
+                <span>💼 Caja neta: <strong className={metricas.caja_neta >= 0 ? 'text-emerald-600' : 'text-red-500'}>{COP(metricas.caja_neta)}</strong></span>
+              )}
               {metricas.calificacion && <span>⭐ Calificación: <strong className="text-amber-600">{metricas.calificacion}</strong> ({metricas.n_resenas} reseña{metricas.n_resenas !== 1 ? 's' : ''})</span>}
             </div>
           </div>
@@ -199,7 +206,7 @@ export default function Dashboard() {
 
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-slate-800">Mis presupuestos</h2>
-          <button onClick={() => { setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {}) }}
+          <button onClick={() => { setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {}); clientesAPI.listar().then(setMisClientes).catch(() => {}) }}
                   className="flex items-center gap-2 bg-navy-600 hover:bg-navy-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition">
             <Plus className="w-4 h-4" /> Nuevo presupuesto
           </button>
@@ -212,7 +219,7 @@ export default function Dashboard() {
             <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-600 font-medium">Crea tu primer presupuesto</p>
             <p className="text-sm text-slate-400 mt-1 mb-4">Busca actividades, ajusta cantidades y comparte por WhatsApp</p>
-            <button onClick={() => { setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {}) }}
+            <button onClick={() => { setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {}); clientesAPI.listar().then(setMisClientes).catch(() => {}) }}
                     className="bg-navy-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl">
               Empezar
             </button>
@@ -416,8 +423,17 @@ export default function Dashboard() {
 
             <input className="input" placeholder="Nombre del proyecto * (ej: Remodelación cocina Casa López)"
                    value={nuevo.nombre} onChange={e => setNuevo(n => ({ ...n, nombre: e.target.value }))} autoFocus />
-            <input className="input" placeholder="Nombre del cliente"
-                   value={nuevo.cliente_nombre} onChange={e => setNuevo(n => ({ ...n, cliente_nombre: e.target.value }))} />
+            <input className="input" placeholder="Nombre del cliente" list="lista-clientes"
+                   value={nuevo.cliente_nombre}
+                   onChange={e => {
+                     const v = e.target.value
+                     const match = misClientes.find(c => c.nombre === v)
+                     setNuevo(n => ({ ...n, cliente_nombre: v,
+                                      cliente_telefono: match?.telefono || n.cliente_telefono }))
+                   }} />
+            <datalist id="lista-clientes">
+              {misClientes.map(c => <option key={c.id} value={c.nombre} />)}
+            </datalist>
             <input className="input" placeholder="WhatsApp del cliente (ej: 300 123 4567)"
                    value={nuevo.cliente_telefono} onChange={e => setNuevo(n => ({ ...n, cliente_telefono: e.target.value }))} />
             <select className="input" value={nuevo.region} onChange={e => setNuevo(n => ({ ...n, region: e.target.value }))}>

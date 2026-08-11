@@ -674,6 +674,10 @@ export default function Editor() {
                   <span>⏳ Por cobrar: <strong className="text-amber-600">{COP(cobrosData.resumen.por_cobrar)}</strong></span>
                   <span>Contrato: {COP(totales.total)}</span>
                 </div>
+                <div className="flex justify-between text-[10px] text-slate-500 mb-1.5">
+                  <span>💸 Gastado: <strong className="text-slate-600">{COP(cobrosData.resumen.gastado)}</strong></span>
+                  <span>💼 Caja neta del proyecto: <strong className={cobrosData.resumen.caja_neta >= 0 ? 'text-emerald-600' : 'text-red-500'}>{COP(cobrosData.resumen.caja_neta)}</strong></span>
+                </div>
                 <div className="h-2 bg-white rounded-full overflow-hidden flex">
                   <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, cobrosData.resumen.cobrado / totales.total * 100)}%` }} />
                   <div className="h-full bg-amber-400" style={{ width: `${Math.min(100, cobrosData.resumen.por_cobrar / totales.total * 100)}%` }} />
