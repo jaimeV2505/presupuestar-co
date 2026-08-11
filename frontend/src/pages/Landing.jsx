@@ -13,19 +13,221 @@ const CHECK = ({ children, bold }) => (
 )
 
 const FUNCIONES = [
-  [Search, 'Base APU 2026', '2.288 actividades de construcción con precios de referencia, organizadas por capítulos: preliminares, cimentación, estructura, mampostería, acabados...'],
-  [MapPin, 'Precios por ciudad', 'Factores regionales para 13 ciudades colombianas. Bogotá no cuesta lo mismo que Montería — tu presupuesto lo sabe.'],
-  [Calculator, 'Calculadora de cantidades', '¿3 columnas de 30×30 por 3 metros? Escribes las dimensiones y la app convierte a m³ sola. Volumen, área y metro lineal.'],
-  [Shield, 'AIU + IVA como manda la ley', 'A, I y U configurables por separado. IVA 19% solo sobre la utilidad (Art. 462-1 ET). Deja de regalar plata por calcular mal.'],
-  [Hash, 'Numeración automática', 'COT-2026-0001, 0002... Cada cotización con su número, fecha y estado. Tu historial ordenado y buscable.'],
-  [Eye, 'Seguimiento de estados', 'Borrador → Enviado → 👁 Visto → ✓ Aceptado → 🏁 Terminado. Sabes exactamente en qué va cada negocio.'],
-  [MessageCircle, 'Enlace WhatsApp con "visto"', 'Tu cliente abre el presupuesto en su celular sin instalar nada. Tú ves cuándo lo abrió y cuántas veces.'],
-  [FileSignature, 'Contrato con firma digital', 'Al aceptar, el cliente firma un Contrato de Ejecución de Obra Civil de 8 cláusulas generado automático. PDF para ambos.'],
-  [HardHat, 'Avances de obra con $$', 'Marcas el % por actividad y el sistema calcula el valor ejecutado ponderado. El cliente lo ve en tiempo real.'],
-  [Camera, 'Fotos de avance', 'Hasta 3 fotos por corte de obra. El cliente sigue su proyecto desde el mismo enlace del presupuesto.'],
-  [Star, 'Encuesta al terminar', 'Al culminar la obra, el cliente califica tu trabajo (1-5 ⭐). Construyes reputación con cada proyecto.'],
-  [FileSpreadsheet, 'PDF y Excel con tu logo', 'Exporta con tu marca, tus datos y tus condiciones estándar incluidas automáticamente.'],
+  [Search, 'Base APU 2026', '2.288 actividades de construcción con precios de referencia por capítulos. Precios ajustados a 13 ciudades colombianas.'],
+  [Zap, 'Plantillas de presupuesto', 'Baño, cocina, casa 60m², cubierta, pintura, placa: actividades típicas pre-cargadas. Primera cotización en 3 minutos.'],
+  [Calculator, 'Calculadora de cantidades', '¿3 columnas de 30×30 por 3 metros? Escribes dimensiones y la app convierte a m³ sola.'],
+  [Shield, 'AIU + IVA como manda la ley', 'A, I y U configurables. IVA 19% solo sobre la utilidad (Art. 462-1 ET). Deja de regalar plata.'],
+  [MessageCircle, 'Enlace WhatsApp con "visto"', 'Tu cliente abre todo en su celular sin instalar nada. Tú ves cuándo lo abrió y cuántas veces.'],
+  [FileSignature, 'Contrato con doble firma', 'Contrato de Obra Civil de 8 cláusulas generado automático. El cliente firma con el dedo, tu firma ya está puesta. Ley 527/1999.'],
+  [HardHat, 'Avances de obra en vivo', 'Marcas % por actividad → valor ejecutado ponderado. Tu cliente sigue su obra en tiempo real con fotos.'],
+  [ClipboardCheck, 'Gastos y utilidad REAL', 'Registra cada gasto con foto del recibo. Utilidad proyectada vs real con semáforo: verde vas bien, rojo estás perdiendo.'],
+  [FileSpreadsheet, 'Cuentas de cobro automáticas', 'Cada corte se liquida solo: ejecutado menos amortización del anticipo. PDF con tu firma y cuenta bancaria.'],
+  [Eye, 'Estado de pagos del cliente', 'Tu cliente ve sus cuentas pendientes y pagadas junto a la evidencia del avance. Pagar se siente justo.'],
+  [Hash, 'Caja neta siempre visible', 'Cobrado menos gastado, por proyecto y global. La cifra que decide si arrancas la próxima obra.'],
+  [Star, 'Acta de entrega bilateral', 'El cliente confirma y firma el recibido. Acta PDF con las dos firmas cierra el ciclo legal.'],
+  [Camera, 'Encuesta y reputación pública', 'Cada obra terminada suma estrellas a tu perfil público. Tus reseñas venden la siguiente obra.'],
+  [MapPin, 'Mini-CRM de clientes', 'Cada cliente con su historial: obras, total contratado, pagado y calificación. Autocompletar al cotizar de nuevo.'],
+  [CheckCircle2, 'Numeración y estados', 'COT-2026-0001, CC-2026-0001... Borrador → Visto → Aceptado → Terminado. Todo ordenado y trazable.'],
+  [Building2, 'PDF y Excel con tu marca', 'Cotización, contrato, cuenta de cobro y acta: 4 documentos profesionales con tu logo y tus datos.'],
+  [Zap, 'Notificaciones al instante', 'Te avisa cuando el cliente ve, firma, confirma la entrega o te califica. La campana 🔔 no descansa.'],
+  [Shield, 'Cadena documental inmutable', 'Ítems bloqueados tras la firma, cuentas pagadas ineliminables, avances con cobro protegidos. Nadie borra la historia.'],
 ]
+
+
+const FASES = [
+  {
+    id: 'clientes', emoji: '👥', nombre: 'Clientes', titulo: 'Tu cartera de clientes, con memoria',
+    desc: 'Cada cliente con su historial: cuánto te ha contratado, cuánto te ha pagado y cómo te calificó. La segunda obra se cotiza con su teléfono ya guardado.',
+    mock: (
+      <div className="space-y-2">
+        {[
+          ['MR', 'María Rodríguez', '3 obras · ⭐ 5', '$45.3M', 'pagado $38.1M'],
+          ['KT', 'Karoll Tobio', '1 obra en ejecución', '$45.3M', 'pagado $22.6M'],
+          ['RV', 'Ramiro Vergara', '1 terminada · ⭐ 5', '$11.3M', 'pagado $11.3M'],
+        ].map(([ini, n, sub, tot, pag], i) => (
+          <div key={i} className="flex items-center gap-2.5 bg-white rounded-xl p-2.5 border border-slate-100">
+            <span className="w-8 h-8 bg-navy-50 rounded-lg flex items-center justify-center text-[10px] font-bold text-navy-600">{ini}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold text-slate-700">{n}</p>
+              <p className="text-[9px] text-slate-400">{sub}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] font-black text-slate-700">{tot}</p>
+              <p className="text-[8px] text-emerald-600">{pag}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    id: 'cotiza', emoji: '📋', nombre: 'Cotiza', titulo: 'De la hoja en blanco a la cotización en 3 minutos',
+    desc: 'Plantillas listas (baño, cocina, casa 60m²...) sobre la base APU 2026: 2.288 actividades con precios de tu ciudad. AIU e IVA sobre utilidad como manda el Art. 462-1.',
+    mock: (
+      <div>
+        <div className="grid grid-cols-3 gap-1.5 mb-2.5">
+          {[['🚿','Baño'],['🍳','Cocina'],['🏠','Casa 60m²'],['🎨','Pintura'],['🧱','Placa'],['🏭','Cubierta']].map(([e, n], i) => (
+            <div key={i} className={`rounded-lg border-2 p-1.5 text-center ${i === 0 ? 'border-emerald-400 bg-emerald-50' : 'border-slate-100 bg-white'}`}>
+              <span className="text-sm">{e}</span>
+              <p className="text-[8px] font-bold text-slate-600">{n}</p>
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl border border-slate-100 p-2.5 space-y-1">
+          {[['Enchape pared cerámica', '18 m²', '$1.2M'],['Sanitario + instalación', '1 un', '$485k'],['Punto hidráulico', '4 un', '$754k']].map(([d, c, v], i) => (
+            <div key={i} className="flex justify-between text-[9px]">
+              <span className="text-slate-500 truncate">{d}</span>
+              <span className="text-slate-400 mx-2">{c}</span>
+              <span className="font-bold text-slate-700">{v}</span>
+            </div>
+          ))}
+          <div className="flex justify-between text-[10px] font-black text-navy-700 border-t border-slate-100 pt-1">
+            <span>Total con AIU + IVA</span><span>$8.2M</span>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'contrata', emoji: '📜', nombre: 'Contrata', titulo: 'Contrato de obra con las dos firmas',
+    desc: 'Al aceptar, tu cliente firma con el dedo un Contrato de Ejecución de Obra Civil de 8 cláusulas generado automático. Tu firma manuscrita ya está en el documento. Ley 527 de 1999.',
+    mock: (
+      <div className="bg-white rounded-xl border border-slate-100 p-3">
+        <p className="text-[9px] font-black text-slate-700 text-center mb-1">CONTRATO DE EJECUCIÓN DE OBRA CIVIL</p>
+        <p className="text-[8px] text-slate-400 text-center mb-2">COT-2026-0037 · $8.245.000 · Anticipo 50% · 20 días</p>
+        <div className="space-y-1 mb-3">
+          {['PRIMERA — Objeto', 'CUARTA — Forma de pago', 'SEXTA — Garantías'].map((c, i) => (
+            <p key={i} className="text-[8px] text-slate-400">§ {c}...</p>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[['✍️', 'María López', 'EL CONTRATANTE'], ['✍️', 'Jaime V.', 'EL CONTRATISTA']].map(([f, n, r], i) => (
+            <div key={i} className="border-t-2 border-slate-300 pt-1 text-center">
+              <p className="text-base -mb-0.5" style={{fontFamily: 'cursive'}}>{f} {n.split(' ')[0]}</p>
+              <p className="text-[7px] font-bold text-slate-600">{n}</p>
+              <p className="text-[7px] text-slate-400">{r}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'ejecuta', emoji: '🏗️', nombre: 'Ejecuta', titulo: 'Tu cliente sigue la obra en vivo — y tú, tu plata',
+    desc: 'Publicas avances con % por actividad y fotos: el cliente ve el valor ejecutado en tiempo real desde su enlace. Y registras cada gasto con foto del recibo: utilidad proyectada vs REAL, con semáforo.',
+    mock: (
+      <div className="space-y-2">
+        <div className="bg-white rounded-xl border border-slate-100 p-2.5">
+          <div className="flex justify-between text-[9px] mb-1">
+            <span className="font-bold text-slate-700">📱 Lo que ve tu cliente</span>
+            <span className="font-black text-emerald-600">64%</span>
+          </div>
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1">
+            <div className="h-full bg-emerald-500 rounded-full" style={{width: '64%'}} />
+          </div>
+          <p className="text-[8px] text-slate-400">Valor ejecutado: <strong className="text-slate-600">$5.2M</strong> de $8.2M · 📸 6 fotos</p>
+        </div>
+        <div className="bg-emerald-50 rounded-xl border border-emerald-100 p-2.5">
+          <p className="text-[9px] font-bold text-slate-700 mb-1">💸 Lo que ves tú (privado)</p>
+          <div className="flex justify-between text-[9px]">
+            <span className="text-slate-500">Utilidad proyectada: <strong>$660k</strong></span>
+            <span className="text-emerald-700 font-black">Real: $612k 🟢</span>
+          </div>
+          <p className="text-[8px] text-slate-400 mt-0.5">Gastado $4.6M de $6.9M presupuestado · recibos 📷 archivados</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'cobra', emoji: '💵', nombre: 'Cobra', titulo: 'Cuentas de cobro que se liquidan solas',
+    desc: 'Cada corte genera su cuenta de cobro: valor ejecutado menos amortización del anticipo, con tu firma y tu cuenta bancaria. El cliente la ve junto a la evidencia. Caja neta siempre visible.',
+    mock: (
+      <div className="bg-white rounded-xl border border-slate-100 p-3">
+        <p className="text-[9px] font-black text-slate-700 mb-0.5">CUENTA DE COBRO N° CC-2026-0012</p>
+        <p className="text-[8px] text-slate-400 mb-2">María López DEBE A Jaime V. — Corte 2 (34% → 64%)</p>
+        <div className="space-y-0.5 text-[9px]">
+          <div className="flex justify-between text-slate-500"><span>Valor ejecutado del corte</span><span>$2.460.000</span></div>
+          <div className="flex justify-between text-slate-500"><span>(−) Amortización anticipo 50%</span><span>− $1.230.000</span></div>
+          <div className="flex justify-between font-black text-emerald-700 border-t border-slate-100 pt-0.5"><span>NETO A PAGAR</span><span>$1.230.000</span></div>
+        </div>
+        <div className="flex gap-1.5 mt-2">
+          <span className="text-[8px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">✓ CC-0011 pagada</span>
+          <span className="text-[8px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">⏳ CC-0012 enviada</span>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'crece', emoji: '⭐', nombre: 'Crece', titulo: 'Cada obra terminada te vende la siguiente',
+    desc: 'Acta de entrega bilateral con las dos firmas, encuesta de satisfacción, y tu perfil público con reseñas reales. El badge ⭐ aparece en cada cotización nueva que envías.',
+    mock: (
+      <div className="space-y-2">
+        <div className="bg-white rounded-xl border border-slate-100 p-2.5 text-center">
+          <p className="text-[10px] font-black text-slate-700">Jaime V. — Contratista</p>
+          <p className="text-lg font-black text-amber-500">⭐ 4.9</p>
+          <p className="text-[8px] text-slate-400">12 obras terminadas · 9 reseñas públicas</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-100 p-2.5">
+          <p className="text-[9px] text-slate-600 italic">"Cumplió el plazo y la obra quedó impecable. Lo recomiendo."</p>
+          <p className="text-[8px] text-slate-400 mt-1">— María R. · ⭐⭐⭐⭐⭐ · Remodelación baño</p>
+        </div>
+      </div>
+    ),
+  },
+]
+
+function CicloCompleto() {
+  const [fase, setFase] = useState('cotiza')
+  const activa = FASES.find(f => f.id === fase)
+  return (
+    <section className="bg-slate-50 py-16">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="text-center mb-8">
+          <span className="text-[11px] font-black uppercase tracking-wider text-navy-500">No es un cotizador — es tu sistema de gestión</span>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mt-1.5">El ciclo completo de cada obra, conectado</h2>
+          <p className="text-sm text-slate-500 mt-2 max-w-xl mx-auto">
+            Del primer contacto al último peso cobrado. Cada documento hereda del anterior — nada se digita dos veces.
+          </p>
+        </div>
+
+        <div className="flex justify-center gap-1.5 sm:gap-2 flex-wrap mb-6">
+          {FASES.map(f => (
+            <button key={f.id} onClick={() => setFase(f.id)}
+                    className={`flex items-center gap-1.5 text-xs font-bold px-3 sm:px-4 py-2 rounded-full transition ${fase === f.id ? 'bg-navy-700 text-white shadow-lg' : 'bg-white text-slate-500 border border-slate-200 hover:border-navy-300'}`}>
+              <span>{f.emoji}</span><span className="hidden sm:inline">{f.nombre}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+          <div className="grid md:grid-cols-2">
+            <div className="p-6 sm:p-8 flex flex-col justify-center">
+              <span className="text-3xl mb-3">{activa.emoji}</span>
+              <h3 className="text-xl font-black text-slate-800 leading-snug">{activa.titulo}</h3>
+              <p className="text-sm text-slate-500 mt-3 leading-relaxed">{activa.desc}</p>
+              <Link to="/registro" className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600 mt-5">
+                Empezar gratis <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+            <div className="bg-slate-50 p-5 sm:p-6 flex items-center">
+              <div className="w-full">{activa.mock}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center gap-1 mt-6 text-[10px] text-slate-400 flex-wrap">
+          {FASES.map((f, i) => (
+            <React.Fragment key={f.id}>
+              <button onClick={() => setFase(f.id)} className={`font-bold ${fase === f.id ? 'text-navy-600' : ''}`}>{f.emoji} {f.nombre}</button>
+              {i < FASES.length - 1 && <ChevronRight className="w-3 h-3" />}
+            </React.Fragment>
+          ))}
+          <span className="ml-1">↻</span>
+        </div>
+      </div>
+    </section>
+  )
+}
 
 function DemoBuscador() {
   const [q, setQ] = useState('')
@@ -154,13 +356,18 @@ export default function Landing() {
               <Zap className="w-3.5 h-3.5" /> Todas las funciones gratis — paga solo si cotizas en volumen
             </span>
             <h1 className="text-4xl sm:text-5xl font-black leading-tight tracking-tight">
-              Presupuestos de obra profesionales <span className="text-emerald-400">en minutos</span>, no en madrugadas
+              Cotiza, firma, ejecuta y <span className="text-emerald-400">cobra</span> — todo en un solo lugar
             </h1>
             <p className="text-lg text-blue-200 mt-5 leading-relaxed">
-              Cotiza con la base APU 2026, comparte por WhatsApp, tu cliente firma el
-              contrato digital y sigue los avances de su obra. Todo en una sola herramienta
-              hecha para el contratista colombiano.
+              El sistema de gestión del contratista colombiano: presupuestos con la base APU 2026,
+              contratos con firma digital, seguimiento de obra en vivo para tu cliente, control de
+              gastos con utilidad real y cuentas de cobro que se liquidan solas.
             </p>
+            <div className="flex flex-wrap gap-2 mt-5">
+              {['📋 Presupuestos', '📜 Contratos', '🏗️ Avances en vivo', '💸 Gastos', '💵 Cuentas de cobro', '👥 Clientes', '⭐ Reputación'].map(c => (
+                <span key={c} className="text-[11px] font-semibold bg-white/10 text-blue-100 px-2.5 py-1 rounded-full">{c}</span>
+              ))}
+            </div>
             <div className="flex flex-wrap gap-3 mt-8">
               <Link to="/registro" className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-6 py-3.5 rounded-xl transition text-sm">
                 Crear cuenta gratis <ChevronRight className="w-4 h-4" />
@@ -229,6 +436,8 @@ export default function Landing() {
       </section>
 
       {/* ── DEMO BUSCADOR EN VIVO ── */}
+      <CicloCompleto />
+
       <DemoBuscador />
 
       {/* ── PROBLEMA ── */}
@@ -372,6 +581,32 @@ export default function Landing() {
       </section>
 
       {/* ── TODAS LAS FUNCIONES ── */}
+      {/* ── LOS 4 DOCUMENTOS ── */}
+      <section className="max-w-6xl mx-auto px-4 py-16">
+        <div className="text-center mb-8">
+          <span className="text-[11px] font-black uppercase tracking-wider text-navy-500">Papeles de empresa grande, esfuerzo de un tap</span>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mt-1.5">Los 4 documentos que profesionalizan tu negocio</h2>
+          <p className="text-sm text-slate-500 mt-2">Cada uno hereda los datos del anterior. Con tu logo, tu firma y tus datos — cero digitación.</p>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            ['📋', 'Cotización', 'PDF y Excel con AIU, IVA y tu marca. Numeración COT automática.', 'Al cotizar'],
+            ['📜', 'Contrato de obra', '8 cláusulas, doble firma manuscrita, anticipo y plazo. Ley 527/1999.', 'Al aceptar'],
+            ['💵', 'Cuenta de cobro', 'Liquidación del corte menos anticipo. Con tu cuenta bancaria.', 'Cada corte'],
+            ['🤝', 'Acta de entrega', 'El recibido firmado por ambos. Cierra el ciclo legal de la obra.', 'Al terminar'],
+          ].map(([e, t, d, cuando], i) => (
+            <div key={i} className="bg-white border-2 border-slate-100 hover:border-navy-200 rounded-2xl p-4 transition group">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-2xl">{e}</span>
+                <span className="text-[9px] font-bold bg-navy-50 text-navy-500 px-2 py-1 rounded-full">{cuando}</span>
+              </div>
+              <p className="text-sm font-black text-slate-800">{t}</p>
+              <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">{d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section id="funciones" className="max-w-6xl mx-auto px-4 py-16">
         <h2 className="text-2xl sm:text-3xl font-black text-slate-800 text-center">Todas las funciones, en ambos planes</h2>
         <p className="text-slate-500 text-center mt-2 text-sm">Sin funciones bloqueadas. Pruébalo todo gratis.</p>
@@ -445,12 +680,12 @@ export default function Landing() {
               <p className="text-xs text-slate-400 mt-1.5">Para probar todo y cotizar de vez en cuando</p>
               <ul className="space-y-2.5 mt-6 flex-1">
                 <CHECK bold>3 presupuestos al mes</CHECK>
-                <CHECK>Todas las funciones de la herramienta</CHECK>
-                <CHECK>Base APU 2026 + calculadora + AIU/IVA</CHECK>
-                <CHECK>WhatsApp con visto, aceptar y rechazar</CHECK>
-                <CHECK>Contrato de obra con firma digital</CHECK>
-                <CHECK>Avances de obra + fotos + encuesta</CHECK>
-                <CHECK>PDF y Excel con tu logo</CHECK>
+                <CHECK>Plantillas + base APU 2026 + AIU/IVA</CHECK>
+                <CHECK>Contrato de obra con doble firma</CHECK>
+                <CHECK>Avances en vivo para tu cliente</CHECK>
+                <CHECK>Gastos + utilidad real con semáforo</CHECK>
+                <CHECK>Cuentas de cobro y caja neta</CHECK>
+                <CHECK>Mini-CRM + reputación pública</CHECK>
               </ul>
               <Link to="/registro" className="mt-7 text-center border-2 border-navy-600 text-navy-600 font-bold text-sm py-3 rounded-xl hover:bg-navy-50 transition">
                 Empezar gratis
@@ -470,12 +705,12 @@ export default function Landing() {
               <p className="text-xs text-slate-400 mt-1.5">Cotiza todo lo que tu negocio necesite</p>
               <ul className="space-y-2.5 mt-6 flex-1">
                 <CHECK bold>Presupuestos ILIMITADOS</CHECK>
-                <CHECK>Todas las funciones de la herramienta</CHECK>
-                <CHECK>Base APU 2026 + calculadora + AIU/IVA</CHECK>
-                <CHECK>WhatsApp con visto, aceptar y rechazar</CHECK>
-                <CHECK>Contrato de obra con firma digital</CHECK>
-                <CHECK>Avances de obra + fotos + encuesta</CHECK>
-                <CHECK>Soporte prioritario por WhatsApp</CHECK>
+                <CHECK>Plantillas + base APU 2026 + AIU/IVA</CHECK>
+                <CHECK>Contrato de obra con doble firma</CHECK>
+                <CHECK>Avances en vivo para tu cliente</CHECK>
+                <CHECK>Gastos + utilidad real con semáforo</CHECK>
+                <CHECK>Cuentas de cobro y caja neta</CHECK>
+                <CHECK bold>Soporte prioritario por WhatsApp</CHECK>
               </ul>
               <Link to="/registro" className="mt-7 text-center bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-sm py-3 rounded-xl transition">
                 Empezar con Pro
@@ -501,6 +736,9 @@ export default function Landing() {
             ['¿El contrato digital tiene validez?', 'Es un acuerdo privado con evidencia digital: nombre, documento, fecha y hora quedan registrados junto al texto íntegro. La Ley 527 de 1999 reconoce los mensajes de datos como medio de prueba en Colombia. Para obras con formalidades adicionales, consulta con tu abogado.'],
             ['¿Mi cliente necesita instalar algo?', 'Nada. Abre el enlace en su WhatsApp: ve el presupuesto, firma el contrato y sigue los avances desde el navegador de su celular.'],
             ['¿Cómo pago el plan Pro?', 'Por Nequi o transferencia Bancolombia desde la misma app. Reportas el pago y activamos tu Pro en menos de 24 horas.'],
+            ['¿Cómo funcionan las cuentas de cobro?', 'Cada corte de avance se liquida automáticamente: valor ejecutado menos amortización del anticipo del contrato. Sale el PDF con tu firma y cuenta bancaria, listo para enviar por WhatsApp. Cuando te paguen, un tap y tu caja neta se actualiza.'],
+            ['¿Mi cliente ve mis gastos y mi utilidad?', 'No. El cliente ve el avance de su obra, las fotos y sus cuentas de cobro. Tus gastos, tu utilidad real y tu caja neta son privados — solo tuyos.'],
+            ['¿Sirve si soy maestro de obra y no empresa?', 'Está hecho para ti. La cuenta de cobro es el documento estándar del contratista persona natural en Colombia, y el contrato protege tu trabajo aunque no tengas empresa constituida.'],
             ['¿Qué pasa con mis datos si cancelo?', 'Son tuyos. Exportas todo a Excel y PDF, y tu cuenta Básica sigue activa con tus proyectos.'],
           ].map(([q, a], i) => (
             <details key={i} className="bg-slate-50 rounded-xl p-4 group">
@@ -515,8 +753,8 @@ export default function Landing() {
 
       {/* ── CTA FINAL ── */}
       <section className="bg-gradient-to-br from-navy-800 to-navy-600 py-16 text-center px-4">
-        <h2 className="text-2xl sm:text-3xl font-black text-white">Tu próximo presupuesto, en 10 minutos</h2>
-        <p className="text-blue-200 mt-3">Todas las funciones. Gratis. Sin tarjeta.</p>
+        <h2 className="text-2xl sm:text-3xl font-black text-white">De la cotización al último peso cobrado</h2>
+        <p className="text-blue-200 mt-3">Presupuestos · Contratos · Avances · Gastos · Cuentas de cobro · Clientes · Reputación<br/>Todo gratis para empezar. Sin tarjeta. Listo en 2 minutos.</p>
         <Link to="/registro" className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-8 py-4 rounded-xl transition mt-7 text-sm">
           Crear mi cuenta gratis <ChevronRight className="w-4 h-4" />
         </Link>
