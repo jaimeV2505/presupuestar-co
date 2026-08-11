@@ -178,6 +178,67 @@ def crear(req: ProyectoCreate, user: Usuario = Depends(usuario_actual), db: Sess
     return _proyecto_out(p, incluir_items=True)
 
 
+@router.get("/plantillas")
+def listar_plantillas(user: Usuario = Depends(usuario_actual)):
+    return [
+        {"id": k, "nombre": v["nombre"], "emoji": v["emoji"],
+         "descripcion": v["descripcion"], "n_items": len(v["items"])}
+        for k, v in PLANTILLAS.items()
+    ]
+
+
+class DesdePlantillaRequest(BaseModel):
+    plantilla_id: str
+    nombre: str = ""
+
+
+@router.post("/desde-plantilla")
+def crear_desde_plantilla(req: DesdePlantillaRequest,
+                          user: Usuario = Depends(usuario_actual),
+                          db: Session = Depends(get_db)):
+    tpl = PLANTILLAS.get(req.plantilla_id)
+    if not tpl:
+        raise HTTPException(404, "Plantilla no encontrada")
+    _verificar_limite(user, db)
+
+    from app.services import apu_service as APU
+    from app.services.apu_service import FACTORES_REGION
+    import uuid as _uuid
+    apu_db = APU.load_apu_db()
+    factor = FACTORES_REGION.get(user.ciudad, FACTORES_REGION["bogota"])["factor"]
+
+    items = []
+    for palabras, cantidad in tpl["items"]:
+        m = _buscar_apu(palabras, apu_db, factor)
+        if m:
+            items.append({
+                "id": _uuid.uuid4().hex[:10],
+                "capitulo": m.get("categoria", "GENERAL"),
+                "descripcion": m["descripcion"],
+                "unidad": m.get("unidad", "un"),
+                "cantidad": cantidad,
+                "precio_unitario": m["precio"],
+            })
+
+    if not items:
+        raise HTTPException(500, "No se encontraron actividades para la plantilla")
+
+    p = Proyecto(
+        user_id=user.id,
+        nombre=(req.nombre or tpl["nombre"]).strip()[:150],
+        numero=_generar_numero(user.id, db),
+        items_json=json.dumps(items, ensure_ascii=False),
+        aiu_json=json.dumps({"admin": 15, "imprevistos": 5, "utilidad": 8,
+                             "aplicar": True, "iva_sobre_utilidad": True}),
+        region=user.ciudad,
+    )
+    db.add(p)
+    db.commit()
+    db.refresh(p)
+    logger.info(f"Proyecto desde plantilla '{req.plantilla_id}': {len(items)} items para {user.email}")
+    return _proyecto_out(p)
+
+
 @router.get("/{proyecto_id}")
 def obtener(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
@@ -355,62 +416,5 @@ def _buscar_apu(palabras, apu_db, factor):
     return {**mejor, "precio": round(mejor["precio"] * factor)}
 
 
-@router.get("/plantillas")
-def listar_plantillas(user: Usuario = Depends(usuario_actual)):
-    return [
-        {"id": k, "nombre": v["nombre"], "emoji": v["emoji"],
-         "descripcion": v["descripcion"], "n_items": len(v["items"])}
-        for k, v in PLANTILLAS.items()
-    ]
 
 
-class DesdePlantillaRequest(BaseModel):
-    plantilla_id: str
-    nombre: str = ""
-
-
-@router.post("/desde-plantilla")
-def crear_desde_plantilla(req: DesdePlantillaRequest,
-                          user: Usuario = Depends(usuario_actual),
-                          db: Session = Depends(get_db)):
-    tpl = PLANTILLAS.get(req.plantilla_id)
-    if not tpl:
-        raise HTTPException(404, "Plantilla no encontrada")
-    _verificar_limite(user, db)
-
-    from app.services import apu_service as APU
-    from app.services.apu_service import FACTORES_REGION
-    import uuid as _uuid
-    apu_db = APU.load_apu_db()
-    factor = FACTORES_REGION.get(user.ciudad, FACTORES_REGION["bogota"])["factor"]
-
-    items = []
-    for palabras, cantidad in tpl["items"]:
-        m = _buscar_apu(palabras, apu_db, factor)
-        if m:
-            items.append({
-                "id": _uuid.uuid4().hex[:10],
-                "capitulo": m.get("categoria", "GENERAL"),
-                "descripcion": m["descripcion"],
-                "unidad": m.get("unidad", "un"),
-                "cantidad": cantidad,
-                "precio_unitario": m["precio"],
-            })
-
-    if not items:
-        raise HTTPException(500, "No se encontraron actividades para la plantilla")
-
-    p = Proyecto(
-        user_id=user.id,
-        nombre=(req.nombre or tpl["nombre"]).strip()[:150],
-        numero=_generar_numero(user.id, db),
-        items_json=json.dumps(items, ensure_ascii=False),
-        aiu_json=json.dumps({"admin": 15, "imprevistos": 5, "utilidad": 8,
-                             "aplicar": True, "iva_sobre_utilidad": True}),
-        region=user.ciudad,
-    )
-    db.add(p)
-    db.commit()
-    db.refresh(p)
-    logger.info(f"Proyecto desde plantilla '{req.plantilla_id}': {len(items)} items para {user.email}")
-    return _proyecto_out(p)
