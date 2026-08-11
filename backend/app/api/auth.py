@@ -142,6 +142,7 @@ def _user_out(u: Usuario) -> dict:
         "documento": getattr(u, "documento", "") or "",
         "plan_vence": u.plan_vence.strftime("%d/%m/%Y") if getattr(u, "plan_vence", None) else None,
         "pago_info": getattr(u, "pago_info", "") or "",
+        "firma_b64": getattr(u, "firma_b64", "") or "",
     }
 
 
@@ -194,6 +195,7 @@ class PerfilUpdate(BaseModel):
     condiciones: str = None  # condiciones estandar del contratista
     documento: str = None     # cedula/NIT (aparece en el contrato)
     pago_info: str = None     # cuenta bancaria (forma de pago del contrato)
+    firma_b64: str = None     # firma manuscrita del contratista
 
 
 @router.put("/perfil")
@@ -212,5 +214,9 @@ def actualizar_perfil(req: PerfilUpdate, user: Usuario = Depends(usuario_actual)
         user.documento = req.documento.strip()[:30]
     if req.pago_info is not None:
         user.pago_info = req.pago_info.strip()[:200]
+    if req.firma_b64 is not None:
+        f = req.firma_b64
+        user.firma_b64 = f if (f.startswith("data:image") and len(f) < 600_000) else ""
+
     db.commit()
     return _user_out(user)

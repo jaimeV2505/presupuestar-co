@@ -52,6 +52,8 @@ export const proyectosAPI = {
   eliminar: (id) => api.delete(`/proyectos/${id}`).then(r => r.data),
   duplicar: (id) => api.post(`/proyectos/${id}/duplicar`).then(r => r.data),
   metricas: () => api.get('/proyectos/metricas').then(r => r.data),
+  plantillas: () => api.get('/proyectos/plantillas').then(r => r.data),
+  desdePlantilla: (data) => api.post('/proyectos/desde-plantilla', data).then(r => r.data),
 }
 
 export const shareAPI = {
@@ -85,6 +87,12 @@ export const pagosAPI = {
   adminAprobar: (data) => api.post('/pagos/admin/aprobar', data).then(r => r.data),
   adminRechazar: (data) => api.post('/pagos/admin/rechazar', data).then(r => r.data),
   adminPlanManual: (data) => api.post('/pagos/admin/plan-manual', data).then(r => r.data),
+}
+
+export const gastosAPI = {
+  listar: (pid) => api.get(`/gastos/proyectos/${pid}/gastos`).then(r => r.data),
+  crear: (pid, data) => api.post(`/gastos/proyectos/${pid}/gastos`, data).then(r => r.data),
+  eliminar: (pid, gid) => api.delete(`/gastos/proyectos/${pid}/gastos/${gid}`).then(r => r.data),
 }
 
 export const notificacionesAPI = {

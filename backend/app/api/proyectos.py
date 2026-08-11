@@ -268,3 +268,149 @@ def duplicar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sess
     db.commit()
     db.refresh(nuevo)
     return _proyecto_out(nuevo, incluir_items=True)
+
+
+# ── PLANTILLAS DE PRESUPUESTO ────────────────────────────────────────────────
+# Cada item: (palabras clave para buscar en la base APU, cantidad tipica)
+PLANTILLAS = {
+    "bano": {
+        "nombre": "Baño completo", "emoji": "🚿",
+        "descripcion": "Demolición, enchape, aparatos y redes de un baño de ~4m²",
+        "items": [
+            (["demolicion", "enchape"], 12), (["alistado", "piso"], 4),
+            (["impermeabilizacion"], 4), (["enchape", "pared", "ceramica"], 18),
+            (["enchape", "piso", "ceramica"], 4), (["sanitario"], 1),
+            (["lavamanos"], 1), (["ducha"], 1),
+            (["punto", "hidraulico"], 4), (["punto", "sanitario"], 3),
+            (["pintura", "vinilo"], 10),
+        ],
+    },
+    "cocina": {
+        "nombre": "Cocina integral", "emoji": "🍳",
+        "descripcion": "Enchapes, mesón, redes y acabados de cocina de ~8m²",
+        "items": [
+            (["demolicion", "enchape"], 15), (["alistado", "piso"], 8),
+            (["enchape", "pared", "ceramica"], 16), (["enchape", "piso"], 8),
+            (["meson", "granito"], 3), (["lavaplatos"], 1),
+            (["punto", "hidraulico"], 3), (["punto", "sanitario"], 2),
+            (["punto", "electrico"], 6), (["pintura", "vinilo"], 20),
+        ],
+    },
+    "cubierta": {
+        "nombre": "Cubierta metálica", "emoji": "🏭",
+        "descripcion": "Estructura y teja para cubierta de ~100m²",
+        "items": [
+            (["cercha", "metalica"], 100), (["correa"], 120),
+            (["teja", "sandwich"], 100), (["canal", "aguas"], 24),
+            (["bajante"], 12), (["anticorrosivo"], 100),
+        ],
+    },
+    "casa60": {
+        "nombre": "Casa básica 60m²", "emoji": "🏠",
+        "descripcion": "Obra gris de vivienda de un piso: cimientos, muros, placa",
+        "items": [
+            (["localizacion", "replanteo"], 60), (["excavacion", "zapata"], 12),
+            (["concreto", "zapata"], 6), (["viga", "cimiento"], 40),
+            (["columna", "concreto"], 9), (["mamposteria", "ladrillo"], 140),
+            (["viga", "amarre"], 40), (["placa", "concreto"], 60),
+            (["panete", "muro"], 260), (["piso", "concreto"], 60),
+        ],
+    },
+    "pintura": {
+        "nombre": "Pintura apartamento", "emoji": "🎨",
+        "descripcion": "Resane y pintura general de apartamento de ~70m²",
+        "items": [
+            (["resane", "muro"], 180), (["pintura", "vinilo", "muro"], 180),
+            (["pintura", "cielo"], 70), (["esmalte", "puerta"], 6),
+        ],
+    },
+    "placa": {
+        "nombre": "Placa de entrepiso", "emoji": "🧱",
+        "descripcion": "Placa aligerada de ~50m² con vigas y acero",
+        "items": [
+            (["placa", "aligerada"], 50), (["viga", "aerea"], 30),
+            (["acero", "refuerzo"], 900), (["formaleta"], 50),
+            (["concreto", "3000"], 8),
+        ],
+    },
+}
+
+
+def _buscar_apu(palabras, apu_db, factor):
+    """Mejor coincidencia: item que contenga TODAS las palabras; fallback: la primera."""
+    palabras = [w.lower() for w in palabras]
+    mejor = None
+    for it in apu_db:
+        desc = it["descripcion"].lower()
+        if all(w in desc for w in palabras):
+            mejor = it
+            break
+    if not mejor:
+        for it in apu_db:
+            if palabras[0] in it["descripcion"].lower():
+                mejor = it
+                break
+    if not mejor:
+        return None
+    return {**mejor, "precio": round(mejor["precio"] * factor)}
+
+
+@router.get("/plantillas")
+def listar_plantillas(user: Usuario = Depends(usuario_actual)):
+    return [
+        {"id": k, "nombre": v["nombre"], "emoji": v["emoji"],
+         "descripcion": v["descripcion"], "n_items": len(v["items"])}
+        for k, v in PLANTILLAS.items()
+    ]
+
+
+class DesdePlantillaRequest(BaseModel):
+    plantilla_id: str
+    nombre: str = ""
+
+
+@router.post("/desde-plantilla")
+def crear_desde_plantilla(req: DesdePlantillaRequest,
+                          user: Usuario = Depends(usuario_actual),
+                          db: Session = Depends(get_db)):
+    tpl = PLANTILLAS.get(req.plantilla_id)
+    if not tpl:
+        raise HTTPException(404, "Plantilla no encontrada")
+    _verificar_limite(user, db)
+
+    from app.services import apu_service as APU
+    from app.services.apu_service import FACTORES_REGION
+    import uuid as _uuid
+    apu_db = APU.load_apu_db()
+    factor = FACTORES_REGION.get(user.ciudad, FACTORES_REGION["bogota"])["factor"]
+
+    items = []
+    for palabras, cantidad in tpl["items"]:
+        m = _buscar_apu(palabras, apu_db, factor)
+        if m:
+            items.append({
+                "id": _uuid.uuid4().hex[:10],
+                "capitulo": m.get("categoria", "GENERAL"),
+                "descripcion": m["descripcion"],
+                "unidad": m.get("unidad", "un"),
+                "cantidad": cantidad,
+                "precio_unitario": m["precio"],
+            })
+
+    if not items:
+        raise HTTPException(500, "No se encontraron actividades para la plantilla")
+
+    p = Proyecto(
+        user_id=user.id,
+        nombre=(req.nombre or tpl["nombre"]).strip()[:150],
+        numero=_generar_numero(user.id, db),
+        items_json=json.dumps(items, ensure_ascii=False),
+        aiu_json=json.dumps({"admin": 15, "imprevistos": 5, "utilidad": 8,
+                             "aplicar": True, "iva_sobre_utilidad": True}),
+        region=user.ciudad,
+    )
+    db.add(p)
+    db.commit()
+    db.refresh(p)
+    logger.info(f"Proyecto desde plantilla '{req.plantilla_id}': {len(items)} items para {user.email}")
+    return _proyecto_out(p)

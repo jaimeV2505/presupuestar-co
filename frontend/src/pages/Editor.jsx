@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
          Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
-import { proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI } from '../services/api'
+import { proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -37,6 +37,12 @@ export default function Editor() {
   const [valorTotalDirecto, setValorTotalDirecto] = useState(0)
   const [subiendoAvance, setSubiendoAvance] = useState(false)
   const [calificacion, setCalificacion] = useState(null)
+  const [showGastos, setShowGastos] = useState(false)
+  const [gastosData, setGastosData] = useState(null)
+  const [nuevoGasto, setNuevoGasto] = useState({ categoria: 'materiales', descripcion: '', valor: '', foto: '' })
+  const [showGastos, setShowGastos] = useState(false)
+  const [gastosData, setGastosData] = useState(null)
+  const [nuevoGasto, setNuevoGasto] = useState({ categoria: 'materiales', descripcion: '', valor: '', foto: '' })
 
   // Share
   const [showShare, setShowShare] = useState(false)
@@ -313,6 +319,22 @@ export default function Editor() {
               </a>
             )}
             {p.estado === 'aceptado' && (
+              <button onClick={() => {
+                        setShowGastos(true)
+                        gastosAPI.listar(id).then(setGastosData).catch(e => toast.error(e.message))
+                      }}
+                      className="flex items-center gap-1.5 border border-slate-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
+                      title="Gastos reales vs presupuesto">
+                💸 <span className="hidden sm:inline">Gastos</span>
+              </button>
+              <button onClick={() => {
+                        setShowGastos(true)
+                        gastosAPI.listar(id).then(setGastosData).catch(e => toast.error(e.message))
+                      }}
+                      className="flex items-center gap-1.5 border border-slate-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
+                      title="Gastos reales vs presupuesto">
+                💸 <span className="hidden sm:inline">Gastos</span>
+              </button>
               <button onClick={() => {
                         setShowAvances(true)
                         avancesAPI.listar(id).then(res => {
@@ -624,6 +646,136 @@ export default function Editor() {
                   </button>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal GASTOS */}
+      {showGastos && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowGastos(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-slate-800">💸 Gastos de obra</h3>
+              <button onClick={() => setShowGastos(false)} className="text-slate-400 text-lg">×</button>
+            </div>
+
+            {gastosData && (() => {
+              const r = gastosData.resumen
+              const sana = r.utilidad_real >= r.utilidad_proyectada * 0.9
+              const alerta = r.utilidad_real < r.utilidad_proyectada * 0.5
+              return (
+                <div className={`rounded-xl p-3.5 mb-4 ${alerta ? 'bg-red-50' : sana ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                  <div className="grid grid-cols-2 gap-3 text-center">
+                    <div>
+                      <p className="text-[10px] uppercase font-semibold text-slate-500">Utilidad proyectada</p>
+                      <p className="text-base font-black text-slate-700">{COP(r.utilidad_proyectada)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-semibold text-slate-500">Utilidad real</p>
+                      <p className={`text-base font-black ${alerta ? 'text-red-600' : sana ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {COP(r.utilidad_real)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                      <span>Gastado: <strong>{COP(r.gastado)}</strong></span>
+                      <span>Presupuesto directo: {COP(r.presupuesto_directo)}</span>
+                    </div>
+                    <div className="h-2 bg-white rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${r.pct_ejecutado_gasto > 100 ? 'bg-red-500' : r.pct_ejecutado_gasto > 85 ? 'bg-amber-400' : 'bg-emerald-500'}`}
+                           style={{ width: `${Math.min(100, r.pct_ejecutado_gasto)}%` }} />
+                    </div>
+                    <p className="text-[9px] text-slate-400 mt-1">{r.pct_ejecutado_gasto}% del costo directo presupuestado{r.pct_ejecutado_gasto > 100 && ' — ¡SOBRECOSTO!'}</p>
+                  </div>
+                  {Object.keys(r.por_categoria).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2.5">
+                      {Object.entries(r.por_categoria).map(([cat, v]) => (
+                        <span key={cat} className="text-[9px] bg-white text-slate-500 px-2 py-1 rounded-full">
+                          {cat}: <strong>{COP(v)}</strong>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
+            <div className="bg-slate-50 rounded-xl p-3.5 space-y-2.5 mb-4">
+              <div className="flex gap-2">
+                <select className="input !py-2 text-xs w-32"
+                        value={nuevoGasto.categoria}
+                        onChange={e => setNuevoGasto(g => ({ ...g, categoria: e.target.value }))}>
+                  <option value="materiales">🧱 Materiales</option>
+                  <option value="nomina">👷 Nómina</option>
+                  <option value="transporte">🚚 Transporte</option>
+                  <option value="herramienta">🔧 Herramienta</option>
+                  <option value="otros">📦 Otros</option>
+                </select>
+                <input className="input !py-2 text-xs flex-1" placeholder="¿Qué compraste? (ej: 20 bultos de cemento)"
+                       value={nuevoGasto.descripcion}
+                       onChange={e => setNuevoGasto(g => ({ ...g, descripcion: e.target.value }))} />
+              </div>
+              <div className="flex gap-2 items-center">
+                <input type="number" className="input !py-2 text-xs flex-1" placeholder="Valor $"
+                       value={nuevoGasto.valor}
+                       onChange={e => setNuevoGasto(g => ({ ...g, valor: e.target.value }))} />
+                <label className="text-[10px] text-navy-600 border border-navy-200 rounded-lg px-2.5 py-2 cursor-pointer whitespace-nowrap">
+                  {nuevoGasto.foto ? '✓ Recibo' : '📷 Recibo'}
+                  <input type="file" accept="image/*" className="hidden"
+                         onChange={e => {
+                           const file = e.target.files?.[0]
+                           if (!file) return
+                           if (file.size > 450 * 1024) { toast.error('Máximo 450KB'); return }
+                           const r = new FileReader()
+                           r.onload = () => setNuevoGasto(g => ({ ...g, foto: r.result }))
+                           r.readAsDataURL(file)
+                         }} />
+                </label>
+                <button onClick={async () => {
+                          if (!nuevoGasto.descripcion.trim() || !nuevoGasto.valor) { toast.error('Descripción y valor'); return }
+                          try {
+                            await gastosAPI.crear(id, { ...nuevoGasto, valor: parseInt(nuevoGasto.valor) })
+                            setNuevoGasto(g => ({ categoria: g.categoria, descripcion: '', valor: '', foto: '' }))
+                            gastosAPI.listar(id).then(setGastosData)
+                            toast.success('Gasto registrado')
+                          } catch (e) { toast.error(e.message) }
+                        }}
+                        className="bg-navy-600 text-white text-xs font-bold px-4 py-2 rounded-lg">
+                  Registrar
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              {gastosData?.gastos?.length === 0 && (
+                <p className="text-center text-xs text-slate-400 py-4">Registra tu primer gasto — cada peso cuenta</p>
+              )}
+              {gastosData?.gastos?.map(g => (
+                <div key={g.id} className="flex items-center gap-2.5 border border-slate-100 rounded-xl px-3 py-2">
+                  {g.foto ? (
+                    <a href={g.foto} target="_blank" rel="noreferrer">
+                      <img src={g.foto} alt="" className="w-9 h-9 rounded-lg object-cover border border-slate-100" />
+                    </a>
+                  ) : (
+                    <span className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center text-sm">
+                      {{ materiales: '🧱', nomina: '👷', transporte: '🚚', herramienta: '🔧', otros: '📦' }[g.categoria]}
+                    </span>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-slate-600 truncate">{g.descripcion}</p>
+                    <p className="text-[9px] text-slate-400">{g.fecha} · {g.categoria}</p>
+                  </div>
+                  <p className="text-xs font-bold text-slate-700 shrink-0">{COP(g.valor)}</p>
+                  <button onClick={async () => {
+                            if (!confirm('¿Eliminar este gasto?')) return
+                            await gastosAPI.eliminar(id, g.id)
+                            gastosAPI.listar(id).then(setGastosData)
+                          }}
+                          className="text-slate-300 hover:text-red-400 text-sm shrink-0">×</button>
+                </div>
+              ))}
             </div>
           </div>
         </div>

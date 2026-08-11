@@ -46,6 +46,7 @@ class Usuario(Base):
     documento = Column(String(30), default="")   # cedula/NIT del contratista (para el contrato)
     pago_info = Column(String(200), default="")  # cuenta bancaria para forma de pago
     slug = Column(String(80), unique=True, nullable=True, index=True)  # perfil publico /c/{slug}
+    firma_b64 = Column(Text, default="")         # firma manuscrita del contratista (PNG base64)
     plan = Column(String(20), default="gratis")  # gratis | pro
     plan_vence = Column(DateTime, nullable=True)  # cuando expira el plan pro
     presupuestos_mes = Column(Integer, default=0)
@@ -122,6 +123,17 @@ class Encuesta(Base):
     creado = Column(DateTime, default=utcnow)
 
 
+class Gasto(Base):
+    __tablename__ = "gastos"
+    id = Column(Integer, primary_key=True)
+    proyecto_id = Column(Integer, ForeignKey("proyectos.id"), nullable=False, index=True)
+    categoria = Column(String(30), default="materiales")  # materiales|nomina|transporte|herramienta|otros
+    descripcion = Column(String(300), nullable=False)
+    valor = Column(Integer, nullable=False)
+    foto_b64 = Column(Text, default="")   # recibo/factura (opcional)
+    creado = Column(DateTime, default=utcnow)
+
+
 class Notificacion(Base):
     __tablename__ = "notificaciones"
     id = Column(Integer, primary_key=True)
@@ -170,6 +182,7 @@ def init_db():
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS slug VARCHAR(80)",
                     "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS firma_imagen TEXT DEFAULT ''",
                     "ALTER TABLE encuestas ADD COLUMN IF NOT EXISTS publico BOOLEAN DEFAULT FALSE",
+                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS firma_b64 TEXT DEFAULT ''",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -190,6 +203,7 @@ def init_db():
                     ("usuarios", "slug", "ALTER TABLE usuarios ADD COLUMN slug VARCHAR(80)"),
                     ("eventos_share", "firma_imagen", "ALTER TABLE eventos_share ADD COLUMN firma_imagen TEXT DEFAULT ''"),
                     ("encuestas", "publico", "ALTER TABLE encuestas ADD COLUMN publico BOOLEAN DEFAULT 0"),
+                    ("usuarios", "firma_b64", "ALTER TABLE usuarios ADD COLUMN firma_b64 TEXT DEFAULT ''"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]

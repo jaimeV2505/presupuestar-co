@@ -33,6 +33,9 @@ export default function Dashboard() {
   const [metricas, setMetricas] = useState(null)
   const [notifs, setNotifs] = useState({ no_leidas: 0, notificaciones: [] })
   const [showNotifs, setShowNotifs] = useState(false)
+  const [plantillas, setPlantillas] = useState([])
+  const [plantillaSel, setPlantillaSel] = useState(null)  // null = en blanco
+  const [creandoTpl, setCreandoTpl] = useState(false)
 
   useEffect(() => {
     proyectosAPI.metricas().then(setMetricas).catch(() => {})
@@ -193,7 +196,7 @@ export default function Dashboard() {
 
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-slate-800">Mis presupuestos</h2>
-          <button onClick={() => setShowNuevo(true)}
+          <button onClick={() => setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {})}
                   className="flex items-center gap-2 bg-navy-600 hover:bg-navy-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition">
             <Plus className="w-4 h-4" /> Nuevo presupuesto
           </button>
@@ -206,7 +209,7 @@ export default function Dashboard() {
             <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-600 font-medium">Crea tu primer presupuesto</p>
             <p className="text-sm text-slate-400 mt-1 mb-4">Busca actividades, ajusta cantidades y comparte por WhatsApp</p>
-            <button onClick={() => setShowNuevo(true)}
+            <button onClick={() => setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {})}
                     className="bg-navy-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl">
               Empezar
             </button>
@@ -379,6 +382,35 @@ export default function Dashboard() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowNuevo(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-slate-800">Nuevo presupuesto</h3>
+
+            {/* Plantillas */}
+            {plantillas.length > 0 && (
+              <div>
+                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1.5">Empieza con una plantilla</p>
+                <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto">
+                  <button onClick={() => setPlantillaSel(null)}
+                          className={`rounded-xl border-2 p-2 text-center transition ${plantillaSel === null ? 'border-navy-400 bg-navy-50' : 'border-slate-100'}`}>
+                    <span className="text-lg">📄</span>
+                    <p className="text-[10px] font-semibold text-slate-600 leading-tight mt-0.5">En blanco</p>
+                  </button>
+                  {plantillas.map(t => (
+                    <button key={t.id} onClick={() => setPlantillaSel(t.id)}
+                            title={t.descripcion}
+                            className={`rounded-xl border-2 p-2 text-center transition ${plantillaSel === t.id ? 'border-emerald-400 bg-emerald-50' : 'border-slate-100'}`}>
+                      <span className="text-lg">{t.emoji}</span>
+                      <p className="text-[10px] font-semibold text-slate-600 leading-tight mt-0.5">{t.nombre}</p>
+                      <p className="text-[8px] text-slate-400">{t.n_items} actividades</p>
+                    </button>
+                  ))}
+                </div>
+                {plantillaSel && (
+                  <p className="text-[10px] text-emerald-600 mt-1.5 bg-emerald-50 rounded-lg p-2">
+                    ✓ {plantillas.find(t => t.id === plantillaSel)?.descripcion} — luego ajustas cantidades y precios
+                  </p>
+                )}
+              </div>
+            )}
+
             <input className="input" placeholder="Nombre del proyecto * (ej: Remodelación cocina Casa López)"
                    value={nuevo.nombre} onChange={e => setNuevo(n => ({ ...n, nombre: e.target.value }))} autoFocus />
             <input className="input" placeholder="Nombre del cliente"
@@ -404,8 +436,25 @@ export default function Dashboard() {
               <button onClick={() => setShowNuevo(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium">
                 Cancelar
               </button>
-              <button onClick={crear} className="flex-1 py-2.5 rounded-xl bg-navy-600 text-white text-sm font-medium">
-                Crear y editar
+              <button disabled={creandoTpl}
+                      onClick={async () => {
+                        if (!plantillaSel) { crear(); return }
+                        setCreandoTpl(true)
+                        try {
+                          const p = await proyectosAPI.desdePlantilla({ plantilla_id: plantillaSel, nombre: nuevo.nombre })
+                          // Guardar cliente/region si los llenaron
+                          const extra = {}
+                          if (nuevo.cliente_nombre) extra.cliente_nombre = nuevo.cliente_nombre
+                          if (nuevo.cliente_telefono) extra.cliente_telefono = nuevo.cliente_telefono
+                          if (nuevo.region) extra.region = nuevo.region
+                          if (Object.keys(extra).length) await proyectosAPI.actualizar(p.id, extra).catch(() => {})
+                          toast.success(`Plantilla cargada con sus actividades — ajusta cantidades`)
+                          nav(`/proyecto/${p.id}`)
+                        } catch (e) { toast.error(e.message) }
+                        finally { setCreandoTpl(false) }
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-navy-600 text-white text-sm font-medium disabled:opacity-50">
+                {creandoTpl ? 'Armando...' : plantillaSel ? '⚡ Crear con plantilla' : 'Crear y editar'}
               </button>
             </div>
           </div>

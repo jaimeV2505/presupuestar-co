@@ -403,16 +403,20 @@ def contrato_pdf(token: str, db: Session = Depends(get_db)):
         # Firmas
         story.append(Spacer(1, 22))
         f = c["firmas"]
-        img_firma = None
-        try:
-            firma_img_b64 = (c.get("firma_imagen") or "")
-            if firma_img_b64:
-                import base64 as _b64
-                from reportlab.platypus import Image as RLImage
-                raw = _b64.b64decode(firma_img_b64.split(",", 1)[1])
-                img_firma = RLImage(io.BytesIO(raw), width=4.5*cm, height=1.8*cm, kind="proportional")
-        except Exception:
-            img_firma = None
+        import base64 as _b64
+        from reportlab.platypus import Image as RLImage
+
+        def _img_de(b64):
+            try:
+                if not b64:
+                    return None
+                raw = _b64.b64decode(b64.split(",", 1)[1])
+                return RLImage(io.BytesIO(raw), width=4.5*cm, height=1.8*cm, kind="proportional")
+            except Exception:
+                return None
+
+        img_firma = _img_de(c.get("firma_imagen") or "")
+        img_firma_contratista = _img_de(getattr(user, "firma_b64", "") or "")
         firmas_data = [[
             Paragraph(f"<b>EL CONTRATANTE</b><br/>{f['contratante']['nombre'] or '________________'}"
                       f"<br/>Doc: {f['contratante']['documento'] or '________________'}"
@@ -425,6 +429,8 @@ def contrato_pdf(token: str, db: Session = Depends(get_db)):
         ]]
         if img_firma:
             firmas_data[0][0] = [img_firma, firmas_data[0][0]]
+        if img_firma_contratista:
+            firmas_data[0][1] = [img_firma_contratista, firmas_data[0][1]]
         tf = Table(firmas_data, colWidths=[8.3*cm, 8.3*cm])
         tf.setStyle(TableStyle([
             ("LINEABOVE", (0, 0), (0, 0), 0.7, colors.black),
@@ -731,7 +737,7 @@ def acta_pdf(token: str, db: Session = Depends(get_db)):
                         f"Confirmo entrega · {entrega.creado.strftime('%d/%m/%Y %H:%M')}",
                         entrega.firma_imagen),
             celda_firma("EL CONTRATISTA", user.nombre, getattr(user, "documento", ""),
-                        "Entrega emitida digitalmente", ""),
+                        "Entrega emitida digitalmente", getattr(user, "firma_b64", "") or ""),
         ]]
         tf = Table(firmas, colWidths=[8.3*cm, 8.3*cm])
         tf.setStyle(TableStyle([

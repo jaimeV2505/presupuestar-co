@@ -10,6 +10,75 @@ No incluye: tramites ante curaduria, disenos estructurales ni licencias.
 Los precios de materiales estan sujetos a variacion del mercado.
 Cualquier trabajo adicional se cotizara por separado.`
 
+function FirmaContratista({ form, setForm, guardar }) {
+  const canvasRef = React.useRef(null)
+  const dib = React.useRef(false)
+  const [modo, setModo] = useState(form.firma_b64 ? 'ver' : 'dibujar')
+
+  const pos = (e) => {
+    const c = canvasRef.current
+    const r = c.getBoundingClientRect()
+    const t = e.touches?.[0] || e
+    return { x: (t.clientX - r.left) * (c.width / r.width), y: (t.clientY - r.top) * (c.height / r.height) }
+  }
+  const empezar = (e) => { e.preventDefault(); dib.current = true; const ctx = canvasRef.current.getContext('2d'); const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y) }
+  const mover = (e) => {
+    if (!dib.current) return
+    e.preventDefault()
+    const ctx = canvasRef.current.getContext('2d')
+    ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.strokeStyle = '#1C3A5E'
+    const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke()
+  }
+  const terminar = () => { dib.current = false }
+  const guardarFirma = () => {
+    const img = canvasRef.current.toDataURL('image/png')
+    setForm(f => ({ ...f, firma_b64: img }))
+    guardar({ firma_b64: img })
+    setModo('ver')
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 mt-5">
+      <h3 className="text-sm font-semibold text-slate-700 mb-1">✍️ Mi firma</h3>
+      <p className="text-[11px] text-slate-400 mb-3">
+        Aparece en tus contratos y actas de entrega, en la línea del CONTRATISTA.
+      </p>
+      {modo === 'ver' && form.firma_b64 ? (
+        <div className="flex items-center gap-3 flex-wrap">
+          <img src={form.firma_b64} alt="firma" className="h-16 border border-slate-200 rounded-xl bg-white p-1.5" />
+          <button onClick={() => setModo('dibujar')} className="text-[11px] text-navy-600 border border-navy-200 rounded-lg px-2.5 py-1.5">Cambiar</button>
+          <button onClick={() => { setForm(f => ({ ...f, firma_b64: '' })); guardar({ firma_b64: '' }); setModo('dibujar') }}
+                  className="text-[11px] text-red-500 border border-red-200 rounded-lg px-2.5 py-1.5">Quitar</button>
+        </div>
+      ) : (
+        <div>
+          <canvas ref={canvasRef} width={560} height={160}
+                  className="w-full h-28 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl touch-none"
+                  onMouseDown={empezar} onMouseMove={mover} onMouseUp={terminar} onMouseLeave={terminar}
+                  onTouchStart={empezar} onTouchMove={mover} onTouchEnd={terminar} />
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <button onClick={guardarFirma} className="text-xs font-bold bg-navy-600 text-white rounded-lg px-3 py-2">Guardar firma</button>
+            <button onClick={() => { const c = canvasRef.current; c.getContext('2d').clearRect(0, 0, c.width, c.height) }}
+                    className="text-xs text-slate-500 border border-slate-200 rounded-lg px-3 py-2">Limpiar</button>
+            <label className="text-xs text-navy-600 border border-navy-200 rounded-lg px-3 py-2 cursor-pointer">
+              📷 O subir imagen
+              <input type="file" accept="image/*" className="hidden"
+                     onChange={e => {
+                       const file = e.target.files?.[0]
+                       if (!file) return
+                       if (file.size > 400 * 1024) { toast.error('Máximo 400KB'); return }
+                       const r = new FileReader()
+                       r.onload = () => { setForm(f => ({ ...f, firma_b64: r.result })); guardar({ firma_b64: r.result }); setModo('ver') }
+                       r.readAsDataURL(file)
+                     }} />
+            </label>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Reputacion() {
   const [rep, setRep] = useState(null)
   useEffect(() => { shareAPI.miReputacion().then(setRep).catch(() => {}) }, [])
@@ -72,7 +141,7 @@ function Reputacion() {
 
 export default function Perfil() {
   const nav = useNavigate()
-  const [form, setForm] = useState({ nombre: '', empresa: '', telefono: '', ciudad: 'bogota', condiciones: '', documento: '', pago_info: '' })
+  const [form, setForm] = useState({ nombre: '', empresa: '', telefono: '', ciudad: 'bogota', condiciones: '', documento: '', pago_info: '', firma_b64: '' })
   const [logo, setLogo] = useState('')
   const [guardando, setGuardando] = useState(false)
   const fileRef = useRef(null)
@@ -85,6 +154,7 @@ export default function Perfil() {
         condiciones: u.condiciones || '',
         documento: u.documento || '',
         pago_info: u.pago_info || '',
+        firma_b64: u.firma_b64 || '',
       })
       setLogo(u.logo_b64 || '')
     }).catch(e => toast.error(e.message))
@@ -218,6 +288,8 @@ export default function Perfil() {
                     value={form.condiciones} onChange={set('condiciones')} maxLength={3000} />
           <p className="text-[10px] text-slate-300 text-right mt-1">{form.condiciones.length}/3000</p>
         </div>
+        <FirmaContratista form={form} setForm={setForm}
+                          guardar={(data) => authAPI.actualizarPerfil(data).then(() => toast.success('Firma guardada')).catch(e => toast.error(e.message))} />
         <Reputacion />
       </main>
     </div>
