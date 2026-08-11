@@ -192,6 +192,10 @@ def responder(req: ResponderTicket, admin: Usuario = Depends(admin_actual),
     if req.resolver:
         t.estado = "resuelto"
     db.commit()
+    from app.api.notificaciones import notificar
+    notificar(db, t.user_id, "soporte",
+              f"💬 Respondimos tu ticket #{t.id}",
+              t.respuesta[:200])
     logger.info(f"Ticket #{t.id} respondido por {admin.email}")
     return {"ok": True}
 

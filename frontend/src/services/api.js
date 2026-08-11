@@ -51,6 +51,7 @@ export const proyectosAPI = {
   actualizar: (id, data) => api.put(`/proyectos/${id}`, data).then(r => r.data),
   eliminar: (id) => api.delete(`/proyectos/${id}`).then(r => r.data),
   duplicar: (id) => api.post(`/proyectos/${id}/duplicar`).then(r => r.data),
+  metricas: () => api.get('/proyectos/metricas').then(r => r.data),
 }
 
 export const shareAPI = {
@@ -62,6 +63,11 @@ export const shareAPI = {
   contrato: (token) => api.get(`/share/publico/${token}/contrato`).then(r => r.data),
   encuesta: (token, data) => api.post(`/share/publico/${token}/encuesta`, data).then(r => r.data),
   verEncuesta: (id) => api.get(`/share/proyectos/${id}/encuesta`).then(r => r.data),
+  confirmarEntrega: (token, data) => api.post(`/share/publico/${token}/confirmar-entrega`, data).then(r => r.data),
+  reportarPendientes: (token, detalle) => api.post(`/share/publico/${token}/reportar-pendientes`, { detalle }).then(r => r.data),
+  perfilPublico: (slug) => api.get(`/share/c/${slug}`).then(r => r.data),
+  miReputacion: () => api.get('/share/reputacion').then(r => r.data),
+  publicarResena: (data) => api.post('/share/reputacion/publicar', data).then(r => r.data),
 }
 
 export const avancesAPI = {
@@ -79,6 +85,11 @@ export const pagosAPI = {
   adminAprobar: (data) => api.post('/pagos/admin/aprobar', data).then(r => r.data),
   adminRechazar: (data) => api.post('/pagos/admin/rechazar', data).then(r => r.data),
   adminPlanManual: (data) => api.post('/pagos/admin/plan-manual', data).then(r => r.data),
+}
+
+export const notificacionesAPI = {
+  listar: () => api.get('/notificaciones').then(r => r.data),
+  leer: () => api.post('/notificaciones/leer').then(r => r.data),
 }
 
 export const soporteAPI = {

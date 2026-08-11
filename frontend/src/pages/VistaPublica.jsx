@@ -5,6 +5,59 @@ import { shareAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
+function PadFirma({ onChange }) {
+  const canvasRef = React.useRef(null)
+  const dibujando = React.useRef(false)
+  const [hayTrazo, setHayTrazo] = React.useState(false)
+
+  const pos = (e) => {
+    const c = canvasRef.current
+    const r = c.getBoundingClientRect()
+    const t = e.touches?.[0] || e
+    return { x: (t.clientX - r.left) * (c.width / r.width), y: (t.clientY - r.top) * (c.height / r.height) }
+  }
+  const empezar = (e) => {
+    e.preventDefault()
+    dibujando.current = true
+    const ctx = canvasRef.current.getContext('2d')
+    const p = pos(e)
+    ctx.beginPath(); ctx.moveTo(p.x, p.y)
+  }
+  const mover = (e) => {
+    if (!dibujando.current) return
+    e.preventDefault()
+    const ctx = canvasRef.current.getContext('2d')
+    ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.strokeStyle = '#1C3A5E'
+    const p = pos(e)
+    ctx.lineTo(p.x, p.y); ctx.stroke()
+    if (!hayTrazo) setHayTrazo(true)
+  }
+  const terminar = () => {
+    if (!dibujando.current) return
+    dibujando.current = false
+    onChange(canvasRef.current.toDataURL('image/png'))
+  }
+  const limpiar = () => {
+    const c = canvasRef.current
+    c.getContext('2d').clearRect(0, 0, c.width, c.height)
+    setHayTrazo(false)
+    onChange('')
+  }
+
+  return (
+    <div>
+      <canvas ref={canvasRef} width={560} height={180}
+              className="w-full h-32 bg-white border-2 border-dashed border-slate-300 rounded-xl touch-none"
+              onMouseDown={empezar} onMouseMove={mover} onMouseUp={terminar} onMouseLeave={terminar}
+              onTouchStart={empezar} onTouchMove={mover} onTouchEnd={terminar} />
+      <div className="flex justify-between items-center mt-1.5">
+        <p className="text-[10px] text-slate-400">{hayTrazo ? 'Firma capturada ✓' : 'Firma aquí con tu dedo o mouse'}</p>
+        <button type="button" onClick={limpiar} className="text-[10px] text-slate-400 underline">Limpiar</button>
+      </div>
+    </div>
+  )
+}
+
 export default function VistaPublica() {
   const { token } = useParams()
   const [data, setData] = useState(null)
@@ -14,7 +67,8 @@ export default function VistaPublica() {
   const [aceptado, setAceptado] = useState(false)
   const [rechazado, setRechazado] = useState(false)
   const [showFirma, setShowFirma] = useState(false)
-  const [firma, setFirma] = useState({ nombre: '', documento: '' })
+  const [firma, setFirma] = useState({ nombre: '', documento: '', firma_imagen: '' })
+  const [modoFirma, setModoFirma] = useState('dibujar')  // dibujar | subir | escribir
   const [firmaInfo, setFirmaInfo] = useState(null)
   const [contrato, setContrato] = useState(null)
   const [leido, setLeido] = useState(false)
@@ -22,6 +76,10 @@ export default function VistaPublica() {
   const [encuesta, setEncuesta] = useState({ estrellas: 0, recomendaria: true, comentario: '' })
   const [encuestaEnviada, setEncuestaEnviada] = useState(false)
   const [enviandoEncuesta, setEnviandoEncuesta] = useState(false)
+  const [showEntrega, setShowEntrega] = useState(false)
+  const [showPendientes, setShowPendientes] = useState(false)
+  const [pendientesTxt, setPendientesTxt] = useState('')
+  const [entregaConfirmada, setEntregaConfirmada] = useState(false)
 
   useEffect(() => {
     shareAPI.verPublico(token)
@@ -111,6 +169,10 @@ export default function VistaPublica() {
           <p className="text-[11px] text-slate-400 mt-2">
             Este enlace ya no muestra el detalle del presupuesto.
           </p>
+          <a href={`/api/share/publico/${token}/acta.pdf`} target="_blank" rel="noreferrer"
+             className="inline-block mt-3 text-[11px] font-medium text-navy-600 border border-navy-200 rounded-lg px-3 py-1.5">
+            📄 Descargar Acta de Entrega (PDF)
+          </a>
 
           {yaRespondida ? (
             <div className="mt-5 bg-emerald-50 rounded-xl p-4">
@@ -174,6 +236,12 @@ export default function VistaPublica() {
             <div>
               <p className="font-semibold">{c.empresa || c.nombre}</p>
               {c.empresa && <p className="text-xs text-blue-200">{c.nombre}</p>}
+              {c.reputacion && c.reputacion.promedio > 0 && (
+                <a href={c.reputacion.slug ? `/c/${c.reputacion.slug}` : '#'}
+                   className="inline-flex items-center gap-1 text-[10px] bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full mt-1">
+                  ⭐ {c.reputacion.promedio} · {c.reputacion.obras} obra{c.reputacion.obras !== 1 ? 's' : ''} terminada{c.reputacion.obras !== 1 ? 's' : ''}
+                </a>
+              )}
             </div>
           </div>
           <p className="text-blue-200 text-xs uppercase tracking-wide mb-1">
@@ -214,6 +282,30 @@ export default function VistaPublica() {
           )}
         </div>
       </div>
+
+      {/* ENTREGA SOLICITADA: el contratista reporta obra terminada */}
+      {data.estado === 'entrega_solicitada' && !entregaConfirmada && (
+        <div className="max-w-lg mx-auto px-4 mt-4">
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 text-center">
+            <p className="text-2xl">🏗️➡️🏁</p>
+            <h3 className="font-bold text-amber-800 mt-1">El contratista reporta la obra terminada</h3>
+            <p className="text-xs text-amber-700 mt-1.5">
+              Revisa tu obra. Si todo está bien, confirma el recibido a satisfacción —
+              se generará el Acta de Entrega firmada por ambos.
+            </p>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setShowPendientes(true)}
+                      className="flex-1 py-2.5 rounded-xl border border-amber-300 text-amber-700 text-xs font-medium">
+                Hay pendientes
+              </button>
+              <button onClick={() => { setShowEntrega(true); setModoFirma('dibujar'); setFirma(f => ({ ...f, firma_imagen: '' })) }}
+                      className="flex-[2] py-2.5 rounded-xl bg-emerald-500 text-white text-xs font-bold">
+                ✓ Confirmar recibido a satisfacción
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Capitulos */}
       <div className="max-w-lg mx-auto px-4 mt-4 space-y-2">
@@ -369,6 +461,72 @@ export default function VistaPublica() {
         </p>
       </div>
 
+      {/* Modal CONFIRMAR ENTREGA */}
+      {showEntrega && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowEntrega(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="text-center">
+              <h3 className="font-semibold text-slate-800">Acta de Entrega</h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Confirmas que recibes la obra "{data.proyecto}" a satisfacción.
+                Esto habilita el pago final según el contrato.
+              </p>
+            </div>
+            <PadFirma onChange={img => setFirma(f => ({ ...f, firma_imagen: img }))} />
+            <input className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-emerald-400"
+                   placeholder="Tu nombre completo *"
+                   value={firma.nombre} onChange={e => setFirma(f => ({ ...f, nombre: e.target.value }))} />
+            <input className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-emerald-400"
+                   placeholder="Cédula (opcional)"
+                   value={firma.documento} onChange={e => setFirma(f => ({ ...f, documento: e.target.value }))} />
+            <div className="flex gap-2">
+              <button onClick={() => setShowEntrega(false)}
+                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm">Cancelar</button>
+              <button onClick={async () => {
+                        if (firma.nombre.trim().length < 5) { alert('Escribe tu nombre completo'); return }
+                        try {
+                          await shareAPI.confirmarEntrega(token, firma)
+                          setEntregaConfirmada(true)
+                          setShowEntrega(false)
+                          window.location.reload()
+                        } catch (e) { alert(e.message) }
+                      }}
+                      className="flex-[2] py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold">
+                Firmar acta de entrega
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal PENDIENTES */}
+      {showPendientes && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowPendientes(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-3" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-slate-800">¿Qué falta por terminar?</h3>
+            <textarea className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-amber-400 min-h-[100px]"
+                      placeholder="Describe los pendientes que encontraste..."
+                      value={pendientesTxt} onChange={e => setPendientesTxt(e.target.value)} autoFocus />
+            <div className="flex gap-2">
+              <button onClick={() => setShowPendientes(false)}
+                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm">Cancelar</button>
+              <button onClick={async () => {
+                        if (pendientesTxt.trim().length < 5) { alert('Describe los pendientes'); return }
+                        try {
+                          await shareAPI.reportarPendientes(token, pendientesTxt)
+                          setShowPendientes(false)
+                          alert('Reportado. El contratista continuará la obra.')
+                          window.location.reload()
+                        } catch (e) { alert(e.message) }
+                      }}
+                      className="flex-[2] py-2.5 rounded-xl bg-amber-500 text-white text-sm font-bold">
+                Enviar al contratista
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de firma / mutual agreement */}
       {showFirma && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowFirma(false)}>
@@ -419,7 +577,45 @@ export default function VistaPublica() {
               <span>He leído el contrato completo y acepto sus cláusulas</span>
             </label>
 
+            {/* Modo de firma */}
             <div className="space-y-3">
+              <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
+                {[['dibujar', '✍️ Dibujar'], ['subir', '📷 Subir'], ['escribir', '⌨️ Escribir']].map(([m, l]) => (
+                  <button key={m} type="button" onClick={() => { setModoFirma(m); setFirma(f => ({ ...f, firma_imagen: '' })) }}
+                          className={`flex-1 text-[11px] font-medium py-2 rounded-lg transition ${modoFirma === m ? 'bg-white text-navy-600 shadow-sm' : 'text-slate-500'}`}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+
+              {modoFirma === 'dibujar' && (
+                <PadFirma onChange={img => setFirma(f => ({ ...f, firma_imagen: img }))} />
+              )}
+              {modoFirma === 'subir' && (
+                <div>
+                  {firma.firma_imagen ? (
+                    <div className="relative w-fit">
+                      <img src={firma.firma_imagen} alt="firma" className="h-20 border border-slate-200 rounded-xl bg-white p-1" />
+                      <button onClick={() => setFirma(f => ({ ...f, firma_imagen: '' }))}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs">×</button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 rounded-xl py-6 text-xs text-slate-400 cursor-pointer hover:border-emerald-300">
+                      📷 Toca para subir foto de tu firma (máx 400KB)
+                      <input type="file" accept="image/*" className="hidden"
+                             onChange={e => {
+                               const file = e.target.files?.[0]
+                               if (!file) return
+                               if (file.size > 400 * 1024) { alert('Máximo 400KB'); return }
+                               const r = new FileReader()
+                               r.onload = () => setFirma(f => ({ ...f, firma_imagen: r.result }))
+                               r.readAsDataURL(file)
+                             }} />
+                    </label>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">Tu nombre completo *</label>
                 <input className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-emerald-400"

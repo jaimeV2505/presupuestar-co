@@ -45,6 +45,7 @@ class Usuario(Base):
     condiciones = Column(Text, default="")       # condiciones estandar auto-incluidas
     documento = Column(String(30), default="")   # cedula/NIT del contratista (para el contrato)
     pago_info = Column(String(200), default="")  # cuenta bancaria para forma de pago
+    slug = Column(String(80), unique=True, nullable=True, index=True)  # perfil publico /c/{slug}
     plan = Column(String(20), default="gratis")  # gratis | pro
     plan_vence = Column(DateTime, nullable=True)  # cuando expira el plan pro
     presupuestos_mes = Column(Integer, default=0)
@@ -78,6 +79,7 @@ class EventoShare(Base):
     proyecto_id = Column(Integer, ForeignKey("proyectos.id"), nullable=False, index=True)
     tipo = Column(String(20), nullable=False)  # visto | aceptado | rechazado
     nombre_firma = Column(String(160), default="")     # quien firma la aceptacion
+    firma_imagen = Column(Text, default="")            # firma dibujada/subida (base64 PNG)
     documento_firma = Column(String(30), default="")   # cedula/NIT del firmante
     user_agent = Column(String(300), default="")
     creado = Column(DateTime, default=utcnow)
@@ -116,6 +118,19 @@ class Encuesta(Base):
     estrellas = Column(Integer, default=0)          # 1-5
     recomendaria = Column(Boolean, default=True)
     comentario = Column(Text, default="")
+    publico = Column(Boolean, default=False)   # el contratista elige mostrarlo en su perfil
+    creado = Column(DateTime, default=utcnow)
+
+
+class Notificacion(Base):
+    __tablename__ = "notificaciones"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    proyecto_id = Column(Integer, nullable=True)
+    tipo = Column(String(30), default="info")   # visto|firmado|rechazado|entrega|pendientes|encuesta|soporte
+    titulo = Column(String(200), nullable=False)
+    cuerpo = Column(String(400), default="")
+    leida = Column(Boolean, default=False)
     creado = Column(DateTime, default=utcnow)
 
 
@@ -152,6 +167,9 @@ def init_db():
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS plan_vence TIMESTAMP",
                     "ALTER TABLE tickets_soporte ADD COLUMN IF NOT EXISTS respuesta TEXT DEFAULT ''",
                     "ALTER TABLE tickets_soporte ADD COLUMN IF NOT EXISTS respondido TIMESTAMP",
+                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS slug VARCHAR(80)",
+                    "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS firma_imagen TEXT DEFAULT ''",
+                    "ALTER TABLE encuestas ADD COLUMN IF NOT EXISTS publico BOOLEAN DEFAULT FALSE",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -169,6 +187,9 @@ def init_db():
                     ("usuarios", "plan_vence", "ALTER TABLE usuarios ADD COLUMN plan_vence TIMESTAMP"),
                     ("tickets_soporte", "respuesta", "ALTER TABLE tickets_soporte ADD COLUMN respuesta TEXT DEFAULT ''"),
                     ("tickets_soporte", "respondido", "ALTER TABLE tickets_soporte ADD COLUMN respondido TIMESTAMP"),
+                    ("usuarios", "slug", "ALTER TABLE usuarios ADD COLUMN slug VARCHAR(80)"),
+                    ("eventos_share", "firma_imagen", "ALTER TABLE eventos_share ADD COLUMN firma_imagen TEXT DEFAULT ''"),
+                    ("encuestas", "publico", "ALTER TABLE encuestas ADD COLUMN publico BOOLEAN DEFAULT 0"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]

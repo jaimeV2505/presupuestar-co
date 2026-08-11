@@ -178,6 +178,7 @@ def generar_contrato(proyecto, usuario, items: List[Dict], totales: Dict,
     }
 
     return {
+        "firma_imagen": (firma or {}).get("imagen", ""),
         "titulo": "CONTRATO DE EJECUCION DE OBRA CIVIL",
         "numero": proyecto.numero,
         "encabezado": encabezado,

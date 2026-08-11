@@ -93,6 +93,57 @@ class ProyectoUpdate(BaseModel):
     contrato: Optional[Dict] = None
 
 
+@router.get("/metricas")
+def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    """Metricas del negocio del contratista — calculadas de sus presupuestos."""
+    from app.db import Encuesta
+    proyectos = db.query(Proyecto).filter(Proyecto.user_id == user.id).all()
+
+    GANADOS = ("aceptado", "entrega_solicitada", "terminado")
+    ENVIADOS = ("enviado", "visto", "aceptado", "rechazado", "entrega_solicitada", "terminado")
+
+    total_cotizado = 0
+    total_ganado = 0
+    utilidad_proyectada = 0
+    en_ejecucion_valor = 0
+    en_ejecucion_n = 0
+    n_enviados = 0
+    n_ganados = 0
+
+    for p in proyectos:
+        items = json.loads(p.items_json or "[]")
+        aiu = json.loads(p.aiu_json or "{}")
+        t = calcular_totales(items, aiu)
+        total_cotizado += t["total"]
+        if p.estado in ENVIADOS:
+            n_enviados += 1
+        if p.estado in GANADOS:
+            n_ganados += 1
+            total_ganado += t["total"]
+            utilidad_proyectada += t["utilidad_valor"]
+        if p.estado in ("aceptado", "entrega_solicitada"):
+            en_ejecucion_valor += t["total"]
+            en_ejecucion_n += 1
+
+    encs = (db.query(Encuesta).join(Proyecto, Proyecto.id == Encuesta.proyecto_id)
+            .filter(Proyecto.user_id == user.id).all())
+    calificacion = round(sum(e.estrellas for e in encs) / len(encs), 1) if encs else None
+
+    return {
+        "total_cotizado": total_cotizado,
+        "total_ganado": total_ganado,
+        "utilidad_proyectada": utilidad_proyectada,
+        "en_ejecucion_valor": en_ejecucion_valor,
+        "en_ejecucion_n": en_ejecucion_n,
+        "tasa_cierre": round(n_ganados / n_enviados * 100) if n_enviados else 0,
+        "n_presupuestos": len(proyectos),
+        "n_ganados": n_ganados,
+        "n_terminados": sum(1 for p in proyectos if p.estado == "terminado"),
+        "calificacion": calificacion,
+        "n_resenas": len(encs),
+    }
+
+
 @router.get("")
 def listar(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     proyectos = (
@@ -146,7 +197,7 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
     if req.cliente_telefono is not None: p.cliente_telefono = req.cliente_telefono.strip()[:30]
     if req.direccion is not None: p.direccion = req.direccion.strip()[:250]
     if req.region is not None: p.region = req.region
-    if req.estado in ("borrador", "enviado", "visto", "aceptado", "rechazado", "terminado"): p.estado = req.estado
+    if req.estado in ("borrador", "enviado", "visto", "aceptado", "rechazado", "entrega_solicitada", "terminado"): p.estado = req.estado
     if req.notas is not None: p.notas = req.notas[:2000]
 
     if req.items is not None:

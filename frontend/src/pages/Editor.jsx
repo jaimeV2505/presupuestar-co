@@ -109,6 +109,13 @@ export default function Editor() {
     }, 800)
   }
 
+  const avisarCliente = (mensaje) => {
+    const link = `${window.location.origin}/p/${p.share_token}`
+    const tel = (p.cliente_telefono || '').replace(/\D/g, '')
+    const base = tel ? `https://wa.me/${tel.startsWith('57') ? tel : '57' + tel}` : 'https://wa.me/'
+    window.open(`${base}?text=${encodeURIComponent(mensaje + '\n\n' + link)}`, '_blank')
+  }
+
   const setAiuYGuardar = (nuevo) => {
     setAiu(nuevo)
     guardar(items, nuevo)
@@ -281,17 +288,29 @@ export default function Editor() {
             )}
             {p.estado === 'aceptado' && (
               <button onClick={async () => {
-                        if (!confirm('¿Marcar la obra como TERMINADA?\n\n• El cliente perderá acceso al detalle del presupuesto\n• Se le pedirá una calificación de tu trabajo\n• Esta acción cierra el proyecto')) return
+                        if (!confirm('¿Solicitar la entrega de la obra?\n\n• Tu cliente verá en su enlace: "El contratista reporta la obra terminada"\n• Al confirmar, firmará el Acta de Entrega\n• Si encuentra pendientes, te los reporta y la obra continúa')) return
                         try {
-                          const d = await proyectosAPI.actualizar(id, { estado: 'terminado' })
+                          const d = await proyectosAPI.actualizar(id, { estado: 'entrega_solicitada' })
                           setP(d)
-                          toast.success('Obra culminada — el cliente recibirá la encuesta al abrir su enlace')
+                          toast.success('Entrega solicitada — avísale a tu cliente')
+                          avisarCliente(`Hola! La obra "${p.nombre}" está terminada 🏁 Por favor confirma el recibido a satisfacción aquí:`)
                         } catch (e2) { toast.error(e2.message) }
                       }}
                       className="flex items-center gap-1.5 border border-slate-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
-                      title="Dar por culminada la obra">
-                🏁 <span className="hidden sm:inline">Terminar</span>
+                      title="Solicitar acta de entrega al cliente">
+                🤝 <span className="hidden sm:inline">Solicitar entrega</span>
               </button>
+            )}
+            {p.estado === 'entrega_solicitada' && (
+              <span className="text-xs bg-violet-100 text-violet-700 px-2.5 py-1.5 rounded-full font-medium">
+                🤝 Esperando confirmación del cliente
+              </span>
+            )}
+            {p.estado === 'terminado' && p.share_token && (
+              <a href={`/api/share/publico/${p.share_token}/acta.pdf`} target="_blank" rel="noreferrer"
+                 className="text-[11px] font-medium text-navy-600 border border-navy-200 rounded-lg px-2.5 py-1.5">
+                📄 Acta de Entrega
+              </a>
             )}
             {p.estado === 'aceptado' && (
               <button onClick={() => {
@@ -716,6 +735,11 @@ export default function Editor() {
                           setAvances(prev => [a, ...prev])
                           setNuevoAvance({ titulo: '', descripcion: '', fotos: [] })
                           toast.success(`Avance publicado: ${a.porcentaje}% = ${COP(a.valor_ejecutado)}`)
+                          setTimeout(() => {
+                            if (confirm('¿Avisar al cliente por WhatsApp del nuevo avance?')) {
+                              avisarCliente(`Hola! Publiqué el avance de tu obra "${p.nombre}": ${a.porcentaje}% completado (${COP(a.valor_ejecutado)} ejecutados) 🏗️ Míralo aquí:`)
+                            }
+                          }, 600)
                         } catch (e) { toast.error(e.message) }
                         finally { setSubiendoAvance(false) }
                       }}

@@ -2,13 +2,73 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Upload, Building2, Save } from 'lucide-react'
-import { authAPI } from '../services/api'
+import { authAPI, shareAPI } from '../services/api'
 
 const CONDICIONES_EJEMPLO = `Validez de la oferta: 15 dias calendario.
 Forma de pago: 50% anticipo, 30% avance de obra, 20% contra entrega.
 No incluye: tramites ante curaduria, disenos estructurales ni licencias.
 Los precios de materiales estan sujetos a variacion del mercado.
 Cualquier trabajo adicional se cotizara por separado.`
+
+function Reputacion() {
+  const [rep, setRep] = useState(null)
+  useEffect(() => { shareAPI.miReputacion().then(setRep).catch(() => {}) }, [])
+  if (!rep) return null
+  const url = `${window.location.origin}${rep.url_publica}`
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 mt-5">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h3 className="text-sm font-semibold text-slate-700">⭐ Mi reputación</h3>
+        <div className="flex gap-2">
+          <button onClick={() => { navigator.clipboard.writeText(url); toast.success('Link copiado — compártelo con tus clientes') }}
+                  className="text-[11px] font-medium border border-slate-200 text-slate-600 rounded-lg px-2.5 py-1.5">
+            Copiar link
+          </button>
+          <a href={rep.url_publica} target="_blank" rel="noreferrer"
+             className="text-[11px] font-medium bg-navy-600 text-white rounded-lg px-2.5 py-1.5">
+            Ver mi perfil público →
+          </a>
+        </div>
+      </div>
+      {rep.stats.total > 0 ? (
+        <>
+          <p className="text-xs text-slate-500 mt-2">
+            ⭐ {rep.stats.promedio} promedio · {rep.stats.total} reseña{rep.stats.total !== 1 ? 's' : ''} · {rep.stats.pct_recomienda}% te recomienda
+          </p>
+          <p className="text-[10px] text-slate-400 mt-2 mb-2">Elige qué comentarios mostrar en tu perfil público (el promedio siempre es real):</p>
+          <div className="space-y-2">
+            {rep.encuestas.map(e => (
+              <div key={e.id} className="border border-slate-100 rounded-xl p-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] text-amber-500">{'★'.repeat(e.estrellas)}{'☆'.repeat(5 - e.estrellas)} <span className="text-slate-400">· {e.proyecto} · {e.fecha}</span></p>
+                  {e.comentario ? (
+                    <p className="text-xs text-slate-600 mt-1">"{e.comentario}"</p>
+                  ) : (
+                    <p className="text-[10px] text-slate-300 mt-1 italic">Sin comentario (no publicable)</p>
+                  )}
+                </div>
+                {e.comentario && (
+                  <button onClick={async () => {
+                            const r = await shareAPI.publicarResena({ encuesta_id: e.id, publico: !e.publico })
+                            setRep(prev => ({ ...prev, encuestas: prev.encuestas.map(x => x.id === e.id ? { ...x, publico: r.publico } : x) }))
+                          }}
+                          className={`shrink-0 text-[10px] font-bold px-2.5 py-1.5 rounded-full transition ${e.publico ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                    {e.publico ? '✓ Público' : 'Oculto'}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-slate-400 mt-2">
+          Cuando termines obras y tus clientes las califiquen, aquí gestionas qué reseñas publicar.
+          Tu perfil público ya está activo — compártelo al cotizar.
+        </p>
+      )}
+    </div>
+  )
+}
 
 export default function Perfil() {
   const nav = useNavigate()
@@ -158,6 +218,7 @@ export default function Perfil() {
                     value={form.condiciones} onChange={set('condiciones')} maxLength={3000} />
           <p className="text-[10px] text-slate-300 text-right mt-1">{form.condiciones.length}/3000</p>
         </div>
+        <Reputacion />
       </main>
     </div>
   )

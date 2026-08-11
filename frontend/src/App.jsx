@@ -9,6 +9,7 @@ import Perfil from './pages/Perfil'
 import Landing from './pages/Landing'
 import Pro from './pages/Pro'
 import Admin from './pages/Admin'
+import PerfilPublico from './pages/PerfilPublico'
 
 function Privada({ children }) {
   const token = localStorage.getItem('token')
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/perfil" element={<Privada><Perfil /></Privada>} />
         <Route path="/pro" element={<Privada><Pro /></Privada>} />
         <Route path="/admin" element={<Privada><Admin /></Privada>} />
+        <Route path="/c/:slug" element={<PerfilPublico />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

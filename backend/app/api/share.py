@@ -13,6 +13,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.db import get_db, Usuario, Proyecto, EventoShare, Avance, Encuesta
+from app.api.notificaciones import notificar
 from pydantic import BaseModel
 from app.api.auth import usuario_actual
 from app.services.calculo_presupuesto import calcular_totales
@@ -114,10 +115,17 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
     # Registrar vista + cambiar estado a "visto" automaticamente
     try:
         ua = (request.headers.get("user-agent") or "")[:300]
+        primera_vista = not db.query(EventoShare).filter(
+            EventoShare.proyecto_id == p.id, EventoShare.tipo == "visto").first()
         db.add(EventoShare(proyecto_id=p.id, tipo="visto", user_agent=ua))
         if p.estado == "enviado":
             p.estado = "visto"
         db.commit()
+        if primera_vista:
+            notificar(db, p.user_id, "visto",
+                      f"👁 Tu cliente abrio {p.numero}",
+                      f"'{p.nombre}' fue visto por primera vez. Buen momento para llamar.",
+                      p.id)
     except Exception as e:
         logger.warning(f"No se registro vista: {e}")
         db.rollback()
@@ -176,6 +184,7 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
             "telefono": user.telefono if user else "",
             "logo_b64": user.logo_b64 if user else "",
             "condiciones": (getattr(user, "condiciones", "") or "") if user else "",
+            "reputacion": _badge_reputacion(p.user_id, db),
         },
         "capitulos": capitulos,
         "totales": totales,
@@ -187,6 +196,7 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
 class FirmaRequest(BaseModel):
     nombre: str
     documento: str = ""
+    firma_imagen: str = ""  # base64 PNG de firma dibujada o subida (opcional)
 
 
 @router.post("/publico/{token}/aceptar")
@@ -209,14 +219,22 @@ def aceptar_publico(token: str, firma: FirmaRequest, request: Request, db: Sessi
                 "firmado_por": ya.nombre_firma, "fecha": ya.creado.isoformat()}
 
     ua = (request.headers.get("user-agent") or "")[:300]
+    img = firma.firma_imagen or ""
+    if img and (not img.startswith("data:image") or len(img) > 600_000):
+        img = ""
     ev = EventoShare(
         proyecto_id=p.id, tipo="aceptado", user_agent=ua,
         nombre_firma=nombre[:160],
         documento_firma=(firma.documento or "").strip()[:30],
+        firma_imagen=img,
     )
     db.add(ev)
     p.estado = "aceptado"
     db.commit()
+    notificar(db, p.user_id, "firmado",
+              f"¡Firmaron el contrato de {p.numero}!",
+              f"{nombre} acepto '{p.nombre}'. Ya puedes descargar el contrato firmado.",
+              p.id)
     db.refresh(ev)
     logger.info(f"Presupuesto {p.id} ACEPTADO y firmado por {nombre}")
     return {
@@ -282,6 +300,10 @@ def rechazar_publico(token: str, request: Request, db: Session = Depends(get_db)
     db.add(EventoShare(proyecto_id=p.id, tipo="rechazado", user_agent=ua))
     p.estado = "rechazado"
     db.commit()
+    notificar(db, p.user_id, "rechazado",
+              f"Rechazaron {p.numero}",
+              f"El cliente no acepto '{p.nombre}'. Considera ajustar y reenviar.",
+              p.id)
     logger.info(f"Presupuesto {p.id} rechazado por el cliente")
     return {"ok": True, "mensaje": "Gracias por tu respuesta. El contratista sera notificado."}
 
@@ -310,6 +332,7 @@ def _contrato_de_token(token: str, db: Session):
             "nombre": firma_ev.nombre_firma,
             "documento": firma_ev.documento_firma or "",
             "fecha": firma_ev.creado.strftime("%d/%m/%Y %H:%M"),
+            "imagen": firma_ev.firma_imagen or "",
         }
     return p, user, generar_contrato(p, user, items, totales, firma)
 
@@ -380,6 +403,16 @@ def contrato_pdf(token: str, db: Session = Depends(get_db)):
         # Firmas
         story.append(Spacer(1, 22))
         f = c["firmas"]
+        img_firma = None
+        try:
+            firma_img_b64 = (c.get("firma_imagen") or "")
+            if firma_img_b64:
+                import base64 as _b64
+                from reportlab.platypus import Image as RLImage
+                raw = _b64.b64decode(firma_img_b64.split(",", 1)[1])
+                img_firma = RLImage(io.BytesIO(raw), width=4.5*cm, height=1.8*cm, kind="proportional")
+        except Exception:
+            img_firma = None
         firmas_data = [[
             Paragraph(f"<b>EL CONTRATANTE</b><br/>{f['contratante']['nombre'] or '________________'}"
                       f"<br/>Doc: {f['contratante']['documento'] or '________________'}"
@@ -390,11 +423,14 @@ def contrato_pdf(token: str, db: Session = Depends(get_db)):
                       f"<br/><font size=7 color='#64748B'>{f['contratista']['estado']}"
                       f" · {f['contratista']['fecha']}</font>", cuerpo),
         ]]
+        if img_firma:
+            firmas_data[0][0] = [img_firma, firmas_data[0][0]]
         tf = Table(firmas_data, colWidths=[8.3*cm, 8.3*cm])
         tf.setStyle(TableStyle([
             ("LINEABOVE", (0, 0), (0, 0), 0.7, colors.black),
             ("LINEABOVE", (1, 0), (1, 0), 0.7, colors.black),
             ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ]))
         story.append(tf)
 
@@ -437,6 +473,10 @@ def responder_encuesta(token: str, req: EncuestaRequest, db: Session = Depends(g
     )
     db.add(e)
     db.commit()
+    notificar(db, p.user_id, "encuesta",
+              f"⭐ Nueva calificacion: {estrellas}/5",
+              f"Tu cliente califico '{p.nombre}'{' y te recomendaria' if e.recomendaria else ''}. Publicala en tu perfil desde Perfil > Reputacion.",
+              p.id)
     logger.info(f"Encuesta proyecto {p.id}: {estrellas} estrellas")
     return {"ok": True, "mensaje": "Gracias por tu calificacion!"}
 
@@ -542,3 +582,259 @@ def _demo_avances():
             },
         ],
     }
+
+
+def _badge_reputacion(user_id: int, db: Session):
+    try:
+        encs = (db.query(Encuesta).join(Proyecto, Proyecto.id == Encuesta.proyecto_id)
+                .filter(Proyecto.user_id == user_id).all())
+        if not encs:
+            return None
+        terminadas = db.query(Proyecto).filter(
+            Proyecto.user_id == user_id, Proyecto.estado == "terminado").count()
+        u = db.query(Usuario).filter(Usuario.id == user_id).first()
+        return {
+            "promedio": round(sum(e.estrellas for e in encs) / len(encs), 1),
+            "obras": terminadas,
+            "slug": u.slug or "",
+        }
+    except Exception:
+        return None
+
+
+# ── ACTA DE ENTREGA BILATERAL ────────────────────────────────────────────────
+class ConfirmarEntregaRequest(BaseModel):
+    nombre: str
+    documento: str = ""
+    firma_imagen: str = ""
+
+
+class PendientesRequest(BaseModel):
+    detalle: str
+
+
+@router.post("/publico/{token}/confirmar-entrega")
+def confirmar_entrega(token: str, req: ConfirmarEntregaRequest, request: Request,
+                      db: Session = Depends(get_db)):
+    p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if not p:
+        raise HTTPException(404, "Enlace no valido")
+    if p.estado != "entrega_solicitada":
+        raise HTTPException(400, "La entrega no esta pendiente de confirmacion")
+    nombre = (req.nombre or "").strip()
+    if len(nombre) < 5:
+        raise HTTPException(400, "Escribe tu nombre completo para confirmar")
+
+    img = req.firma_imagen or ""
+    if img and (not img.startswith("data:image") or len(img) > 600_000):
+        img = ""
+    ua = (request.headers.get("user-agent") or "")[:300]
+    db.add(EventoShare(proyecto_id=p.id, tipo="entrega_confirmada", user_agent=ua,
+                       nombre_firma=nombre[:160],
+                       documento_firma=(req.documento or "").strip()[:30],
+                       firma_imagen=img))
+    p.estado = "terminado"
+    db.commit()
+    notificar(db, p.user_id, "entrega",
+              f"🏁 ¡Entrega confirmada en {p.numero}!",
+              f"{nombre} recibio la obra a satisfaccion. El Acta de Entrega esta lista para descargar.",
+              p.id)
+    return {"ok": True, "mensaje": "Entrega confirmada. Gracias!"}
+
+
+@router.post("/publico/{token}/reportar-pendientes")
+def reportar_pendientes(token: str, req: PendientesRequest, db: Session = Depends(get_db)):
+    p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if not p:
+        raise HTTPException(404, "Enlace no valido")
+    if p.estado != "entrega_solicitada":
+        raise HTTPException(400, "La entrega no esta pendiente")
+    detalle = (req.detalle or "").strip()
+    if len(detalle) < 5:
+        raise HTTPException(400, "Describe los pendientes")
+    p.estado = "aceptado"  # vuelve a obra
+    db.commit()
+    notificar(db, p.user_id, "pendientes",
+              f"⚠️ Pendientes reportados en {p.numero}",
+              f"El cliente indica: {detalle[:250]}",
+              p.id)
+    return {"ok": True, "mensaje": "Reportado al contratista. La obra continua."}
+
+
+@router.get("/publico/{token}/acta.pdf")
+def acta_pdf(token: str, db: Session = Depends(get_db)):
+    """Acta de Entrega firmada por ambas partes."""
+    p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if not p:
+        raise HTTPException(404, "Enlace no valido")
+    entrega = db.query(EventoShare).filter(
+        EventoShare.proyecto_id == p.id, EventoShare.tipo == "entrega_confirmada").first()
+    if not entrega:
+        raise HTTPException(400, "La entrega aun no ha sido confirmada")
+    user = db.query(Usuario).filter(Usuario.id == p.user_id).first()
+    items = json.loads(p.items_json or "[]")
+    aiu = json.loads(p.aiu_json or "{}")
+    totales = calcular_totales(items, aiu)
+
+    try:
+        import io, base64
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=2*cm, bottomMargin=2*cm,
+                                leftMargin=2*cm, rightMargin=2*cm)
+        st = getSampleStyleSheet()
+        cuerpo = ParagraphStyle("cu", parent=st["Normal"], fontSize=9.5, leading=14, alignment=4)
+        story = [
+            Paragraph(f"ACTA DE TERMINACION Y ENTREGA DE OBRA — {p.numero}",
+                      ParagraphStyle("t", parent=st["Title"], fontSize=13)),
+            Spacer(1, 8),
+            Paragraph(
+                f"En cumplimiento del contrato de ejecucion de obra civil correspondiente a la "
+                f"cotizacion {p.numero}, el CONTRATISTA {user.nombre.upper()}"
+                f"{' (' + user.empresa + ')' if user.empresa else ''} hace entrega formal de la obra "
+                f"\"{p.nombre}\" ubicada en {p.direccion or p.region}, y el CONTRATANTE "
+                f"{entrega.nombre_firma.upper()}"
+                f"{', identificado(a) con documento N° ' + entrega.documento_firma if entrega.documento_firma else ''}, "
+                f"declara recibirla A SATISFACCION.", cuerpo),
+            Spacer(1, 8),
+            Paragraph(f"Valor total del contrato: <b>${totales['total']:,}</b>".replace(",", "."), cuerpo),
+            Paragraph(f"Fecha de entrega: <b>{entrega.creado.strftime('%d de %B de %Y, %H:%M')} UTC</b>", cuerpo),
+            Spacer(1, 6),
+            Paragraph(
+                "Con la firma de la presente acta, las partes declaran cumplidas las obligaciones "
+                "del contrato, quedando habilitado el pago del saldo final conforme a la clausula "
+                "de forma de pago. Registro digital conforme a la Ley 527 de 1999.", cuerpo),
+            Spacer(1, 30),
+        ]
+
+        # Firmas (con imagen si existe)
+        def celda_firma(titulo, nombre, doc_num, estado, img_b64):
+            elems = []
+            if img_b64:
+                try:
+                    raw = base64.b64decode(img_b64.split(",", 1)[1])
+                    elems.append(RLImage(io.BytesIO(raw), width=4.5*cm, height=1.8*cm, kind="proportional"))
+                except Exception:
+                    pass
+            elems.append(Paragraph(
+                f"<b>{titulo}</b><br/>{nombre}<br/>Doc: {doc_num or '—'}"
+                f"<br/><font size=7 color='#64748B'>{estado}</font>", cuerpo))
+            return elems
+
+        firmas = [[
+            celda_firma("EL CONTRATANTE", entrega.nombre_firma, entrega.documento_firma,
+                        f"Confirmo entrega · {entrega.creado.strftime('%d/%m/%Y %H:%M')}",
+                        entrega.firma_imagen),
+            celda_firma("EL CONTRATISTA", user.nombre, getattr(user, "documento", ""),
+                        "Entrega emitida digitalmente", ""),
+        ]]
+        tf = Table(firmas, colWidths=[8.3*cm, 8.3*cm])
+        tf.setStyle(TableStyle([
+            ("LINEABOVE", (0, 0), (0, 0), 0.7, colors.black),
+            ("LINEABOVE", (1, 0), (1, 0), 0.7, colors.black),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        story.append(tf)
+        doc.build(story)
+        buf.seek(0)
+        return StreamingResponse(buf, media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="acta_entrega_{p.numero or p.id}.pdf"'})
+    except Exception as e:
+        logger.error(f"Acta PDF: {e}", exc_info=True)
+        raise HTTPException(500, "Error generando el acta")
+
+
+# ── PERFIL PUBLICO DE REPUTACION (/c/{slug}) ─────────────────────────────────
+import re as _re
+
+
+def _slug_de(user: Usuario, db: Session) -> str:
+    if user.slug:
+        return user.slug
+    base = _re.sub(r"[^a-z0-9]+", "-", (user.empresa or user.nombre).lower()).strip("-")[:50]
+    slug = f"{base}-{user.id}"
+    user.slug = slug
+    db.commit()
+    return slug
+
+
+def _stats_reputacion(user_id: int, db: Session):
+    filas = (
+        db.query(Encuesta, Proyecto)
+        .join(Proyecto, Proyecto.id == Encuesta.proyecto_id)
+        .filter(Proyecto.user_id == user_id)
+        .order_by(Encuesta.creado.desc()).all()
+    )
+    if not filas:
+        return {"promedio": 0, "total": 0, "pct_recomienda": 0}, []
+    promedio = round(sum(e.estrellas for e, _ in filas) / len(filas), 1)
+    pct = round(sum(1 for e, _ in filas if e.recomendaria) / len(filas) * 100)
+    return {"promedio": promedio, "total": len(filas), "pct_recomienda": pct}, filas
+
+
+@router.get("/c/{slug}")
+def perfil_publico(slug: str, db: Session = Depends(get_db)):
+    user = db.query(Usuario).filter(Usuario.slug == slug).first()
+    if not user:
+        raise HTTPException(404, "Perfil no encontrado")
+    stats, filas = _stats_reputacion(user.id, db)
+    obras_terminadas = db.query(Proyecto).filter(
+        Proyecto.user_id == user.id, Proyecto.estado == "terminado").count()
+    return {
+        "nombre": user.nombre, "empresa": user.empresa,
+        "ciudad": user.ciudad, "telefono": user.telefono,
+        "logo_b64": user.logo_b64 or "",
+        "stats": {**stats, "obras_terminadas": obras_terminadas},
+        "resenas": [
+            {
+                "estrellas": e.estrellas, "comentario": e.comentario,
+                "recomendaria": e.recomendaria,
+                "proyecto": pr.nombre, "fecha": e.creado.strftime("%m/%Y"),
+            }
+            for e, pr in filas if e.publico and e.comentario
+        ][:20],
+    }
+
+
+@router.get("/reputacion")
+def mi_reputacion(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    """El contratista gestiona que resenas publica."""
+    slug = _slug_de(user, db)
+    stats, filas = _stats_reputacion(user.id, db)
+    return {
+        "slug": slug,
+        "url_publica": f"/c/{slug}",
+        "stats": stats,
+        "encuestas": [
+            {
+                "id": e.id, "estrellas": e.estrellas, "comentario": e.comentario,
+                "recomendaria": e.recomendaria, "publico": e.publico,
+                "proyecto": pr.nombre, "fecha": e.creado.strftime("%d/%m/%Y"),
+            } for e, pr in filas
+        ],
+    }
+
+
+class PublicarResena(BaseModel):
+    encuesta_id: int
+    publico: bool
+
+
+@router.post("/reputacion/publicar")
+def publicar_resena(req: PublicarResena, user: Usuario = Depends(usuario_actual),
+                    db: Session = Depends(get_db)):
+    fila = (
+        db.query(Encuesta).join(Proyecto, Proyecto.id == Encuesta.proyecto_id)
+        .filter(Encuesta.id == req.encuesta_id, Proyecto.user_id == user.id).first()
+    )
+    if not fila:
+        raise HTTPException(404, "Resena no encontrada")
+    fila.publico = bool(req.publico)
+    db.commit()
+    return {"ok": True, "publico": fila.publico}

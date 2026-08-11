@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2, LifeBuoy, Camera, X } from 'lucide-react'
-import { proyectosAPI, pagosAPI, soporteAPI } from '../services/api'
+import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2, LifeBuoy, Camera, X, Bell, TrendingUp } from 'lucide-react'
+import { proyectosAPI, pagosAPI, soporteAPI, notificacionesAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -13,6 +13,7 @@ const ESTADO_BADGE = {
   aceptado:  { txt: '✓ Aceptado', cls: 'bg-emerald-100 text-emerald-700' },
   rechazado: { txt: '✕ Rechazado', cls: 'bg-red-100 text-red-600' },
   terminado: { txt: '🏁 Terminado', cls: 'bg-amber-100 text-amber-700' },
+  entrega_solicitada: { txt: '🤝 Por confirmar', cls: 'bg-violet-100 text-violet-700' },
 }
 
 export default function Dashboard() {
@@ -29,6 +30,17 @@ export default function Dashboard() {
   const [ticketEnviado, setTicketEnviado] = useState(null)
   const [tabSoporte, setTabSoporte] = useState('nuevo')  // nuevo | mis
   const [misTickets, setMisTickets] = useState([])
+  const [metricas, setMetricas] = useState(null)
+  const [notifs, setNotifs] = useState({ no_leidas: 0, notificaciones: [] })
+  const [showNotifs, setShowNotifs] = useState(false)
+
+  useEffect(() => {
+    proyectosAPI.metricas().then(setMetricas).catch(() => {})
+    const cargarNotifs = () => notificacionesAPI.listar().then(setNotifs).catch(() => {})
+    cargarNotifs()
+    const iv = setInterval(cargarNotifs, 30000)
+    return () => clearInterval(iv)
+  }, [])
   useEffect(() => { pagosAPI.info().then(setInfoPago).catch(() => {}) }, [])
 
   const cargar = async () => {
@@ -102,6 +114,42 @@ export default function Dashboard() {
                 Plan Gratis → <span className="font-bold text-emerald-300">Pasar a Pro</span>
               </button>
             )}
+            <div className="relative">
+              <button onClick={() => {
+                        setShowNotifs(v => !v)
+                        if (!showNotifs && notifs.no_leidas > 0) {
+                          notificacionesAPI.leer().then(() => setNotifs(n => ({ ...n, no_leidas: 0 }))).catch(() => {})
+                        }
+                      }} className="p-2 hover:bg-white/10 rounded-lg relative" title="Notificaciones">
+                <Bell className="w-4 h-4" />
+                {notifs.no_leidas > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                    {notifs.no_leidas > 9 ? '9+' : notifs.no_leidas}
+                  </span>
+                )}
+              </button>
+              {showNotifs && (
+                <div className="absolute right-0 top-11 w-80 max-w-[85vw] bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
+                    <p className="text-xs font-bold text-slate-700">Notificaciones</p>
+                    <button onClick={() => setShowNotifs(false)}><X className="w-3.5 h-3.5 text-slate-400" /></button>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifs.notificaciones.length === 0 ? (
+                      <p className="text-center text-xs text-slate-400 py-8">Sin notificaciones aún</p>
+                    ) : notifs.notificaciones.map(n => (
+                      <button key={n.id}
+                              onClick={() => { if (n.proyecto_id) nav(`/proyecto/${n.proyecto_id}`) }}
+                              className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition ${!n.leida ? 'bg-blue-50/50' : ''}`}>
+                        <p className="text-xs font-semibold text-slate-700">{n.icono} {n.titulo}</p>
+                        {n.cuerpo && <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{n.cuerpo}</p>}
+                        <p className="text-[9px] text-slate-300 mt-1">{n.fecha}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <button onClick={() => {
                       setShowSoporte(true); setTicketEnviado(null); setTabSoporte('nuevo')
                       soporteAPI.misTickets().then(setMisTickets).catch(() => {})
