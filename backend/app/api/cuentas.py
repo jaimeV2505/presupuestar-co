@@ -141,7 +141,7 @@ def crear(pid: int, req: CrearCuentaRequest,
     return out
 
 
-@router.post("/cuentas/{cid}/pagada")
+@router.post("/{cid}/pagada")
 def marcar_pagada(cid: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     c = (db.query(CuentaCobro)
          .filter(CuentaCobro.id == cid, CuentaCobro.user_id == user.id).first())
@@ -153,7 +153,7 @@ def marcar_pagada(cid: int, user: Usuario = Depends(usuario_actual), db: Session
     return {"ok": True, "fecha_pago": c.pagado.strftime("%d/%m/%Y")}
 
 
-@router.delete("/cuentas/{cid}")
+@router.delete("/{cid}")
 def eliminar(cid: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     c = (db.query(CuentaCobro)
          .filter(CuentaCobro.id == cid, CuentaCobro.user_id == user.id).first())
