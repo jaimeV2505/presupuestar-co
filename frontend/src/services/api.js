@@ -66,16 +66,6 @@ export const avancesAPI = {
   publicos: (token) => api.get(`/share/publico/${token}/avances`).then(r => r.data),
 }
 
-export const pagosAPI = {
-  info: () => api.get('/pagos/info').then(r => r.data),
-  solicitar: (data) => api.post('/pagos/solicitud', data).then(r => r.data),
-  miSolicitud: () => api.get('/pagos/mi-solicitud').then(r => r.data),
-  adminSolicitudes: () => api.get('/pagos/admin/solicitudes').then(r => r.data),
-  adminAprobar: (data) => api.post('/pagos/admin/aprobar', data).then(r => r.data),
-  adminRechazar: (data) => api.post('/pagos/admin/rechazar', data).then(r => r.data),
-  adminPlanManual: (data) => api.post('/pagos/admin/plan-manual', data).then(r => r.data),
-}
-
 export const preciosAPI = {
   buscar: (params) => api.get('/precios/', { params }).then(r => r.data),
   regiones: () => api.get('/precios/regiones').then(r => r.data),

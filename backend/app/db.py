@@ -45,8 +45,7 @@ class Usuario(Base):
     condiciones = Column(Text, default="")       # condiciones estandar auto-incluidas
     documento = Column(String(30), default="")   # cedula/NIT del contratista (para el contrato)
     pago_info = Column(String(200), default="")  # cuenta bancaria para forma de pago
-    plan = Column(String(20), default="gratis")  # gratis | pro
-    plan_vence = Column(DateTime, nullable=True)  # cuando expira el plan pro
+    plan = Column(String(20), default="gratis")  # gratis | pro | pro_ia
     presupuestos_mes = Column(Integer, default=0)
     mes_actual = Column(String(7), default="")   # "2026-08" para reset mensual
     creado = Column(DateTime, default=utcnow)
@@ -81,17 +80,6 @@ class EventoShare(Base):
     documento_firma = Column(String(30), default="")   # cedula/NIT del firmante
     user_agent = Column(String(300), default="")
     creado = Column(DateTime, default=utcnow)
-
-
-class SolicitudPro(Base):
-    __tablename__ = "solicitudes_pro"
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
-    metodo = Column(String(30), default="nequi")      # nequi | bancolombia | otro
-    referencia = Column(String(120), default="")      # nro de comprobante que reporta el usuario
-    estado = Column(String(20), default="pendiente")  # pendiente | aprobada | rechazada
-    creado = Column(DateTime, default=utcnow)
-    resuelto = Column(DateTime, nullable=True)
 
 
 class Encuesta(Base):
@@ -134,7 +122,6 @@ def init_db():
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS documento VARCHAR(30) DEFAULT ''",
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pago_info VARCHAR(200) DEFAULT ''",
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS contrato_json TEXT DEFAULT '{}'",
-                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS plan_vence TIMESTAMP",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -149,7 +136,6 @@ def init_db():
                     ("usuarios", "documento", "ALTER TABLE usuarios ADD COLUMN documento VARCHAR(30) DEFAULT ''"),
                     ("usuarios", "pago_info", "ALTER TABLE usuarios ADD COLUMN pago_info VARCHAR(200) DEFAULT ''"),
                     ("proyectos", "contrato_json", "ALTER TABLE proyectos ADD COLUMN contrato_json TEXT DEFAULT '{}'"),
-                    ("usuarios", "plan_vence", "ALTER TABLE usuarios ADD COLUMN plan_vence TIMESTAMP"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]
