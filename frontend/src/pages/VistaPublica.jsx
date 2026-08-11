@@ -85,10 +85,10 @@ export default function VistaPublica() {
     shareAPI.verPublico(token)
       .then(d => {
         setData(d)
-        setAceptado(d.estado === 'aceptado')
+        setAceptado(d.estado === 'aceptado' || d.estado === 'entrega_solicitada')
         setRechazado(d.estado === 'rechazado')
         if (d.firma) setFirmaInfo(d.firma)
-        if (d.estado === 'aceptado') {
+        if (d.estado === 'aceptado' || d.estado === 'entrega_solicitada') {
           shareAPI && import('../services/api').then(m => m.avancesAPI.publicos(token).then(setAvances).catch(() => {}))
         }
         // Abrir el primer capitulo por defecto

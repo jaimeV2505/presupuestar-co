@@ -177,7 +177,7 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
         } if firma_ev and firma_ev.nombre_firma else None,
         "cliente": p.cliente_nombre,
         "direccion": p.direccion,
-        "estado": "aceptado" if ya_aceptado else ("rechazado" if ya_rechazado else p.estado),
+        "estado": p.estado if p.estado in ("entrega_solicitada", "terminado") else ("aceptado" if ya_aceptado else ("rechazado" if ya_rechazado else p.estado)),
         "contratista": {
             "nombre": user.nombre if user else "",
             "empresa": user.empresa if user else "",
