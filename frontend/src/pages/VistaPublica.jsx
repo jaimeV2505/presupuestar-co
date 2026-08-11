@@ -404,6 +404,51 @@ export default function VistaPublica() {
               <p className="text-[9px] text-slate-300 mt-1.5">Avance ponderado por el valor de cada actividad del presupuesto (costo directo)</p>
             </div>
 
+            {/* ESTADO DE PAGOS */}
+            {avances.cuentas?.length > 0 && (
+              <div className="bg-white rounded-xl p-4 mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-slate-700">💵 Estado de pagos</p>
+                  {avances.pendiente_total > 0 && (
+                    <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
+                      Pendiente: {COP(avances.pendiente_total)}
+                    </span>
+                  )}
+                </div>
+                {avances.pagado_total > 0 && (
+                  <p className="text-[11px] text-slate-400 mb-2">
+                    Has pagado <strong className="text-emerald-600">{COP(avances.pagado_total)}</strong> de esta obra
+                  </p>
+                )}
+                <div className="space-y-1.5">
+                  {avances.cuentas.map((c, i) => (
+                    <div key={i} className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 ${c.estado === 'pagada' ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-slate-700">{c.numero} · {COP(c.neto)}</p>
+                        <p className="text-[9px] text-slate-400">
+                          {c.estado === 'pagada' ? `✓ Pagada el ${c.fecha_pago}` : `Emitida el ${c.fecha}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {c.estado === 'enviada' && (
+                          <span className="text-[9px] font-bold text-amber-700">⏳ Por pagar</span>
+                        )}
+                        {c.id > 0 && (
+                          <a href={`/api/cuentas/publico/${token}/${c.id}.pdf`} target="_blank" rel="noreferrer"
+                             className="text-[10px] font-medium text-navy-600 border border-navy-200 rounded-lg px-2 py-1">
+                            📄 Ver
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[9px] text-slate-300 mt-2">
+                  Cada cuenta corresponde a un corte de avance que puedes verificar abajo
+                </p>
+              </div>
+            )}
+
             {/* Cortes de avance */}
             <div className="space-y-2">
               {avances.avances.map(a => (

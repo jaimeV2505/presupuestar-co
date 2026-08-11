@@ -263,7 +263,26 @@ def avances_publico(token: str, db: Session = Depends(get_db)):
     items_p = _json.loads(p.items_json or "[]")
     total_directo = round(sum((i.get("cantidad") or 0) * (i.get("precio_unitario") or 0) for i in items_p))
     ultimo = avances[0] if avances else None
+
+    # Cuentas de cobro visibles para el cliente
+    from app.db import CuentaCobro
+    ccs = (db.query(CuentaCobro).filter(CuentaCobro.proyecto_id == p.id)
+           .order_by(CuentaCobro.creado.desc()).all())
+    cuentas = [
+        {
+            "id": c.id, "numero": c.numero, "neto": c.neto,
+            "estado": c.estado,
+            "fecha": c.creado.strftime("%d/%m/%Y"),
+            "fecha_pago": c.pagado.strftime("%d/%m/%Y") if c.pagado else None,
+        } for c in ccs
+    ]
+    pagado_total = sum(c.neto for c in ccs if c.estado == "pagada")
+    pendiente_total = sum(c.neto for c in ccs if c.estado == "enviada")
+
     return {
+        "cuentas": cuentas,
+        "pagado_total": pagado_total,
+        "pendiente_total": pendiente_total,
         "proyecto": p.nombre,
         "numero": p.numero,
         "porcentaje_actual": ultimo.porcentaje if ultimo else 0,
@@ -559,6 +578,14 @@ def _demo_payload():
 
 def _demo_avances():
     return {
+        "cuentas": [
+            {"id": 0, "numero": "CC-2026-0002", "neto": 41339250, "estado": "enviada",
+             "fecha": "05/08/2026", "fecha_pago": None},
+            {"id": 0, "numero": "CC-2026-0001", "neto": 16762500, "estado": "pagada",
+             "fecha": "22/07/2026", "fecha_pago": "24/07/2026"},
+        ],
+        "pagado_total": 16762500,
+        "pendiente_total": 41339250,
         "proyecto": "Construccion local comercial — Covenas, Sucre",
         "numero": "COT-2026-0001",
         "porcentaje_actual": 42,
