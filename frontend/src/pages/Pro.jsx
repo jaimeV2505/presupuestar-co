@@ -7,12 +7,10 @@ import { pagosAPI } from '../services/api'
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
 const BENEFICIOS = [
-  'Presupuestos ilimitados',
-  'Tu logo en PDFs y enlaces — sin marca de agua',
-  'Contrato de Ejecución de Obra Civil con firma digital',
-  'Avances de obra con valor ejecutado y fotos',
-  'Encuestas de satisfacción y calificaciones ⭐',
+  'Presupuestos ILIMITADOS — cotiza todo lo que tu negocio necesite',
+  'Todas las funciones que ya conoces, sin tope mensual',
   'Soporte prioritario por WhatsApp',
+  'Apoyas una herramienta hecha en Colombia para contratistas 🇨🇴',
 ]
 
 export default function Pro() {
@@ -79,6 +77,10 @@ export default function Pro() {
 
         {/* Beneficios */}
         <div className="bg-white rounded-2xl border border-slate-200 p-5 mb-6">
+          <p className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 mb-4">
+            En el plan Básico tienes <strong>todas las funciones</strong> con 3 presupuestos al mes.
+            Pro quita el límite: si cotizas en volumen, este es tu plan.
+          </p>
           <h3 className="text-sm font-semibold text-slate-700 mb-3">Lo que incluye</h3>
           <ul className="space-y-2.5">
             {BENEFICIOS.map((b, i) => (
