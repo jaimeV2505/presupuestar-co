@@ -167,6 +167,30 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
+        {/* METRICAS DEL NEGOCIO */}
+        {metricas && metricas.n_presupuestos > 0 && (
+          <div className="mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {[
+                ['💰', 'Total cotizado', COP(metricas.total_cotizado), 'text-slate-800'],
+                ['✅', 'Total ganado', COP(metricas.total_ganado), 'text-emerald-600'],
+                ['💵', 'Utilidad proyectada', COP(metricas.utilidad_proyectada), 'text-emerald-600'],
+                ['📈', 'Tasa de cierre', `${metricas.tasa_cierre}%`, 'text-navy-600'],
+              ].map(([e, l, v, cls], i) => (
+                <div key={i} className="bg-white rounded-xl border border-slate-100 p-3">
+                  <p className="text-[10px] text-slate-400">{e} {l}</p>
+                  <p className={`text-sm sm:text-base font-black mt-0.5 truncate ${cls}`}>{v}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 px-1 text-[11px] text-slate-400">
+              <span>🏗️ En ejecución: <strong className="text-slate-600">{metricas.en_ejecucion_n}</strong> ({COP(metricas.en_ejecucion_valor)})</span>
+              <span>🏁 Terminadas: <strong className="text-slate-600">{metricas.n_terminados}</strong></span>
+              {metricas.calificacion && <span>⭐ Calificación: <strong className="text-amber-600">{metricas.calificacion}</strong> ({metricas.n_resenas} reseña{metricas.n_resenas !== 1 ? 's' : ''})</span>}
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-slate-800">Mis presupuestos</h2>
           <button onClick={() => setShowNuevo(true)}
