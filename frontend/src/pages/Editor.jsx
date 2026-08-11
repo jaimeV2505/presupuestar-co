@@ -40,9 +40,6 @@ export default function Editor() {
   const [showGastos, setShowGastos] = useState(false)
   const [gastosData, setGastosData] = useState(null)
   const [nuevoGasto, setNuevoGasto] = useState({ categoria: 'materiales', descripcion: '', valor: '', foto: '' })
-  const [showGastos, setShowGastos] = useState(false)
-  const [gastosData, setGastosData] = useState(null)
-  const [nuevoGasto, setNuevoGasto] = useState({ categoria: 'materiales', descripcion: '', valor: '', foto: '' })
 
   // Share
   const [showShare, setShowShare] = useState(false)
@@ -319,14 +316,7 @@ export default function Editor() {
               </a>
             )}
             {p.estado === 'aceptado' && (
-              <button onClick={() => {
-                        setShowGastos(true)
-                        gastosAPI.listar(id).then(setGastosData).catch(e => toast.error(e.message))
-                      }}
-                      className="flex items-center gap-1.5 border border-slate-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
-                      title="Gastos reales vs presupuesto">
-                💸 <span className="hidden sm:inline">Gastos</span>
-              </button>
+              <>
               <button onClick={() => {
                         setShowGastos(true)
                         gastosAPI.listar(id).then(setGastosData).catch(e => toast.error(e.message))
@@ -351,6 +341,7 @@ export default function Editor() {
                       title="Avances de obra">
                 <HardHat className="w-4 h-4" /> <span className="hidden sm:inline">Avances</span>
               </button>
+              </>
             )}
             <button onClick={() => setShowPreview(true)}
                     className="flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"
