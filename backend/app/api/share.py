@@ -89,6 +89,8 @@ def eventos(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sessi
 
 @router.get("/publico/{token}")
 def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
+    if token == "demo":
+        return _demo_payload()
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
     if not p:
         raise HTTPException(404, "Este presupuesto no existe o fue retirado")
@@ -228,6 +230,8 @@ def aceptar_publico(token: str, firma: FirmaRequest, request: Request, db: Sessi
 @router.get("/publico/{token}/avances")
 def avances_publico(token: str, db: Session = Depends(get_db)):
     """El cliente ve los avances de su obra con el mismo enlace."""
+    if token == "demo":
+        return _demo_avances()
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
     if not p:
         raise HTTPException(404, "Enlace no valido")
@@ -452,4 +456,89 @@ def ver_encuesta(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: 
         "recomendaria": e.recomendaria,
         "comentario": e.comentario,
         "fecha": e.creado.strftime("%d/%m/%Y"),
+    }
+
+
+# ── PRESUPUESTO DE DEMOSTRACION (/p/demo) ────────────────────────────────────
+DEMO_ITEMS = [
+    {"id": "d1", "capitulo": "CIMENTACION", "descripcion": "Excavaciones de zapata de 2x2x1.20 de profundidad", "unidad": "un", "cantidad": 5, "precio_unitario": 210000},
+    {"id": "d2", "capitulo": "CIMENTACION", "descripcion": "Excavaciones de zapatas laterales de 1.80x1.20x1.20", "unidad": "un", "cantidad": 10, "precio_unitario": 210000},
+    {"id": "d3", "capitulo": "CIMENTACION", "descripcion": "Suministro e instalacion de mangles de 3.5m para zapata", "unidad": "un", "cantidad": 225, "precio_unitario": 55000},
+    {"id": "d4", "capitulo": "ESTRUCTURA", "descripcion": "Fabricacion de columna zapata y pedestal a 3m, concreto 4000 PSI", "unidad": "un", "cantidad": 15, "precio_unitario": 3300000},
+    {"id": "d5", "capitulo": "ESTRUCTURA", "descripcion": "Viga de cimiento 35x40 en varilla 5/8, concreto 4000 PSI", "unidad": "ml", "cantidad": 120, "precio_unitario": 160000},
+    {"id": "d6", "capitulo": "ESTRUCTURA", "descripcion": "Placa en concreto rigido aligerada con icopor e=40cm, vigas 5/8", "unidad": "m2", "cantidad": 360, "precio_unitario": 360000},
+    {"id": "d7", "capitulo": "MAMPOSTERIA", "descripcion": "Mamposteria 0/15 vibrado en muros perimetrales", "unidad": "m2", "cantidad": 230, "precio_unitario": 115000},
+    {"id": "d8", "capitulo": "MAMPOSTERIA", "descripcion": "Mechones de confinamiento entre columnas, luces de 2.5m", "unidad": "un", "cantidad": 8, "precio_unitario": 450000},
+    {"id": "d9", "capitulo": "MAMPOSTERIA", "descripcion": "Viga de amarre para muros perimetrales 3/8 y 1/4", "unidad": "ml", "cantidad": 80, "precio_unitario": 70000},
+    {"id": "d10", "capitulo": "ACABADOS", "descripcion": "Plantilla en concreto rigido con malla 1/4 15x15, 4000 PSI", "unidad": "m2", "cantidad": 340, "precio_unitario": 80000},
+]
+DEMO_AIU = {"aplicar": False}
+
+
+def _demo_payload():
+    totales = calcular_totales(DEMO_ITEMS, DEMO_AIU)
+    capitulos = {}
+    for it in DEMO_ITEMS:
+        cap = it["capitulo"]
+        if cap not in capitulos:
+            capitulos[cap] = {"items": [], "subtotal": 0}
+        pt = round(it["cantidad"] * it["precio_unitario"])
+        capitulos[cap]["items"].append({
+            "descripcion": it["descripcion"], "unidad": it["unidad"],
+            "cantidad": it["cantidad"], "precio_unitario": it["precio_unitario"],
+            "precio_total": pt,
+        })
+        capitulos[cap]["subtotal"] += pt
+    return {
+        "demo": True,
+        "proyecto": "Construccion local comercial — Covenas, Sucre",
+        "numero": "COT-2026-0001",
+        "firma": {"nombre": "Orledys Romero F. (demo)", "fecha": "12/06/2026 10:15"},
+        "cliente": "Orledys Romero Fuentes",
+        "direccion": "Municipio de Covenas, Sucre",
+        "estado": "aceptado",
+        "contratista": {
+            "nombre": "Luis Alfredo Beltran (demo)",
+            "empresa": "Construcciones LB",
+            "telefono": "",
+            "logo_b64": "",
+            "condiciones": "Validez de la oferta: 15 dias calendario.\nForma de pago: 60% anticipo, 40% contra acta de entrega.\nNo incluye tramites ante curaduria ni disenos estructurales.",
+        },
+        "capitulos": capitulos,
+        "totales": totales,
+        "notas": "Este es un presupuesto de DEMOSTRACION para que veas exactamente lo que vera tu cliente.",
+        "fecha": "12/06/2026",
+    }
+
+
+def _demo_avances():
+    return {
+        "proyecto": "Construccion local comercial — Covenas, Sucre",
+        "numero": "COT-2026-0001",
+        "porcentaje_actual": 42,
+        "valor_ejecutado_actual": 116203500,
+        "valor_total_directo": 276675000,
+        "avances": [
+            {
+                "id": 2, "titulo": "Corte 2 — Estructura en marcha",
+                "descripcion": "Columnas fundidas y placa al 35%. Vamos dentro del cronograma.",
+                "porcentaje": 42, "valor_ejecutado": 116203500,
+                "items": [
+                    {"descripcion": "Excavaciones de zapata 2x2x1.20", "pct": 100, "valor_ejec": 1050000},
+                    {"descripcion": "Columnas zapata y pedestal 4000 PSI", "pct": 80, "valor_ejec": 39600000},
+                    {"descripcion": "Placa aligerada e=40cm", "pct": 35, "valor_ejec": 45360000},
+                ],
+                "fotos": [], "fecha": "05/08/2026 16:40",
+            },
+            {
+                "id": 1, "titulo": "Corte 1 — Cimentacion completa",
+                "descripcion": "Zapatas excavadas y fundidas, mangles instalados.",
+                "porcentaje": 12, "valor_ejecutado": 33525000,
+                "items": [
+                    {"descripcion": "Excavaciones de zapata 2x2x1.20", "pct": 100, "valor_ejec": 1050000},
+                    {"descripcion": "Mangles de 3.5m para zapata", "pct": 100, "valor_ejec": 12375000},
+                ],
+                "fotos": [], "fecha": "22/07/2026 11:20",
+            },
+        ],
     }

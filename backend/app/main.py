@@ -23,11 +23,13 @@ init_db()
 logger.info("Base de datos inicializada")
 
 # Routers core del nuevo producto
-from app.api import auth, proyectos, share, precios, exportar, avances
+from app.api import auth, proyectos, share, precios, exportar, avances, pagos, soporte
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(proyectos.router, prefix="/api/proyectos", tags=["proyectos"])
 app.include_router(share.router, prefix="/api/share", tags=["share"])
 app.include_router(avances.router, prefix="/api/avances", tags=["avances"])
+app.include_router(pagos.router, prefix="/api/pagos", tags=["pagos"])
+app.include_router(soporte.router, prefix="/api/soporte", tags=["soporte"])
 app.include_router(precios.router, prefix="/api/precios", tags=["precios"])
 app.include_router(exportar.router, prefix="/api/exportar", tags=["exportar"])
 
@@ -42,6 +44,15 @@ try:
     logger.info("Modulos IA premium cargados")
 except Exception as e:
     logger.warning(f"Modulos IA no disponibles: {e}")
+
+
+@app.get("/api/config")
+async def config_publica():
+    """Config publica para el frontend (sin auth)."""
+    import os
+    return {
+        "whatsapp_soporte": os.environ.get("WHATSAPP_SOPORTE", "").strip(),
+    }
 
 
 @app.get("/health")

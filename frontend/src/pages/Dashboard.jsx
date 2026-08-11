@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2 } from 'lucide-react'
-import { proyectosAPI } from '../services/api'
+import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2, LifeBuoy, Camera, X } from 'lucide-react'
+import { proyectosAPI, pagosAPI, soporteAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -22,6 +22,12 @@ export default function Dashboard() {
   const [showNuevo, setShowNuevo] = useState(false)
   const [nuevo, setNuevo] = useState({ nombre: '', cliente_nombre: '', cliente_telefono: '', region: 'bogota' })
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
+  const [infoPago, setInfoPago] = useState(null)
+  const [showSoporte, setShowSoporte] = useState(false)
+  const [ticket, setTicket] = useState({ asunto: '', descripcion: '', fotos: [] })
+  const [enviandoTicket, setEnviandoTicket] = useState(false)
+  const [ticketEnviado, setTicketEnviado] = useState(null)
+  useEffect(() => { pagosAPI.info().then(setInfoPago).catch(() => {}) }, [])
 
   const cargar = async () => {
     try {
@@ -80,9 +86,23 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {usuario.plan === 'gratis' && (
-              <span className="text-xs bg-white/10 px-3 py-1.5 rounded-full">Plan Gratis</span>
+            {infoPago?.es_admin && (
+              <button onClick={() => nav('/admin')} className="text-xs bg-amber-400/20 text-amber-300 px-3 py-1.5 rounded-full font-medium">
+                Admin
+              </button>
             )}
+            {infoPago?.plan === 'pro' ? (
+              <button onClick={() => nav('/pro')} className="text-xs bg-emerald-400/20 text-emerald-300 px-3 py-1.5 rounded-full font-bold">
+                ⭐ Pro
+              </button>
+            ) : (
+              <button onClick={() => nav('/pro')} className="text-xs bg-white/10 hover:bg-emerald-500/30 px-3 py-1.5 rounded-full transition">
+                Plan Gratis → <span className="font-bold text-emerald-300">Pasar a Pro</span>
+              </button>
+            )}
+            <button onClick={() => { setShowSoporte(true); setTicketEnviado(null) }} className="p-2 hover:bg-white/10 rounded-lg" title="Soporte">
+              <LifeBuoy className="w-4 h-4" />
+            </button>
             <button onClick={() => nav('/perfil')} className="p-2 hover:bg-white/10 rounded-lg" title="Perfil">
               <Settings className="w-4 h-4" />
             </button>
@@ -151,6 +171,92 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      {/* Modal SOPORTE */}
+      {showSoporte && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowSoporte(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            {ticketEnviado ? (
+              <div className="text-center py-4">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-100 rounded-2xl mb-3">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                </div>
+                <h3 className="font-semibold text-slate-800">Reporte #{ticketEnviado} recibido</h3>
+                <p className="text-sm text-slate-500 mt-1.5">
+                  Te respondemos por WhatsApp o email lo antes posible. ¡Gracias por ayudarnos a mejorar!
+                </p>
+                <button onClick={() => setShowSoporte(false)}
+                        className="mt-5 w-full py-2.5 rounded-xl bg-navy-600 text-white text-sm font-medium">
+                  Listo
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                    <LifeBuoy className="w-4 h-4 text-navy-500" /> Contactar soporte
+                  </h3>
+                  <button onClick={() => setShowSoporte(false)} className="p-1 hover:bg-slate-100 rounded-lg">
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400 mb-4">
+                  ¿Encontraste un error o algo no funciona? Cuéntanos y lo arreglamos rápido.
+                </p>
+                <div className="space-y-3">
+                  <input className="input" placeholder="¿Qué pasó? (ej: El PDF no descarga) *"
+                         value={ticket.asunto} maxLength={200}
+                         onChange={e => setTicket(t => ({ ...t, asunto: e.target.value }))} autoFocus />
+                  <textarea className="input min-h-[100px] text-sm"
+                            placeholder="Detalles: qué estabas haciendo, qué esperabas que pasara, qué pasó en cambio..."
+                            value={ticket.descripcion} maxLength={4000}
+                            onChange={e => setTicket(t => ({ ...t, descripcion: e.target.value }))} />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className="flex items-center gap-2 text-xs text-navy-600 font-medium border border-navy-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-navy-50">
+                      <Camera className="w-4 h-4" /> Evidencia ({ticket.fotos.length}/2)
+                      <input type="file" accept="image/*" multiple className="hidden"
+                             onChange={e => {
+                               const files = Array.from(e.target.files || []).slice(0, 2 - ticket.fotos.length)
+                               files.forEach(file => {
+                                 if (file.size > 450 * 1024) { toast.error(`${file.name}: máximo 450KB`); return }
+                                 const r = new FileReader()
+                                 r.onload = () => setTicket(t => ({ ...t, fotos: [...t.fotos, r.result].slice(0, 2) }))
+                                 r.readAsDataURL(file)
+                               })
+                               e.target.value = ''
+                             }} />
+                    </label>
+                    {ticket.fotos.map((f, i) => (
+                      <div key={i} className="relative">
+                        <img src={f} alt="" className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
+                        <button onClick={() => setTicket(t => ({ ...t, fotos: t.fotos.filter((_, j) => j !== i) }))}
+                                className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 text-[9px] leading-none">×</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button disabled={enviandoTicket}
+                          onClick={async () => {
+                            if (!ticket.asunto.trim()) { toast.error('Cuéntanos qué pasó'); return }
+                            setEnviandoTicket(true)
+                            try {
+                              const res = await soporteAPI.crear({
+                                ...ticket,
+                                contexto: `pagina: ${window.location.pathname} · plan: ${infoPago?.plan || '?'} · ${navigator.userAgent.slice(0, 80)}`,
+                              })
+                              setTicketEnviado(res.ticket)
+                              setTicket({ asunto: '', descripcion: '', fotos: [] })
+                            } catch (e) { toast.error(e.message) }
+                            finally { setEnviandoTicket(false) }
+                          }}
+                          className="w-full py-3 rounded-xl bg-navy-600 hover:bg-navy-700 text-white text-sm font-bold transition disabled:opacity-50">
+                    {enviandoTicket ? 'Enviando...' : 'Enviar reporte'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal nuevo proyecto */}
       {showNuevo && (

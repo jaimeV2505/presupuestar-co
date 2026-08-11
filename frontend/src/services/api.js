@@ -11,7 +11,12 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(r => r, err => {
   if (err.response?.status === 401 && !window.location.pathname.startsWith('/p/')) {
     localStorage.removeItem('token')
-    if (window.location.pathname !== '/login' && window.location.pathname !== '/registro') {
+    localStorage.removeItem('usuario')
+    const path = window.location.pathname
+    if (path === '/') {
+      // En la raiz: mostrar la landing (sin sesion), no forzar login
+      window.location.reload()
+    } else if (path !== '/login' && path !== '/registro') {
       window.location.href = '/login'
     }
   }
@@ -64,6 +69,22 @@ export const avancesAPI = {
   crear: (id, data) => api.post(`/avances/proyectos/${id}/avances`, data).then(r => r.data),
   eliminar: (id, avanceId) => api.delete(`/avances/proyectos/${id}/avances/${avanceId}`).then(r => r.data),
   publicos: (token) => api.get(`/share/publico/${token}/avances`).then(r => r.data),
+}
+
+export const pagosAPI = {
+  info: () => api.get('/pagos/info').then(r => r.data),
+  solicitar: (data) => api.post('/pagos/solicitud', data).then(r => r.data),
+  miSolicitud: () => api.get('/pagos/mi-solicitud').then(r => r.data),
+  adminSolicitudes: () => api.get('/pagos/admin/solicitudes').then(r => r.data),
+  adminAprobar: (data) => api.post('/pagos/admin/aprobar', data).then(r => r.data),
+  adminRechazar: (data) => api.post('/pagos/admin/rechazar', data).then(r => r.data),
+  adminPlanManual: (data) => api.post('/pagos/admin/plan-manual', data).then(r => r.data),
+}
+
+export const soporteAPI = {
+  crear: (data) => api.post('/soporte', data).then(r => r.data),
+  adminListar: () => api.get('/soporte/admin').then(r => r.data),
+  adminResolver: (id) => api.post('/soporte/admin/resolver', { ticket_id: id }).then(r => r.data),
 }
 
 export const preciosAPI = {

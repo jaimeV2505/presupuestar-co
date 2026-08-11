@@ -154,6 +154,12 @@ export default function VistaPublica() {
 
   return (
     <div className="min-h-screen bg-slate-100 pb-28">
+      {data.demo && (
+        <div className="bg-amber-400 text-amber-900 text-center text-xs font-bold py-2 px-4">
+          🧪 Presupuesto de DEMOSTRACIÓN — así lo verá tu cliente ·{' '}
+          <a href="/registro" className="underline">Crea el tuyo gratis</a>
+        </div>
+      )}
       {/* Header del contratista */}
       <div className="bg-navy-800 text-white px-5 pt-8 pb-12">
         <div className="max-w-lg mx-auto">
@@ -349,6 +355,13 @@ export default function VistaPublica() {
               ))}
             </div>
           </div>
+        )}
+
+        {data.demo && (
+          <a href="/registro"
+             className="block text-center bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-sm rounded-xl py-3.5 mt-4 transition">
+            ¿Quieres enviar presupuestos así? Crea tu cuenta gratis →
+          </a>
         )}
 
         <p className="text-center text-[10px] text-slate-400 mt-4">
