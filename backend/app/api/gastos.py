@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.db import get_db, Usuario, Proyecto, Gasto
 from app.api.auth import usuario_actual
-from app.services.presupuesto_service import calcular_totales
+from app.services.calculo_presupuesto import calcular_totales
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
