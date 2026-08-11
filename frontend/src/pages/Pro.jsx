@@ -92,6 +92,47 @@ export default function Pro() {
           </ul>
         </div>
 
+        {/* PAGO AUTOMATICO WOMPI */}
+        {!esPro && wompi?.disponible && (
+          <div className="bg-white rounded-2xl border-2 border-emerald-300 p-5 mb-6 relative">
+            <span className="absolute -top-3 left-4 bg-emerald-500 text-white text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-full">
+              ⚡ Activación inmediata
+            </span>
+            {wompi.sandbox && (
+              <span className="absolute -top-3 right-4 bg-amber-400 text-amber-900 text-[9px] font-black px-3 py-1 rounded-full">
+                MODO PRUEBAS
+              </span>
+            )}
+            <h3 className="text-sm font-semibold text-slate-700 mb-1 mt-1">💳 Paga en línea — tu Pro se activa solo</h3>
+            <p className="text-[11px] text-slate-400 mb-4">
+              Tarjeta, Nequi, PSE o Bancolombia a través de Wompi (Grupo Bancolombia).
+              Sin esperas: apenas se apruebe el pago, tu plan queda activo.
+            </p>
+            {verificando ? (
+              <div className="text-center py-3">
+                <p className="text-sm font-bold text-navy-600 animate-pulse">⏳ Verificando tu pago con Wompi...</p>
+                <p className="text-[10px] text-slate-400 mt-1">Esto toma unos segundos — no cierres la página</p>
+              </div>
+            ) : (
+              <button disabled={pagando}
+                      onClick={async () => {
+                        setPagando(true)
+                        try {
+                          const r = await wompiAPI.link()
+                          localStorage.setItem('wompi_ref', r.referencia)
+                          window.location.href = r.url
+                        } catch (e) { toast.error(e.message); setPagando(false) }
+                      }}
+                      className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-sm transition disabled:opacity-50">
+                {pagando ? 'Abriendo pasarela...' : `💳 Pagar ${COP(wompi.precio_cop)} y activar YA`}
+              </button>
+            )}
+            <p className="text-[9px] text-slate-300 text-center mt-2">
+              Pago procesado por Wompi · No guardamos datos de tu tarjeta
+            </p>
+          </div>
+        )}
+
         {!esPro && (
           pendiente ? (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">

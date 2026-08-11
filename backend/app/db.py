@@ -164,6 +164,19 @@ class CuentaCobro(Base):
     pagado = Column(DateTime, nullable=True)
 
 
+class PagoWompi(Base):
+    __tablename__ = "pagos_wompi"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    referencia = Column(String(80), unique=True, nullable=False, index=True)
+    monto_centavos = Column(Integer, nullable=False)
+    estado = Column(String(20), default="creado")  # creado | APPROVED | DECLINED | VOIDED | ERROR
+    transaction_id = Column(String(80), default="")
+    medio = Column(String(40), default="")          # CARD | NEQUI | PSE | BANCOLOMBIA_TRANSFER...
+    creado = Column(DateTime, default=utcnow)
+    actualizado = Column(DateTime, nullable=True)
+
+
 class Notificacion(Base):
     __tablename__ = "notificaciones"
     id = Column(Integer, primary_key=True)

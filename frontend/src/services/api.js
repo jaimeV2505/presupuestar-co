@@ -89,6 +89,12 @@ export const pagosAPI = {
   adminPlanManual: (data) => api.post('/pagos/admin/plan-manual', data).then(r => r.data),
 }
 
+export const wompiAPI = {
+  disponible: () => api.get('/wompi/disponible').then(r => r.data),
+  link: () => api.post('/wompi/link').then(r => r.data),
+  estado: (referencia) => api.get('/wompi/estado', { params: { referencia } }).then(r => r.data),
+}
+
 export const onboardingAPI = {
   estado: () => api.get('/onboarding').then(r => r.data),
   marcar: (clave) => api.post('/onboarding/marcar', { clave }).then(r => r.data),
