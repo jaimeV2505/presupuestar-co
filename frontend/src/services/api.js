@@ -89,6 +89,12 @@ export const pagosAPI = {
   adminPlanManual: (data) => api.post('/pagos/admin/plan-manual', data).then(r => r.data),
 }
 
+export const onboardingAPI = {
+  estado: () => api.get('/onboarding').then(r => r.data),
+  marcar: (clave) => api.post('/onboarding/marcar', { clave }).then(r => r.data),
+  tipo: (tipo) => api.post('/onboarding/tipo', { tipo }).then(r => r.data),
+}
+
 export const clientesAPI = {
   listar: () => api.get('/clientes').then(r => r.data),
 }

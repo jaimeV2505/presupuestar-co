@@ -163,6 +163,11 @@ def registro(req: RegistroRequest, db: Session = Depends(get_db)):
         db.add(user)
         db.commit()
         db.refresh(user)
+        try:
+            from app.api.onboarding import sembrar_demo
+            sembrar_demo(user, db)
+        except Exception as _e:
+            logger.warning(f"Siembra demo en registro: {_e}")
         logger.info(f"Registro: {email}")
         return {"token": crear_token(user.id), "usuario": _user_out(user)}
     except HTTPException:

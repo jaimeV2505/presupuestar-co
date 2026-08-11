@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2, LifeBuoy, Camera, X, Bell, TrendingUp, Users } from 'lucide-react'
-import { proyectosAPI, pagosAPI, soporteAPI, notificacionesAPI, clientesAPI } from '../services/api'
+import { proyectosAPI, pagosAPI, soporteAPI, notificacionesAPI, clientesAPI, onboardingAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -37,9 +37,23 @@ export default function Dashboard() {
   const [plantillaSel, setPlantillaSel] = useState(null)  // null = en blanco
   const [creandoTpl, setCreandoTpl] = useState(false)
   const [misClientes, setMisClientes] = useState([])
+  const [onb, setOnb] = useState(null)  // estado del onboarding
+
+  // Celebraciones de primera vez (usa las notificaciones cargadas)
+  useEffect(() => {
+    if (!Array.isArray(notifs) || notifs.length === 0) return
+    if (notifs.some(x => x.tipo === 'firmado') && !localStorage.getItem('cel_firma')) {
+      localStorage.setItem('cel_firma', '1')
+      toast('🎉 ¡Tu primer contrato firmado! Ya puedes publicar avances de obra', { duration: 6000, icon: '✍️' })
+    }
+    if (notifs.some(x => (x.tipo || '').includes('entrega')) && !localStorage.getItem('cel_entrega')) {
+      localStorage.setItem('cel_entrega', '1')
+      toast('🏁 ¡Primera entrega confirmada! La calificación de tu cliente alimenta tu reputación', { duration: 6000, icon: '🤝' })
+    }
+  }, [notifs])
 
   useEffect(() => {
-    proyectosAPI.metricas().then(setMetricas).catch(() => {})
+    onboardingAPI.estado().then(setOnb).catch(() => {}); proyectosAPI.metricas().then(setMetricas).catch(() => {})
     const cargarNotifs = () => notificacionesAPI.listar().then(setNotifs).catch(() => {})
     cargarNotifs()
     const iv = setInterval(cargarNotifs, 30000)
@@ -204,6 +218,74 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* ONBOARDING: bienvenida */}
+        {onb && !onb.tipo && !onb.cerrado && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md text-center">
+              <p className="text-3xl mb-2">👋</p>
+              <h3 className="font-bold text-slate-800 mb-1">¡Bienvenido a PresupuestarCO!</h3>
+              <p className="text-xs text-slate-400 mb-5">Una pregunta para acomodarte todo: ¿a qué te dedicas?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'maestro', emoji: '👷', label: 'Maestro de obra' },
+                  { id: 'remodelador', emoji: '🏠', label: 'Remodelador' },
+                  { id: 'contratista', emoji: '🏗️', label: 'Contratista general' },
+                ].map(t => (
+                  <button key={t.id}
+                          onClick={() => { onboardingAPI.tipo(t.id).catch(() => {}); setOnb(o => ({ ...o, tipo: t.id })) }}
+                          className="border-2 border-slate-100 hover:border-navy-400 rounded-xl p-3 transition">
+                    <span className="text-2xl">{t.emoji}</span>
+                    <p className="text-[10px] font-semibold text-slate-600 mt-1 leading-tight">{t.label}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ONBOARDING: checklist de misiones */}
+        {onb && onb.tipo && !onb.cerrado && (
+          <div className="bg-white rounded-2xl border-2 border-navy-100 p-4 mb-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-bold text-slate-700">
+                {onb.progreso === 100 ? '🎉 ¡Tu negocio está rodando!' : '🚀 Pon tu negocio a rodar'}
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-navy-600">{onb.progreso}%</span>
+                <button onClick={() => { onboardingAPI.marcar('cerrado').catch(() => {}); setOnb(o => ({ ...o, cerrado: true })) }}
+                        className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
+              </div>
+            </div>
+            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-3">
+              <div className="h-full bg-navy-500 rounded-full transition-all" style={{ width: `${onb.progreso}%` }} />
+            </div>
+            <div className="space-y-1">
+              {[
+                { k: 'm1_presupuesto', label: 'Crea tu primer presupuesto', accion: () => { setShowNuevo(true); setPlantillaSel(null); proyectosAPI.plantillas().then(setPlantillas).catch(() => {}); clientesAPI.listar().then(setMisClientes).catch(() => {}) } },
+                { k: 'm2_marca', label: 'Ponle tu marca (logo, cédula y firma)', accion: () => nav('/perfil') },
+                { k: 'm3_whatsapp', label: 'Comparte un presupuesto por WhatsApp', accion: () => { const real = proyectos.find(p => !p.es_demo); real ? nav(`/proyecto/${real.id}`) : toast('Primero crea un presupuesto (misión 1)') } },
+                { k: 'm4_vista_cliente', label: 'Mira lo que verá tu cliente', accion: () => { if (onb.demo) { window.open(`/p/${onb.demo.share_token}`, '_blank'); onboardingAPI.marcar('vista_cliente').catch(() => {}); setOnb(o => ({ ...o, misiones: { ...o.misiones, m4_vista_cliente: true }, progreso: Math.min(100, o.progreso + 20) })) } } },
+                { k: 'm5_explora', label: 'Explora avances y cobros en el ejemplo', accion: () => { if (onb.demo) { onboardingAPI.marcar('explora').catch(() => {}); nav(`/proyecto/${onb.demo.id}`) } } },
+              ].map(m => (
+                <button key={m.k} onClick={m.accion} disabled={onb.misiones[m.k]}
+                        className={`w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition ${onb.misiones[m.k] ? 'opacity-50' : 'hover:bg-slate-50'}`}>
+                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 ${onb.misiones[m.k] ? 'bg-emerald-500 text-white' : 'border-2 border-slate-200'}`}>
+                    {onb.misiones[m.k] && '✓'}
+                  </span>
+                  <span className={`text-xs ${onb.misiones[m.k] ? 'text-slate-400 line-through' : 'text-slate-600 font-medium'}`}>{m.label}</span>
+                  {!onb.misiones[m.k] && <span className="ml-auto text-[10px] text-navy-500">→</span>}
+                </button>
+              ))}
+            </div>
+            {onb.progreso === 100 && (
+              <button onClick={() => { onboardingAPI.marcar('cerrado').catch(() => {}); setOnb(o => ({ ...o, cerrado: true })); toast.success('🎉 ¡Listo para cotizar como los grandes!') }}
+                      className="w-full mt-3 py-2 rounded-xl bg-navy-600 text-white text-xs font-bold">
+                🎉 ¡Completado! Cerrar la guía
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-slate-800">Mis presupuestos</h2>
           <button onClick={() => { setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {}); clientesAPI.listar().then(setMisClientes).catch(() => {}) }}
@@ -234,7 +316,7 @@ export default function Dashboard() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-bold text-navy-500 bg-navy-50 px-1.5 py-0.5 rounded">{p.numero}</span>
+                        <span className="text-[10px] font-bold text-navy-500 bg-navy-50 px-1.5 py-0.5 rounded">{p.es_demo ? '🎓 EJEMPLO' : p.numero}</span>
                         <h3 className="font-semibold text-slate-800">{p.nombre}</h3>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.txt}</span>
                       </div>
@@ -403,7 +485,12 @@ export default function Dashboard() {
                     <span className="text-lg">📄</span>
                     <p className="text-[10px] font-semibold text-slate-600 leading-tight mt-0.5">En blanco</p>
                   </button>
-                  {plantillas.map(t => (
+                  {[...plantillas].sort((a, b) => {
+                    const orden = onb?.tipo === 'remodelador' ? ['bano', 'cocina', 'pintura', 'placa', 'cubierta', 'casa60']
+                                : onb?.tipo === 'contratista' ? ['casa60', 'placa', 'cubierta', 'bano', 'cocina', 'pintura']
+                                : ['bano', 'pintura', 'cocina', 'placa', 'cubierta', 'casa60']
+                    return orden.indexOf(a.id) - orden.indexOf(b.id)
+                  }).map(t => (
                     <button key={t.id} onClick={() => setPlantillaSel(t.id)}
                             title={t.descripcion}
                             className={`rounded-xl border-2 p-2 text-center transition ${plantillaSel === t.id ? 'border-emerald-400 bg-emerald-50' : 'border-slate-100'}`}>

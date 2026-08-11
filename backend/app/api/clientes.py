@@ -46,7 +46,9 @@ def vincular_cliente(p: Proyecto, user_id: int, db: Session):
 def listar(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     clientes = (db.query(Cliente).filter(Cliente.user_id == user.id)
                 .order_by(Cliente.creado.desc()).limit(300).all())
-    proyectos = db.query(Proyecto).filter(Proyecto.user_id == user.id).all()
+    proyectos = (db.query(Proyecto)
+                 .filter(Proyecto.user_id == user.id, Proyecto.es_demo == False)  # noqa: E712
+                 .all())
     por_cliente = {}
     for p in proyectos:
         if p.cliente_id:

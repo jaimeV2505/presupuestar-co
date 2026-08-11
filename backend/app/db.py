@@ -47,6 +47,7 @@ class Usuario(Base):
     pago_info = Column(String(200), default="")  # cuenta bancaria para forma de pago
     slug = Column(String(80), unique=True, nullable=True, index=True)  # perfil publico /c/{slug}
     firma_b64 = Column(Text, default="")         # firma manuscrita del contratista (PNG base64)
+    onboarding_json = Column(Text, default="{}")  # {tipo, flags de misiones, cerrado}
     plan = Column(String(20), default="gratis")  # gratis | pro
     plan_vence = Column(DateTime, nullable=True)  # cuando expira el plan pro
     presupuestos_mes = Column(Integer, default=0)
@@ -70,6 +71,7 @@ class Proyecto(Base):
     user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     numero = Column(String(30), default="", index=True)   # COT-2026-0001
     nombre = Column(String(200), nullable=False)
+    es_demo = Column(Boolean, default=False)     # proyecto de ejemplo del onboarding
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True, index=True)
     cliente_nombre = Column(String(160), default="")
     cliente_telefono = Column(String(30), default="")
@@ -212,6 +214,8 @@ def init_db():
                     "ALTER TABLE encuestas ADD COLUMN IF NOT EXISTS publico BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS firma_b64 TEXT DEFAULT ''",
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS cliente_id INTEGER",
+                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS onboarding_json TEXT DEFAULT '{}'",
+                    "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS es_demo BOOLEAN DEFAULT FALSE",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -234,6 +238,8 @@ def init_db():
                     ("encuestas", "publico", "ALTER TABLE encuestas ADD COLUMN publico BOOLEAN DEFAULT 0"),
                     ("usuarios", "firma_b64", "ALTER TABLE usuarios ADD COLUMN firma_b64 TEXT DEFAULT ''"),
                     ("proyectos", "cliente_id", "ALTER TABLE proyectos ADD COLUMN cliente_id INTEGER"),
+                    ("usuarios", "onboarding_json", "ALTER TABLE usuarios ADD COLUMN onboarding_json TEXT DEFAULT '{}'"),
+                    ("proyectos", "es_demo", "ALTER TABLE proyectos ADD COLUMN es_demo BOOLEAN DEFAULT 0"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]
@@ -250,7 +256,7 @@ def _backfill_clientes():
     db = SessionLocal()
     try:
         huerfanos = (db.query(Proyecto)
-                     .filter(Proyecto.cliente_id.is_(None), Proyecto.cliente_nombre != "")
+                     .filter(Proyecto.cliente_id.is_(None), Proyecto.cliente_nombre != "", Proyecto.es_demo == False)  # noqa: E712
                      .limit(500).all())
         for p in huerfanos:
             nombre = (p.cliente_nombre or "").strip()

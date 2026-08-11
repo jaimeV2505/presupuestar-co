@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
          Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
-import { proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI } from '../services/api'
+import { proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI } from '../services/api'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -43,6 +43,8 @@ export default function Editor() {
   const [showCobros, setShowCobros] = useState(false)
   const [cobrosData, setCobrosData] = useState(null)
   const [liquidacion, setLiquidacion] = useState(null)  // preview antes de crear
+  const [tipEditor, setTipEditor] = useState(!localStorage.getItem('tip_editor'))
+  const [tipObra, setTipObra] = useState(false)
 
   // Share
   const [showShare, setShowShare] = useState(false)
@@ -55,6 +57,10 @@ export default function Editor() {
   // ── Cargar proyecto ──────────────────────────────────────────────────
   useEffect(() => {
     proyectosAPI.obtener(id).then(data => {
+      if (data.es_demo) { onboardingAPI.marcar('explora').catch(() => {}) }
+      if (['aceptado', 'entrega_solicitada', 'terminado'].includes(data.estado) && !localStorage.getItem('tip_obra')) {
+        setTipObra(true)
+      }
       setP(data)
       setItems(data.items || [])
       setAiu(data.aiu || aiu)
@@ -372,6 +378,28 @@ export default function Editor() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-5">
+        {tipEditor && (
+          <div className="flex items-start gap-2 bg-navy-50 border border-navy-100 rounded-xl p-3 mb-4 text-[11px] text-navy-700">
+            <span className="text-base">💡</span>
+            <p className="flex-1">
+              <strong>Así se cotiza aquí:</strong> 1️⃣ Busca actividades en la base APU (el botón grande de abajo) →
+              2️⃣ ajusta cantidades con la calculadora 📐 → 3️⃣ tu AIU e IVA se configuran al final de la tabla.
+            </p>
+            <button onClick={() => { localStorage.setItem('tip_editor', '1'); setTipEditor(false) }}
+                    className="text-navy-400 font-bold px-1">✕</button>
+          </div>
+        )}
+        {tipObra && (
+          <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-4 text-[11px] text-emerald-700">
+            <span className="text-base">🏗️</span>
+            <p className="flex-1">
+              <strong>¡Obra ganada!</strong> Se activaron tus herramientas de ejecución:
+              🏗️ Avances (informes al cliente) · 💸 Gastos (utilidad real) · 💵 Cobros (cuentas con amortización de anticipo).
+            </p>
+            <button onClick={() => { localStorage.setItem('tip_obra', '1'); setTipObra(false) }}
+                    className="text-emerald-400 font-bold px-1">✕</button>
+          </div>
+        )}
         {/* Boton agregar actividades */}
         <button onClick={() => setShowBuscador(true)}
                 className="w-full flex items-center gap-3 bg-white border-2 border-dashed border-slate-300 hover:border-navy-400 rounded-xl p-4 text-slate-500 hover:text-navy-600 transition mb-5">

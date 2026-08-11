@@ -42,7 +42,9 @@ def _verificar_limite(user: Usuario, db: Session):
 def _generar_numero(user_id: int, db: Session) -> str:
     """Numero de cotizacion secuencial por usuario: COT-2026-0001"""
     year = datetime.now(timezone.utc).year
-    total = db.query(Proyecto).filter(Proyecto.user_id == user_id).count()
+    total = (db.query(Proyecto)
+             .filter(Proyecto.user_id == user_id, Proyecto.es_demo == False)  # noqa: E712
+             .count())
     return f"COT-{year}-{total + 1:04d}"
 
 
@@ -52,6 +54,7 @@ def _proyecto_out(p: Proyecto, incluir_items: bool = False) -> Dict:
     out = {
         "id": p.id,
         "numero": p.numero or f"COT-{p.id:04d}",
+        "es_demo": bool(getattr(p, "es_demo", False)),
         "nombre": p.nombre,
         "cliente_nombre": p.cliente_nombre,
         "cliente_telefono": p.cliente_telefono,
@@ -97,7 +100,9 @@ class ProyectoUpdate(BaseModel):
 def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     """Metricas del negocio del contratista — calculadas de sus presupuestos."""
     from app.db import Encuesta
-    proyectos = db.query(Proyecto).filter(Proyecto.user_id == user.id).all()
+    proyectos = (db.query(Proyecto)
+                 .filter(Proyecto.user_id == user.id, Proyecto.es_demo == False)  # noqa: E712
+                 .all())
 
     GANADOS = ("aceptado", "entrega_solicitada", "terminado")
     ENVIADOS = ("enviado", "visto", "aceptado", "rechazado", "entrega_solicitada", "terminado")
