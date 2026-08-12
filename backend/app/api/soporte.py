@@ -16,6 +16,7 @@ import os
 import json
 import logging
 import httpx
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List
@@ -213,6 +214,11 @@ class ResponderTicket(BaseModel):
     ticket_id: int
     respuesta: str
     resolver: bool = True
+
+
+class ResponderRequest(BaseModel):
+    ticket_id: int
+    respuesta: str
 
 
 @router.post("/admin/responder")
