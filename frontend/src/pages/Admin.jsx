@@ -75,6 +75,33 @@ export default function Admin() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+        {/* RESPALDO */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-5 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-sm font-semibold text-slate-700">💾 Respaldo de la base de datos</p>
+            <p className="text-[11px] text-slate-400">Descarga TODO (usuarios, proyectos, firmas, fotos) en un JSON. Hazlo cada semana y guárdalo en tu Drive.</p>
+          </div>
+          <button onClick={async () => {
+                    try {
+                      const res = await fetch('/api/respaldo/completo', {
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      })
+                      if (!res.ok) throw new Error('No autorizado o error del servidor')
+                      const blob = await res.blob()
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `presupuestarco-backup-${new Date().toISOString().slice(0, 10)}.json`
+                      a.click()
+                      URL.revokeObjectURL(url)
+                      toast.success('Backup descargado — guárdalo en tu Drive')
+                    } catch (e) { toast.error(e.message) }
+                  }}
+                  className="shrink-0 text-xs font-bold bg-navy-600 text-white rounded-xl px-4 py-2.5">
+            ⬇️ Descargar backup
+          </button>
+        </div>
+
         {/* Activacion manual directa */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <h3 className="text-sm font-semibold text-slate-700 mb-3">Activar Pro directo (sin solicitud)</h3>

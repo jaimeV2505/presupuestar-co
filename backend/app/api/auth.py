@@ -178,11 +178,61 @@ def registro(req: RegistroRequest, db: Session = Depends(get_db)):
         raise HTTPException(500, f"Error creando la cuenta: {type(e).__name__}")
 
 
+
+# ── RATE LIMITING (proteccion de fuerza bruta) ──────────────────────────────
+from app.db import IntentoAcceso
+
+
+def _rl_verificar(clave: str, db: Session):
+    """Lanza 429 si la clave esta bloqueada."""
+    r = db.query(IntentoAcceso).filter(IntentoAcceso.clave == clave).first()
+    if r and r.bloqueado_hasta:
+        hasta = r.bloqueado_hasta if r.bloqueado_hasta.tzinfo else r.bloqueado_hasta.replace(tzinfo=timezone.utc)
+        ahora = datetime.now(timezone.utc)
+        if hasta > ahora:
+            mins = int((hasta - ahora).total_seconds() // 60) + 1
+            raise HTTPException(429, f"Demasiados intentos — espera {mins} min e intenta de nuevo")
+        r.bloqueado_hasta = None
+        r.fallidos = 0
+        db.commit()
+
+
+def _rl_fallo(clave: str, db: Session, max_intentos: int = 5, bloqueo_min: int = 15):
+    """Registra un fallo; al llegar al maximo, bloquea."""
+    try:
+        r = db.query(IntentoAcceso).filter(IntentoAcceso.clave == clave).first()
+        if not r:
+            r = IntentoAcceso(clave=clave, fallidos=0)
+            db.add(r)
+        r.fallidos = (r.fallidos or 0) + 1
+        r.actualizado = datetime.now(timezone.utc)
+        if r.fallidos >= max_intentos:
+            r.bloqueado_hasta = datetime.now(timezone.utc) + timedelta(minutes=bloqueo_min)
+            r.fallidos = 0
+            logger.warning(f"Rate limit: {clave} bloqueada {bloqueo_min} min")
+        db.commit()
+    except Exception as e:
+        logger.warning(f"rate limit fallo: {e}")
+        db.rollback()
+
+
+def _rl_exito(clave: str, db: Session):
+    try:
+        db.query(IntentoAcceso).filter(IntentoAcceso.clave == clave).delete()
+        db.commit()
+    except Exception:
+        db.rollback()
+
+
 @router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(Usuario).filter(Usuario.email == req.email.lower().strip()).first()
+    email = req.email.lower().strip()
+    _rl_verificar(f"login:{email}", db)
+    user = db.query(Usuario).filter(Usuario.email == email).first()
     if not user or not _verify_password(req.password, user.password_hash):
+        _rl_fallo(f"login:{email}", db, max_intentos=5, bloqueo_min=15)
         raise HTTPException(401, "Email o contrasena incorrectos")
+    _rl_exito(f"login:{email}", db)
     return {"token": crear_token(user.id), "usuario": _user_out(user)}
 
 
@@ -282,6 +332,8 @@ class OlvideRequest(BaseModel):
 def olvide(req: OlvideRequest, db: Session = Depends(get_db)):
     """Siempre responde ok (sin revelar si el email existe)."""
     email = req.email.strip().lower()
+    _rl_verificar(f"olvide:{email}", db)
+    _rl_fallo(f"olvide:{email}", db, max_intentos=3, bloqueo_min=60)
     user = db.query(Usuario).filter(Usuario.email == email).first()
     if user:
         token = _secrets.token_urlsafe(32)
@@ -310,6 +362,7 @@ class RestablecerRequest(BaseModel):
 @router.post("/restablecer")
 def restablecer(req: RestablecerRequest, db: Session = Depends(get_db)):
     email = req.email.strip().lower()
+    _rl_verificar(f"reset:{email}", db)
     user = db.query(Usuario).filter(Usuario.email == email).first()
     generico = HTTPException(400, "El enlace no es valido o ya expiro — pide uno nuevo")
     if not user or not user.reset_token_hash or not user.reset_expira:
@@ -320,6 +373,7 @@ def restablecer(req: RestablecerRequest, db: Session = Depends(get_db)):
     import hmac as _hmac
     recibido = hashlib.sha256(req.token.encode()).hexdigest()
     if not _hmac.compare_digest(recibido, user.reset_token_hash):
+        _rl_fallo(f"reset:{email}", db, max_intentos=10, bloqueo_min=30)
         raise generico
     user.password_hash = _hash_password(req.password)
     user.reset_token_hash = None

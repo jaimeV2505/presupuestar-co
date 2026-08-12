@@ -179,6 +179,16 @@ class PagoWompi(Base):
     actualizado = Column(DateTime, nullable=True)
 
 
+class IntentoAcceso(Base):
+    """Rate limiting de login/olvide/restablecer — compatible con serverless."""
+    __tablename__ = "intentos_acceso"
+    id = Column(Integer, primary_key=True)
+    clave = Column(String(200), unique=True, nullable=False, index=True)  # ej: login:email
+    fallidos = Column(Integer, default=0)
+    bloqueado_hasta = Column(DateTime, nullable=True)
+    actualizado = Column(DateTime, default=utcnow)
+
+
 class Notificacion(Base):
     __tablename__ = "notificaciones"
     id = Column(Integer, primary_key=True)
