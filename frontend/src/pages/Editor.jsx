@@ -302,83 +302,9 @@ export default function Editor() {
     grupos[cap].push({ ...it, _idx: idx })
   })
 
-  return (
-    <div className="min-h-screen bg-slate-50 pb-32">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => nav('/')} className="p-2 hover:bg-slate-100 rounded-lg shrink-0">
-              <ArrowLeft className="w-4 h-4 text-slate-600" />
-            </button>
-            <div className="min-w-0">
-              <h1 className="font-semibold text-slate-800 truncate">{p.nombre}</h1>
-              <p className="text-xs text-slate-400">
-                <span className="font-semibold text-navy-600">{p.numero}</span>
-                {' · '}{p.cliente_nombre || 'Sin cliente'}
-                {' · '}{p.actualizado ? new Date(p.actualizado).toLocaleDateString('es-CO') : ''}
-                {' · '}{sinRed ? '⚠️ Sin conexión — reintentando' : guardando ? 'Guardando...' : 'Guardado ✓'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {eventos?.total_vistas > 0 && (
-              <span className="hidden sm:flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2.5 py-1.5 rounded-full font-medium">
-                <Eye className="w-3 h-3" /> {eventos.total_vistas} vista{eventos.total_vistas !== 1 ? 's' : ''}
-              </span>
-            )}
-            {eventos?.aceptado && (
-              <span className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-full font-medium">
-                <CheckCircle2 className="w-3 h-3" /> Aceptado
-              </span>
-            )}
-            {p.estado === 'entrega_solicitada' && (
-              <span className="hidden sm:inline text-xs bg-violet-100 text-violet-700 px-2.5 py-1.5 rounded-full font-medium">
-                🤝 Esperando al cliente
-              </span>
-            )}
-            {p.estado === 'terminado' && calificacion?.respondida && (
-              <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-full font-medium"
-                    title={calificacion.comentario || ''}>
-                ⭐ {calificacion.estrellas}/5
-              </span>
-            )}
-            <button onClick={() => setShowPanel(true)}
-                    className="relative flex items-center gap-1.5 border border-slate-300 text-slate-700 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
-                    title="Herramientas de la obra">
-              🛠️ <span className="hidden sm:inline">Obra</span>
-              {!['borrador', 'enviado', 'visto', 'rechazado'].includes(p.estado) && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />
-              )}
-            </button>
-            <button onClick={() => setShowPreview(true)}
-                    className="flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"
-                    title="Ver como lo verá tu cliente">
-              <Eye className="w-4 h-4" /> <span className="hidden sm:inline">Ver</span>
-            </button>
-            <button onClick={compartir}
-                    className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
-              <MessageCircle className="w-4 h-4" /> <span className="hidden sm:inline">WhatsApp</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-
-      {/* ═══ PANEL LATERAL: herramientas de la obra ═══ */}
-      {showPanel && (
-        <div className="fixed inset-0 z-50 flex" onClick={() => setShowPanel(false)}>
-          <div className="w-72 max-w-[85vw] bg-white h-full shadow-2xl overflow-y-auto animate-[slideIn_.15s_ease-out]"
-               onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white">
-              <div>
-                <p className="font-bold text-slate-800 text-sm">🛠️ Herramientas</p>
-                <p className="text-[10px] text-slate-400 truncate max-w-[190px]">{p.numero} · {p.nombre}</p>
-              </div>
-              <button onClick={() => setShowPanel(false)}><X className="w-4 h-4 text-slate-400" /></button>
-            </div>
-
-            <div className="p-3 space-y-1">
+  // Contenido del panel de herramientas — compartido: sidebar fija (desktop) y drawer (movil)
+  const panelHerramientas = (
+    <div className="p-3 space-y-1">
               {eventos?.total_vistas > 0 && (
                 <p className="text-[11px] text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-2">
                   👁 {eventos.total_vistas} vista{eventos.total_vistas !== 1 ? 's' : ''} del cliente
@@ -483,11 +409,97 @@ export default function Editor() {
                 </button>
               </div>
             </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-32">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => nav('/')} className="p-2 hover:bg-slate-100 rounded-lg shrink-0">
+              <ArrowLeft className="w-4 h-4 text-slate-600" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="font-semibold text-slate-800 truncate">{p.nombre}</h1>
+              <p className="text-xs text-slate-400">
+                <span className="font-semibold text-navy-600">{p.numero}</span>
+                {' · '}{p.cliente_nombre || 'Sin cliente'}
+                {' · '}{p.actualizado ? new Date(p.actualizado).toLocaleDateString('es-CO') : ''}
+                {' · '}{sinRed ? '⚠️ Sin conexión — reintentando' : guardando ? 'Guardando...' : 'Guardado ✓'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {eventos?.total_vistas > 0 && (
+              <span className="hidden sm:flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2.5 py-1.5 rounded-full font-medium">
+                <Eye className="w-3 h-3" /> {eventos.total_vistas} vista{eventos.total_vistas !== 1 ? 's' : ''}
+              </span>
+            )}
+            {eventos?.aceptado && (
+              <span className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-full font-medium">
+                <CheckCircle2 className="w-3 h-3" /> Aceptado
+              </span>
+            )}
+            {p.estado === 'entrega_solicitada' && (
+              <span className="hidden sm:inline text-xs bg-violet-100 text-violet-700 px-2.5 py-1.5 rounded-full font-medium">
+                🤝 Esperando al cliente
+              </span>
+            )}
+            {p.estado === 'terminado' && calificacion?.respondida && (
+              <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-full font-medium"
+                    title={calificacion.comentario || ''}>
+                ⭐ {calificacion.estrellas}/5
+              </span>
+            )}
+            <button onClick={() => setShowPanel(true)}
+                    className="relative flex lg:hidden items-center gap-1.5 border border-slate-300 text-slate-700 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
+                    title="Herramientas de la obra">
+              🛠️ <span className="hidden sm:inline">Obra</span>
+              {!['borrador', 'enviado', 'visto', 'rechazado'].includes(p.estado) && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />
+              )}
+            </button>
+            <button onClick={() => setShowPreview(true)}
+                    className="flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"
+                    title="Ver como lo verá tu cliente">
+              <Eye className="w-4 h-4" /> <span className="hidden sm:inline">Ver</span>
+            </button>
+            <button onClick={compartir}
+                    className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
+              <MessageCircle className="w-4 h-4" /> <span className="hidden sm:inline">WhatsApp</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+
+      {/* Drawer de herramientas — SOLO movil (en desktop la sidebar es fija) */}
+      {showPanel && (
+        <div className="fixed inset-0 z-50 flex lg:hidden bg-black/30" onClick={() => setShowPanel(false)}>
+          <div className="w-72 max-w-[85vw] bg-white h-full shadow-2xl overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
+              <div>
+                <p className="font-bold text-slate-800 text-sm">🛠️ Herramientas</p>
+                <p className="text-[10px] text-slate-400 truncate max-w-[190px]">{p.numero} · {p.nombre}</p>
+              </div>
+              <button onClick={() => setShowPanel(false)}><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+            {panelHerramientas}
           </div>
         </div>
       )}
 
-      <main className="max-w-6xl mx-auto px-4 py-5">
+      <div className="max-w-7xl mx-auto lg:flex lg:items-start lg:gap-3 lg:px-4">
+        {/* Sidebar fija de herramientas — desktop */}
+        <aside className="hidden lg:block w-60 shrink-0 sticky top-[70px] max-h-[calc(100vh-84px)] overflow-y-auto pt-5">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm pb-1">
+            <p className="px-4 pt-3 text-xs font-bold text-slate-700">🛠️ Herramientas</p>
+            {panelHerramientas}
+          </div>
+        </aside>
+
+      <main className="flex-1 min-w-0 max-w-6xl mx-auto px-4 py-5">
         {tipEditor && (
           <div className="flex items-start gap-2 bg-navy-50 border border-navy-100 rounded-xl p-3 mb-4 text-[11px] text-navy-700">
             <span className="text-base">💡</span>
@@ -729,6 +741,7 @@ export default function Editor() {
           </div>
         )}
       </main>
+      </div>
 
       {/* Barra de totales fija */}
       {totales && items.length > 0 && (
