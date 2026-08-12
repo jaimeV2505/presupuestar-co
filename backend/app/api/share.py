@@ -351,6 +351,9 @@ def _demo_contrato():
         cliente_telefono="", direccion="Covenas, Sucre", region="monteria",
         contrato_json='{"plazo_dias": 45, "anticipo_pct": 50, "fecha_inicio": "", "lugar": "Covenas, Sucre"}',
         share_token="demo",
+        creado=datetime(2026, 7, 20, 9, 0),
+        actualizado=datetime(2026, 7, 22, 10, 14),
+        estado="aceptado",
     )
     user = SimpleNamespace(
         nombre="Jaime Vergara", empresa="Construcciones JV",

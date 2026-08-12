@@ -20,7 +20,7 @@ def get_precios(
     for item in db:
         if categoria and item["categoria"] != categoria: continue
         from app.services.apu_service import _sin_tildes as _st
-        if q and _st(q) not in _st(item["descripcion"]): continue
+        if q and _st(q) not in _st(item["descripcion"]) and _st(q) not in _st(item.get("categoria", "")): continue
         results.append({**item, "precio": round(item["precio"] * factor)})
 
     return {

@@ -319,7 +319,7 @@ def buscar(query: str, categoria: str = None, region: str = "bogota", limit: int
     for item in db:
         if categoria and item["categoria"] != categoria:
             continue
-        if q in _sin_tildes(item["descripcion"]):
+        if q in _sin_tildes(item["descripcion"]) or q in _sin_tildes(item.get("categoria", "")):
             results.append({**item, "precio": round(item["precio"] * f)})
     return results[:limit]
 
