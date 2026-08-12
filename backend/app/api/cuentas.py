@@ -58,7 +58,9 @@ def _liquidar(p: Proyecto, avance: Avance, db: Session) -> dict:
     amortizado_previo = sum(c.amortizacion or 0 for c in ya_cobrado)
     from app.services.otrosi_service import amortizacion_con_tope
     amortizacion = amortizacion_con_tope(valor_corte, anticipo_pct, anticipo_total, amortizado_previo)
-    neto = valor_corte - amortizacion
+    rete_pct = float(cfg.get("retegarantia_pct") or 0)
+    retencion = round(valor_corte * rete_pct / 100)
+    neto = valor_corte - amortizacion - retencion
 
     return {
         "avance_id": avance.id,
@@ -69,15 +71,27 @@ def _liquidar(p: Proyecto, avance: Avance, db: Session) -> dict:
         "valor_corte": valor_corte,
         "anticipo_pct": anticipo_pct,
         "amortizacion": amortizacion,
+        "retegarantia_pct": rete_pct,
+        "retencion": retencion,
         "neto": neto,
     }
 
 
-def _cc_out(c: CuentaCobro):
+def _abonos_de(c, db):
+    from app.db import Abono
+    lst = (db.query(Abono).filter(Abono.cuenta_id == c.id).order_by(Abono.creado).all())
+    return [{"id": a.id, "monto": a.monto, "nota": a.nota,
+             "fecha": a.creado.strftime("%d/%m/%Y")} for a in lst]
+
+
+def _cc_out(c: CuentaCobro, db=None):
     return {
         "id": c.id, "numero": c.numero, "concepto": c.concepto,
         "valor_corte": c.valor_corte, "anticipo_pct": c.anticipo_pct,
         "amortizacion": c.amortizacion, "neto": c.neto,
+        "retencion": c.retencion or 0, "tipo": c.tipo or "corte",
+        "abonos": _abonos_de(c, db) if db is not None else [],
+        "abonado": sum(a["monto"] for a in (_abonos_de(c, db) if db is not None else [])),
         "estado": c.estado, "avance_id": c.avance_id,
         "fecha": c.creado.strftime("%d/%m/%Y"),
         "fecha_pago": c.pagado.strftime("%d/%m/%Y") if c.pagado else None,
@@ -103,7 +117,7 @@ def listar(pid: int, user: Usuario = Depends(usuario_actual), db: Session = Depe
     p = _proyecto(pid, user, db)
     cuentas = (db.query(CuentaCobro).filter(CuentaCobro.proyecto_id == p.id)
                .order_by(CuentaCobro.creado.desc()).all())
-    return {"resumen": _resumen_caja(p, db), "cuentas": [_cc_out(c) for c in cuentas]}
+    return {"resumen": _resumen_caja(p, db), "cuentas": [_cc_out(c, db) for c in cuentas]}
 
 
 @router.get("/proyectos/{pid}/cuentas/preview")
@@ -145,26 +159,92 @@ def crear(pid: int, req: CrearCuentaRequest,
         anticipo_pct=int(liq["anticipo_pct"]),
         amortizacion=liq["amortizacion"],
         neto=liq["neto"],
+        retencion=liq.get("retencion", 0),
     )
     db.add(c)
     db.commit()
     db.refresh(c)
     logger.info(f"Cuenta {c.numero}: neto ${c.neto:,} proyecto {p.id}")
-    out = _cc_out(c)
+    out = _cc_out(c, db)
     out["resumen"] = _resumen_caja(p, db)
     return out
 
 
 @router.post("/{cid}/pagada")
 def marcar_pagada(cid: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
-    c = (db.query(CuentaCobro)
-         .filter(CuentaCobro.id == cid, CuentaCobro.user_id == user.id).first())
+    """Atajo: registra un abono por el saldo completo y cierra la cuenta."""
+    from app.db import Abono
+    c = db.query(CuentaCobro).join(Proyecto, Proyecto.id == CuentaCobro.proyecto_id)\
+          .filter(CuentaCobro.id == cid, Proyecto.user_id == user.id).first()
     if not c:
         raise HTTPException(404, "Cuenta no encontrada")
+    if c.estado == "pagada":
+        return {"ok": True, "mensaje": "Ya estaba pagada"}
+    abonado = sum(a.monto for a in db.query(Abono).filter(Abono.cuenta_id == c.id).all())
+    saldo = max(0, (c.neto or 0) - abonado)
+    if saldo > 0:
+        db.add(Abono(cuenta_id=c.id, monto=saldo, nota="Pago del saldo"))
     c.estado = "pagada"
-    c.pagado = datetime.now(timezone.utc)
+    c.pagada = datetime.now(timezone.utc)
     db.commit()
-    return {"ok": True, "fecha_pago": c.pagado.strftime("%d/%m/%Y")}
+    return {"ok": True, "cuenta": _cc_out(c, db)}
+
+
+class AbonoRequest(BaseModel):
+    monto: int
+    nota: str = ""
+
+
+@router.post("/{cid}/abonos")
+def registrar_abono(cid: int, req: AbonoRequest,
+                    user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    """Pago parcial: 'me abono la mitad el viernes'. Al completar el neto, la cuenta se cierra sola."""
+    from app.db import Abono
+    c = db.query(CuentaCobro).join(Proyecto, Proyecto.id == CuentaCobro.proyecto_id)\
+          .filter(CuentaCobro.id == cid, Proyecto.user_id == user.id).first()
+    if not c:
+        raise HTTPException(404, "Cuenta no encontrada")
+    if c.estado == "pagada":
+        raise HTTPException(400, "Esta cuenta ya esta pagada completa")
+    if req.monto <= 0:
+        raise HTTPException(400, "El abono debe ser mayor a cero")
+    abonado = sum(a.monto for a in db.query(Abono).filter(Abono.cuenta_id == c.id).all())
+    saldo = (c.neto or 0) - abonado
+    if req.monto > saldo:
+        raise HTTPException(400, f"El abono supera el saldo pendiente (${saldo:,.0f})".replace(",", "."))
+    db.add(Abono(cuenta_id=c.id, monto=req.monto, nota=(req.nota or "").strip()[:150]))
+    if req.monto == saldo:
+        c.estado = "pagada"
+        c.pagada = datetime.now(timezone.utc)
+    db.commit()
+    logger.info(f"Abono ${req.monto:,.0f} en {c.numero} ({user.email})")
+    return {"ok": True, "cuenta": _cc_out(c, db)}
+
+
+@router.post("/proyectos/{pid}/retegarantia")
+def cobrar_retegarantia(pid: int, user: Usuario = Depends(usuario_actual),
+                        db: Session = Depends(get_db)):
+    """Al terminar la obra: genera la cuenta que libera la retegarantia acumulada."""
+    p = _proyecto(pid, user, db)
+    if p.estado != "terminado":
+        raise HTTPException(400, "La retegarantia se libera con el acta de entrega firmada")
+    cuentas = db.query(CuentaCobro).filter(CuentaCobro.proyecto_id == p.id).all()
+    if any(c.tipo == "retegarantia" for c in cuentas):
+        raise HTTPException(400, "La retegarantia ya fue liberada en este proyecto")
+    acumulada = sum(c.retencion or 0 for c in cuentas)
+    if acumulada <= 0:
+        raise HTTPException(400, "Este contrato no tuvo retegarantia")
+    c = CuentaCobro(
+        proyecto_id=p.id, numero=_numero_cc(user, db), avance_id=None,
+        valor_corte=acumulada, anticipo_pct=0, amortizacion=0,
+        retencion=0, neto=acumulada, tipo="retegarantia",
+        concepto="Liberacion de retegarantia — obra recibida a satisfaccion (acta firmada)",
+    )
+    db.add(c)
+    db.commit()
+    db.refresh(c)
+    logger.info(f"Retegarantia liberada en {p.numero}: ${acumulada:,.0f}")
+    return {"ok": True, "cuenta": _cc_out(c, db)}
 
 
 @router.delete("/{cid}")

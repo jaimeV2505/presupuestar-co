@@ -83,4 +83,25 @@ print(f"  ✓ cuadre CON adicional: {ANT_TOTAL:,} + {n1:,} + {n2:,} + {n3:,} = 1
 assert round(12_000_000 * 0.5) - ANT_TOTAL == 1_000_000
 print("  ✓ sin el tope, el contratista perderia $1.000.000 — candado justificado")
 
+print("── retegarantia ──")
+def liquidar_full(ejec, cobrado_bruto_previo, ant_pct, rete_pct, ant_total, amort_previa):
+    corte = max(0, ejec - cobrado_bruto_previo)
+    amort = min(round(corte * ant_pct / 100), max(0, ant_total - amort_previa))
+    rete = round(corte * rete_pct / 100)
+    return corte, amort, rete, corte - amort - rete
+
+# Contrato 10M, anticipo 50%, retegarantia 5%
+c1 = liquidar_full(3_000_000, 0, 50, 5, 5_000_000, 0)
+assert c1 == (3_000_000, 1_500_000, 150_000, 1_350_000), c1
+c2 = liquidar_full(7_000_000, 3_000_000, 50, 5, 5_000_000, 1_500_000)
+assert c2 == (4_000_000, 2_000_000, 200_000, 1_800_000), c2
+c3 = liquidar_full(10_000_000, 7_000_000, 50, 5, 5_000_000, 3_500_000)
+assert c3 == (3_000_000, 1_500_000, 150_000, 1_350_000), c3
+rete_total = c1[2] + c2[2] + c3[2]
+assert rete_total == 500_000
+liberacion = rete_total  # cuenta final tras el acta
+recibido = 5_000_000 + c1[3] + c2[3] + c3[3] + liberacion
+assert recibido == 10_000_000, recibido
+print(f"  ✓ rete 5%: retenido {rete_total:,} por el camino, liberado al acta — cuadre {recibido:,}")
+
 print("\nNUCLEO FINANCIERO INTACTO ✅")

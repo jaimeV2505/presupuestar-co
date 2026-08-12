@@ -266,13 +266,19 @@ def avances_publico(token: str, db: Session = Depends(get_db)):
     ultimo = avances[0] if avances else None
 
     # Cuentas de cobro visibles para el cliente
-    from app.db import CuentaCobro
+    from app.db import CuentaCobro, Abono
+
+    def _abonado_de(c, db):
+        return sum(a.monto for a in db.query(Abono).filter(Abono.cuenta_id == c.id).all())
+
     ccs = (db.query(CuentaCobro).filter(CuentaCobro.proyecto_id == p.id)
            .order_by(CuentaCobro.creado.desc()).all())
     cuentas = [
         {
             "id": c.id, "numero": c.numero, "neto": c.neto,
-            "estado": c.estado,
+            "estado": c.estado, "tipo": getattr(c, "tipo", "corte") or "corte",
+            "retencion": getattr(c, "retencion", 0) or 0,
+            "abonado": _abonado_de(c, db),
             "fecha": c.creado.strftime("%d/%m/%Y"),
             "fecha_pago": c.pagado.strftime("%d/%m/%Y") if c.pagado else None,
         } for c in ccs

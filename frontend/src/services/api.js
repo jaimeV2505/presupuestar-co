@@ -119,6 +119,8 @@ export const clientesAPI = {
 }
 
 export const cuentasAPI = {
+  abonar: (cid, monto, nota) => api.post(`/cuentas/${cid}/abonos`, { monto, nota }).then(r => r.data),
+  retegarantia: (pid) => api.post(`/cuentas/proyectos/${pid}/retegarantia`).then(r => r.data),
   listar: (pid) => api.get(`/cuentas/proyectos/${pid}/cuentas`).then(r => r.data),
   preview: (pid, avanceId) => api.get(`/cuentas/proyectos/${pid}/cuentas/preview`, { params: { avance_id: avanceId } }).then(r => r.data),
   crear: (pid, avanceId) => api.post(`/cuentas/proyectos/${pid}/cuentas`, { avance_id: avanceId }).then(r => r.data),

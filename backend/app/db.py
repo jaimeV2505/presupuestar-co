@@ -161,6 +161,8 @@ class CuentaCobro(Base):
     anticipo_pct = Column(Integer, default=0)          # % amortizado (del contrato)
     amortizacion = Column(Integer, default=0)
     neto = Column(Integer, default=0)                  # a cobrar
+    retencion = Column(Integer, default=0)       # retegarantia del corte
+    tipo = Column(String(15), default="corte")    # corte | retegarantia
     estado = Column(String(20), default="enviada")     # enviada | pagada
     creado = Column(DateTime, default=utcnow)
     pagado = Column(DateTime, nullable=True)
@@ -187,6 +189,16 @@ class IntentoAcceso(Base):
     fallidos = Column(Integer, default=0)
     bloqueado_hasta = Column(DateTime, nullable=True)
     actualizado = Column(DateTime, default=utcnow)
+
+
+class Abono(Base):
+    """Pagos parciales de una cuenta de cobro — la norma en obra colombiana."""
+    __tablename__ = "abonos"
+    id = Column(Integer, primary_key=True)
+    cuenta_id = Column(Integer, ForeignKey("cuentas_cobro.id"), nullable=False, index=True)
+    monto = Column(Integer, nullable=False)
+    nota = Column(String(150), default="")
+    creado = Column(DateTime, default=utcnow)
 
 
 class Otrosi(Base):
@@ -270,6 +282,8 @@ def init_db():
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS es_demo BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_token_hash VARCHAR(64)",
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_expira TIMESTAMP",
+                    "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS retencion INTEGER DEFAULT 0",
+                    "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS tipo VARCHAR(15) DEFAULT 'corte'",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -296,6 +310,8 @@ def init_db():
                     ("proyectos", "es_demo", "ALTER TABLE proyectos ADD COLUMN es_demo BOOLEAN DEFAULT 0"),
                     ("usuarios", "reset_token_hash", "ALTER TABLE usuarios ADD COLUMN reset_token_hash VARCHAR(64)"),
                     ("usuarios", "reset_expira", "ALTER TABLE usuarios ADD COLUMN reset_expira TIMESTAMP"),
+                    ("cuentas_cobro", "retencion", "ALTER TABLE cuentas_cobro ADD COLUMN retencion INTEGER DEFAULT 0"),
+                    ("cuentas_cobro", "tipo", "ALTER TABLE cuentas_cobro ADD COLUMN tipo VARCHAR(15) DEFAULT 'corte'"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]

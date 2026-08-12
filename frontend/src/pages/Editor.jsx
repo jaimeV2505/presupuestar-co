@@ -14,7 +14,7 @@ export default function Editor() {
   const [p, setP] = useState(null)
   const [items, setItems] = useState([])
   const [aiu, setAiu] = useState({ admin: 15, imprevistos: 5, utilidad: 8, aplicar: true, iva_sobre_utilidad: true })
-  const [contrato, setContrato] = useState({ plazo_dias: 45, anticipo_pct: 50, fecha_inicio: '', lugar: '' })
+  const [contrato, setContrato] = useState({ plazo_dias: 45, anticipo_pct: 50, retegarantia_pct: 0, fecha_inicio: '', lugar: '' })
   const [totales, setTotales] = useState(null)
   const [guardando, setGuardando] = useState(false)
 
@@ -50,6 +50,8 @@ export default function Editor() {
   const [nuevoGasto, setNuevoGasto] = useState({ categoria: 'materiales', descripcion: '', valor: '', foto: '' })
   const [showCobros, setShowCobros] = useState(false)
   const [cobrosData, setCobrosData] = useState(null)
+  const [abonando, setAbonando] = useState(null)   // {cuenta, monto, nota}
+  const [showPanel, setShowPanel] = useState(false) // panel lateral de herramientas
   const [liquidacion, setLiquidacion] = useState(null)  // preview antes de crear
   const [tipEditor, setTipEditor] = useState(!localStorage.getItem('tip_editor'))
   const [tipObra, setTipObra] = useState(false)
@@ -330,96 +332,25 @@ export default function Editor() {
                 <CheckCircle2 className="w-3 h-3" /> Aceptado
               </span>
             )}
-            <button onClick={() => exportar('excel')} className="p-2 hover:bg-slate-100 rounded-lg" title="Excel">
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            </button>
-            <button onClick={() => exportar('pdf')} className="p-2 hover:bg-slate-100 rounded-lg" title="PDF">
-              <FileText className="w-4 h-4 text-red-500" />
-            </button>
+            {p.estado === 'entrega_solicitada' && (
+              <span className="hidden sm:inline text-xs bg-violet-100 text-violet-700 px-2.5 py-1.5 rounded-full font-medium">
+                🤝 Esperando al cliente
+              </span>
+            )}
             {p.estado === 'terminado' && calificacion?.respondida && (
               <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-full font-medium"
                     title={calificacion.comentario || ''}>
                 ⭐ {calificacion.estrellas}/5
               </span>
             )}
-            {p.estado === 'aceptado' && (
-              <button onClick={async () => {
-                        if (!confirm('¿Solicitar la entrega de la obra?\n\n• Tu cliente verá en su enlace: "El contratista reporta la obra terminada"\n• Al confirmar, firmará el Acta de Entrega\n• Si encuentra pendientes, te los reporta y la obra continúa')) return
-                        try {
-                          const d = await proyectosAPI.actualizar(id, { estado: 'entrega_solicitada' })
-                          setP(d)
-                          toast.success('Entrega solicitada — avísale a tu cliente')
-                          avisarCliente(`Hola! La obra "${p.nombre}" está terminada 🏁 Por favor confirma el recibido a satisfacción aquí:`)
-                        } catch (e2) { toast.error(e2.message) }
-                      }}
-                      className="flex items-center gap-1.5 border border-slate-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
-                      title="Solicitar acta de entrega al cliente">
-                🤝 <span className="hidden sm:inline">Solicitar entrega</span>
-              </button>
-            )}
-            {p.estado === 'entrega_solicitada' && (
-              <span className="text-xs bg-violet-100 text-violet-700 px-2.5 py-1.5 rounded-full font-medium">
-                🤝 Esperando confirmación del cliente
-              </span>
-            )}
-            {p.estado === 'terminado' && p.share_token && (
-              <a href={`/api/share/publico/${p.share_token}/acta.pdf`} target="_blank" rel="noreferrer"
-                 className="text-[11px] font-medium text-navy-600 border border-navy-200 rounded-lg px-2.5 py-1.5">
-                📄 Acta de Entrega
-              </a>
-            )}
-            {['aceptado', 'entrega_solicitada'].includes(p.estado) && (
-              <button onClick={() => setShowOtrosi(true)}
-                      className="relative flex items-center gap-1.5 border border-amber-300 text-amber-700 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-amber-50"
-                      title="Trabajos extra aprobados con nueva firma del cliente">
-                ➕ <span className="hidden sm:inline">Adicionales</span>
-                {otrosies.filter(o => o.estado === 'aprobado').length > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
-                    {otrosies.filter(o => o.estado === 'aprobado').length}
-                  </span>
-                )}
-              </button>
-            )}
-            {['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado) && (
-              <button onClick={() => {
-                        setShowGastos(true)
-                        gastosAPI.listar(id).then(setGastosData).catch(e => toast.error(e.message))
-                      }}
-                      className="flex items-center gap-1.5 border border-slate-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
-                      title="Gastos reales vs presupuesto">
-                💸 <span className="hidden sm:inline">Gastos</span>
-              </button>
-            )}
-            {['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado) && (
-              <button onClick={() => {
-                        setShowCobros(true)
-                        setLiquidacion(null)
-                        cuentasAPI.listar(id).then(setCobrosData).catch(e => toast.error(e.message))
-                        avancesAPI.listar(id).then(res => setAvances(res.avances || [])).catch(() => {})
-                      }}
-                      className="flex items-center gap-1.5 border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium px-3 py-2 rounded-xl transition"
-                      title="Cuentas de cobro">
-                💵 <span className="hidden sm:inline">Cobros</span>
-              </button>
-            )}
-            {p.estado === 'aceptado' && (
-              <button onClick={() => {
-                        setShowAvances(true)
-                        avancesAPI.listar(id).then(res => {
-                          setAvances(res.avances || [])
-                          setValorTotalDirecto(res.valor_total_directo || 0)
-                          // Prefill: continuar desde el ultimo avance publicado
-                          const ultimo = (res.avances || [])[0]
-                          const map = {}
-                          if (ultimo?.items) ultimo.items.forEach(it => { map[it.id] = it.pct })
-                          setAvanceItems(map)
-                        }).catch(() => {})
-                      }}
-                      className="flex items-center gap-1.5 border border-amber-300 bg-amber-50 text-amber-700 text-sm font-medium px-3 py-2 rounded-xl transition"
-                      title="Avances de obra">
-                <HardHat className="w-4 h-4" /> <span className="hidden sm:inline">Avances</span>
-              </button>
-            )}
+            <button onClick={() => setShowPanel(true)}
+                    className="relative flex items-center gap-1.5 border border-slate-300 text-slate-700 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
+                    title="Herramientas de la obra">
+              🛠️ <span className="hidden sm:inline">Obra</span>
+              {!['borrador', 'enviado', 'visto', 'rechazado'].includes(p.estado) && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />
+              )}
+            </button>
             <button onClick={() => setShowPreview(true)}
                     className="flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"
                     title="Ver como lo verá tu cliente">
@@ -432,6 +363,129 @@ export default function Editor() {
           </div>
         </div>
       </header>
+
+
+      {/* ═══ PANEL LATERAL: herramientas de la obra ═══ */}
+      {showPanel && (
+        <div className="fixed inset-0 z-50 flex" onClick={() => setShowPanel(false)}>
+          <div className="w-72 max-w-[85vw] bg-white h-full shadow-2xl overflow-y-auto animate-[slideIn_.15s_ease-out]"
+               onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white">
+              <div>
+                <p className="font-bold text-slate-800 text-sm">🛠️ Herramientas</p>
+                <p className="text-[10px] text-slate-400 truncate max-w-[190px]">{p.numero} · {p.nombre}</p>
+              </div>
+              <button onClick={() => setShowPanel(false)}><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+
+            <div className="p-3 space-y-1">
+              {eventos?.total_vistas > 0 && (
+                <p className="text-[11px] text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-2">
+                  👁 {eventos.total_vistas} vista{eventos.total_vistas !== 1 ? 's' : ''} del cliente
+                  {eventos?.aceptado && ' · ✓ contrato firmado'}
+                </p>
+              )}
+
+              {['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado) ? (
+                <>
+                  <p className="text-[9px] text-slate-400 uppercase font-bold px-1 pt-1">Ejecución</p>
+                  {p.estado === 'aceptado' && (
+                    <button onClick={() => {
+                              setShowPanel(false); setShowAvances(true)
+                              avancesAPI.listar(id).then(res => {
+                                setAvances(res.avances || [])
+                                setValorTotalDirecto(res.valor_total_directo || 0)
+                                const ultimo = (res.avances || [])[0]
+                                const map = {}
+                                if (ultimo?.items) ultimo.items.forEach(it => { map[it.id] = it.pct })
+                                setAvanceItems(map)
+                              }).catch(() => {})
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 text-left">
+                      <span className="text-lg">🏗️</span>
+                      <span><span className="block text-sm font-semibold text-slate-700">Avances</span>
+                      <span className="block text-[10px] text-slate-400">% por actividad — tu cliente lo ve en vivo</span></span>
+                    </button>
+                  )}
+                  <button onClick={() => {
+                            setShowPanel(false); setShowGastos(true)
+                            gastosAPI.listar(id).then(setGastosData).catch(e => toast.error(e.message))
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-left">
+                    <span className="text-lg">💸</span>
+                    <span><span className="block text-sm font-semibold text-slate-700">Gastos</span>
+                    <span className="block text-[10px] text-slate-400">Utilidad real con semáforo — privado</span></span>
+                  </button>
+                  <button onClick={() => {
+                            setShowPanel(false); setShowCobros(true); setLiquidacion(null)
+                            cuentasAPI.listar(id).then(setCobrosData).catch(e => toast.error(e.message))
+                            avancesAPI.listar(id).then(res => setAvances(res.avances || [])).catch(() => {})
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-left">
+                    <span className="text-lg">💵</span>
+                    <span><span className="block text-sm font-semibold text-slate-700">Cobros</span>
+                    <span className="block text-[10px] text-slate-400">Cuentas, abonos y retegarantía</span></span>
+                  </button>
+                  {['aceptado', 'entrega_solicitada'].includes(p.estado) && (
+                    <button onClick={() => { setShowPanel(false); setShowOtrosi(true) }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 text-left">
+                      <span className="text-lg">➕</span>
+                      <span className="flex-1"><span className="block text-sm font-semibold text-slate-700">Adicionales
+                        {otrosies.filter(o => o.estado === 'aprobado').length > 0 &&
+                          <span className="ml-1.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{otrosies.filter(o => o.estado === 'aprobado').length} firmado{otrosies.filter(o => o.estado === 'aprobado').length !== 1 ? 's' : ''}</span>}
+                      </span>
+                      <span className="block text-[10px] text-slate-400">Trabajo extra con otrosí firmado</span></span>
+                    </button>
+                  )}
+
+                  <p className="text-[9px] text-slate-400 uppercase font-bold px-1 pt-2">Cierre</p>
+                  {p.estado === 'aceptado' && (
+                    <button onClick={async () => {
+                              if (!confirm('¿Solicitar la entrega de la obra?\n\n• Tu cliente verá: "El contratista reporta la obra terminada"\n• Al confirmar, firmará el Acta de Entrega\n• Si hay pendientes, te los reporta y la obra continúa')) return
+                              try {
+                                const d = await proyectosAPI.actualizar(id, { estado: 'entrega_solicitada' })
+                                setP(d); setShowPanel(false)
+                                toast.success('Entrega solicitada — avísale a tu cliente')
+                                avisarCliente(`Hola! La obra "${p.nombre}" está terminada 🏁 Por favor confirma el recibido a satisfacción aquí:`)
+                              } catch (e2) { toast.error(e2.message) }
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-violet-50 text-left">
+                      <span className="text-lg">🤝</span>
+                      <span><span className="block text-sm font-semibold text-slate-700">Solicitar entrega</span>
+                      <span className="block text-[10px] text-slate-400">El cliente firma el acta bilateral</span></span>
+                    </button>
+                  )}
+                  {p.estado === 'terminado' && p.share_token && (
+                    <a href={`/api/share/publico/${p.share_token}/acta.pdf`} target="_blank" rel="noreferrer"
+                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-left">
+                      <span className="text-lg">📄</span>
+                      <span><span className="block text-sm font-semibold text-slate-700">Acta de Entrega</span>
+                      <span className="block text-[10px] text-slate-400">PDF con las dos firmas</span></span>
+                    </a>
+                  )}
+                </>
+              ) : (
+                <p className="text-[11px] text-slate-400 bg-slate-50 rounded-xl p-3">
+                  🔒 Las herramientas de obra (avances, gastos, cobros, adicionales) se activan cuando
+                  tu cliente <strong>firme el contrato</strong> desde su enlace.
+                </p>
+              )}
+
+              <p className="text-[9px] text-slate-400 uppercase font-bold px-1 pt-2">Exportar</p>
+              <div className="flex gap-2 px-1">
+                <button onClick={() => { setShowPanel(false); exportar('excel') }}
+                        className="flex-1 flex items-center justify-center gap-1.5 border border-slate-200 rounded-xl py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50">
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
+                </button>
+                <button onClick={() => { setShowPanel(false); exportar('pdf') }}
+                        className="flex-1 flex items-center justify-center gap-1.5 border border-slate-200 rounded-xl py-2 text-xs font-medium text-red-500 hover:bg-red-50">
+                  <FileText className="w-3.5 h-3.5" /> PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-6xl mx-auto px-4 py-5">
         {tipEditor && (
@@ -648,6 +702,12 @@ export default function Editor() {
                        onChange={e => setContratoYGuardar({ ...contrato, anticipo_pct: parseFloat(e.target.value) || 0 })} />
               </div>
               <div>
+                <label className="text-[10px] text-slate-400 uppercase font-semibold">Retegarantía % <span className="normal-case">(opcional)</span></label>
+                <input className="input !py-2" type="number" min="0" max="20"
+                       value={contrato.retegarantia_pct || 0}
+                       onChange={e => setContratoYGuardar({ ...contrato, retegarantia_pct: Math.max(0, Math.min(20, parseFloat(e.target.value) || 0)) })} />
+              </div>
+              <div>
                 <label className="text-[10px] text-slate-400 block mb-1">Fecha de inicio</label>
                 <input type="text" placeholder="15 de agosto de 2026" className="input !py-2 text-sm"
                        value={contrato.fecha_inicio}
@@ -781,6 +841,9 @@ export default function Editor() {
                   {liquidacion.amortizacion > 0 && (
                     <div className="flex justify-between"><span className="text-slate-500">(−) Amortización anticipo ({liquidacion.anticipo_pct}%)</span><span>− {COP(liquidacion.amortizacion)}</span></div>
                   )}
+                  {liquidacion.retencion > 0 && (
+                    <div className="flex justify-between"><span className="text-slate-500">(−) Retegarantía ({liquidacion.retegarantia_pct}%) 🔒</span><span>− {COP(liquidacion.retencion)}</span></div>
+                  )}
                   <div className="flex justify-between text-sm font-black text-emerald-700 border-t border-emerald-200 pt-1.5 mt-1.5">
                     <span>NETO A COBRAR</span><span>{COP(liquidacion.neto)}</span>
                   </div>
@@ -824,14 +887,50 @@ export default function Editor() {
               </div>
             )}
 
+            {/* Retegarantia acumulada / liberar */}
+            {cobrosData?.cuentas?.some(c => c.retencion > 0) && (
+              <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded-xl px-3 py-2 mb-2">
+                <p className="text-[11px] text-violet-700">
+                  🔒 Retegarantía retenida: <strong>{COP(cobrosData.cuentas.reduce((s, c) => s + (c.retencion || 0), 0))}</strong>
+                  <span className="text-violet-400"> — se libera al firmar el acta</span>
+                </p>
+                {p.estado === 'terminado' && !cobrosData.cuentas.some(c => c.tipo === 'retegarantia') && (
+                  <button onClick={async () => {
+                            try {
+                              const r = await cuentasAPI.retegarantia(id)
+                              cuentasAPI.listar(id).then(setCobrosData)
+                              toast.success(`🔓 Cuenta ${r.cuenta.numero} generada — cobra tu retegarantía`)
+                            } catch (e) { toast.error(e.message) }
+                          }}
+                          className="shrink-0 text-[10px] font-bold text-white bg-violet-500 rounded-lg px-2.5 py-1.5">
+                    🔓 Liberar
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Cuentas generadas */}
             <div className="space-y-1.5">
               {cobrosData?.cuentas?.map(c => (
                 <div key={c.id} className={`border rounded-xl px-3 py-2.5 ${c.estado === 'pagada' ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/30'}`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-700">{c.numero} · {COP(c.neto)}</p>
-                      <p className="text-[9px] text-slate-400">{c.fecha}{c.fecha_pago && ` · pagada ${c.fecha_pago}`}</p>
+                      <p className="text-xs font-semibold text-slate-700">
+                        {c.tipo === 'retegarantia' ? '🔓 ' : ''}{c.numero} · {COP(c.neto)}
+                        {c.tipo === 'retegarantia' && <span className="text-[9px] text-violet-600 font-bold"> RETEGARANTÍA</span>}
+                      </p>
+                      <p className="text-[9px] text-slate-400">
+                        {c.fecha}{c.fecha_pago && ` · pagada ${c.fecha_pago}`}
+                        {c.retencion > 0 && ` · retuvo ${COP(c.retencion)}`}
+                      </p>
+                      {c.estado !== 'pagada' && c.abonado > 0 && (
+                        <div className="mt-1">
+                          <div className="h-1 bg-slate-100 rounded-full overflow-hidden w-32">
+                            <div className="h-full bg-emerald-400" style={{ width: `${Math.min(100, c.abonado / c.neto * 100)}%` }} />
+                          </div>
+                          <p className="text-[9px] text-emerald-600">Abonado {COP(c.abonado)} · saldo {COP(c.neto - c.abonado)}</p>
+                        </div>
+                      )}
                     </div>
                     <span className={`shrink-0 text-[9px] font-bold px-2 py-1 rounded-full ${c.estado === 'pagada' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                       {c.estado === 'pagada' ? '✓ Pagada' : '⏳ Enviada'}
@@ -852,7 +951,9 @@ export default function Editor() {
                                   cuentasAPI.listar(id).then(setCobrosData)
                                   toast.success('💰 Marcada como pagada')
                                 }}
-                                className="text-[10px] font-bold text-white bg-emerald-500 rounded-lg px-2 py-1">💰 Ya me pagaron</button>
+                                className="text-[10px] font-bold text-white bg-emerald-500 rounded-lg px-2 py-1">💰 Ya me pagaron{c.abonado > 0 ? ' (saldo)' : ''}</button>
+                        <button onClick={() => setAbonando({ cuenta: c, monto: '', nota: '' })}
+                                className="text-[10px] font-bold text-emerald-700 border border-emerald-300 rounded-lg px-2 py-1">＋ Abono</button>
                         <button onClick={async () => {
                                   if (!confirm('¿Eliminar esta cuenta de cobro?')) return
                                   await cuentasAPI.eliminar(c.id)
@@ -865,6 +966,35 @@ export default function Editor() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal ABONO PARCIAL */}
+      {abonando && (
+        <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4" onClick={() => setAbonando(null)}>
+          <div className="bg-white w-full max-w-xs rounded-2xl p-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-bold text-slate-800">＋ Abono a {abonando.cuenta.numero}</h3>
+            <p className="text-[11px] text-slate-400 mb-3">
+              Saldo pendiente: <strong className="text-slate-600">{COP(abonando.cuenta.neto - (abonando.cuenta.abonado || 0))}</strong>
+            </p>
+            <input className="input mb-2" type="number" placeholder="Monto del abono *" autoFocus
+                   value={abonando.monto}
+                   onChange={e => setAbonando(a => ({ ...a, monto: e.target.value }))} />
+            <input className="input mb-3" placeholder="Nota (ej: Nequi viernes)" maxLength={150}
+                   value={abonando.nota}
+                   onChange={e => setAbonando(a => ({ ...a, nota: e.target.value }))} />
+            <button onClick={async () => {
+                      const monto = Math.round(parseFloat(abonando.monto) || 0)
+                      if (monto <= 0) { toast.error('Escribe el monto'); return }
+                      try {
+                        const r = await cuentasAPI.abonar(abonando.cuenta.id, monto, abonando.nota)
+                        setAbonando(null)
+                        cuentasAPI.listar(id).then(setCobrosData)
+                        toast.success(r.cuenta.estado === 'pagada' ? '💰 ¡Cuenta pagada completa!' : `Abono de ${COP(monto)} registrado`)
+                      } catch (e) { toast.error(e.message) }
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-emerald-500 text-white text-xs font-bold">Registrar abono</button>
           </div>
         </div>
       )}
