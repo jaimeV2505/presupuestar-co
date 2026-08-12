@@ -356,7 +356,7 @@ export default function Landing() {
               <Zap className="w-3.5 h-3.5" /> Todas las funciones gratis — paga solo si cotizas en volumen
             </span>
             <h1 className="text-4xl sm:text-5xl font-black leading-tight tracking-tight">
-              Deja de regalar tu trabajo: <span className="text-emerald-400">cotiza como empresa y cobra hasta el último peso</span>
+              Deja de regalar tu trabajo jaime por favor: <span className="text-emerald-400">cotiza como empresa y cobra hasta el último peso</span>
             </h1>
             <p className="text-lg text-blue-200 mt-5 leading-relaxed">
               El sistema de gestión del contratista colombiano: presupuestos con la base APU 2026,
