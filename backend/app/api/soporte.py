@@ -27,6 +27,24 @@ from app.api.pagos import admin_actual
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+ESTADOS = ("pendiente_soporte", "pendiente_cliente", "finalizado")
+
+
+def _estado_norm(e: str) -> str:
+    return {"abierto": "pendiente_soporte", "resuelto": "finalizado"}.get(e, e if e in ESTADOS else "pendiente_soporte")
+
+
+def _mensajes_de(t, db):
+    from app.db import MensajeSoporte
+    msgs = (db.query(MensajeSoporte).filter(MensajeSoporte.ticket_id == t.id)
+            .order_by(MensajeSoporte.creado).all())
+    out = [{"autor": m.autor, "texto": m.texto,
+            "fecha": m.creado.strftime("%d/%m %H:%M")} for m in msgs]
+    if t.respuesta and not any(m["autor"] == "soporte" for m in out):
+        out.insert(0, {"autor": "soporte", "texto": t.respuesta,
+                       "fecha": t.respondido.strftime("%d/%m %H:%M") if t.respondido else ""})
+    return out
+
 SOPORTE_EMAIL = os.environ.get("SOPORTE_EMAIL", "jdvv25@gmail.com").strip()
 MAX_FOTOS = 2
 MAX_FOTO_BYTES = 450_000
@@ -134,14 +152,34 @@ def mis_tickets(user: Usuario = Depends(usuario_actual), db: Session = Depends(g
     return [
         {
             "id": t.id, "asunto": t.asunto, "descripcion": t.descripcion,
-            "estado": t.estado,
-            "respuesta": t.respuesta or "",
+            "estado": _estado_norm(t.estado),
+            "mensajes": _mensajes_de(t, db),
             "fecha": t.creado.strftime("%d/%m/%Y %H:%M"),
             "fecha_respuesta": t.respondido.strftime("%d/%m/%Y %H:%M") if t.respondido else None,
             "num_fotos": len(json.loads(t.fotos_json or "[]")),
         }
         for t in tickets
     ]
+
+
+class ResponderUsuarioRequest(BaseModel):
+    texto: str
+
+
+@router.post("/{ticket_id}/responder")
+def responder_usuario(ticket_id: int, req: ResponderUsuarioRequest,
+                      user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    from app.db import MensajeSoporte
+    t = (db.query(TicketSoporte)
+         .filter(TicketSoporte.id == ticket_id, TicketSoporte.user_id == user.id).first())
+    if not t:
+        raise HTTPException(404, "Ticket no encontrado")
+    if not req.texto.strip():
+        raise HTTPException(400, "Escribe tu mensaje")
+    db.add(MensajeSoporte(ticket_id=t.id, autor="usuario", texto=req.texto.strip()[:2000]))
+    t.estado = "pendiente_soporte"   # reabre si estaba finalizado
+    db.commit()
+    return {"ok": True, "estado": t.estado}
 
 
 @router.get("/admin")
@@ -155,7 +193,7 @@ def listar_tickets(admin: Usuario = Depends(admin_actual), db: Session = Depends
     return [
         {
             "id": t.id, "asunto": t.asunto, "descripcion": t.descripcion,
-            "contexto": t.contexto, "estado": t.estado,
+            "contexto": t.contexto, "estado": _estado_norm(t.estado), "mensajes": _mensajes_de(t, db),
             "respuesta": t.respuesta or "",
             "email_enviado": t.email_enviado,
             "fotos": json.loads(t.fotos_json or "[]"),
@@ -178,25 +216,45 @@ class ResponderTicket(BaseModel):
 
 
 @router.post("/admin/responder")
-def responder(req: ResponderTicket, admin: Usuario = Depends(admin_actual),
-              db: Session = Depends(get_db)):
-    """El admin responde el ticket — el usuario lo ve en su panel de seguimiento."""
-    from datetime import datetime, timezone
+def responder_ticket(req: ResponderRequest, admin: Usuario = Depends(admin_actual),
+                     db: Session = Depends(get_db)):
+    from app.db import MensajeSoporte
     t = db.query(TicketSoporte).filter(TicketSoporte.id == req.ticket_id).first()
     if not t:
         raise HTTPException(404, "Ticket no encontrado")
-    if not req.respuesta.strip():
-        raise HTTPException(400, "Escribe una respuesta")
-    t.respuesta = req.respuesta.strip()[:3000]
+    db.add(MensajeSoporte(ticket_id=t.id, autor="soporte", texto=req.respuesta.strip()[:2000]))
+    t.estado = "pendiente_cliente"
     t.respondido = datetime.now(timezone.utc)
-    if req.resolver:
-        t.estado = "resuelto"
     db.commit()
-    from app.api.notificaciones import notificar
-    notificar(db, t.user_id, "soporte",
-              f"💬 Respondimos tu ticket #{t.id}",
-              t.respuesta[:200])
-    logger.info(f"Ticket #{t.id} respondido por {admin.email}")
+    try:
+        from app.api.notificaciones import notificar
+        notificar(db, t.user_id, "soporte",
+                  f"Soporte respondio tu ticket #{t.id}",
+                  req.respuesta.strip()[:180])
+    except Exception as e:
+        logger.warning(f"notif soporte: {e}")
+    return {"ok": True, "estado": t.estado}
+
+
+class FinalizarRequest(BaseModel):
+    ticket_id: int
+
+
+@router.post("/admin/finalizar")
+def finalizar_ticket(req: FinalizarRequest, admin: Usuario = Depends(admin_actual),
+                     db: Session = Depends(get_db)):
+    t = db.query(TicketSoporte).filter(TicketSoporte.id == req.ticket_id).first()
+    if not t:
+        raise HTTPException(404, "Ticket no encontrado")
+    t.estado = "finalizado"
+    db.commit()
+    try:
+        from app.api.notificaciones import notificar
+        notificar(db, t.user_id, "soporte",
+                  f"Tu ticket #{t.id} fue finalizado",
+                  "Si el tema persiste, responde el ticket y se reabre solo.")
+    except Exception:
+        pass
     return {"ok": True}
 
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { CheckCircle2, ChevronDown, ChevronUp, Phone, Building2 } from 'lucide-react'
 import { shareAPI } from '../services/api'
+import { comprimirImagen } from '../utils/imagen'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -652,9 +653,7 @@ export default function VistaPublica() {
                                const file = e.target.files?.[0]
                                if (!file) return
                                if (file.size > 400 * 1024) { alert('Máximo 400KB'); return }
-                               const r = new FileReader()
-                               r.onload = () => setFirma(f => ({ ...f, firma_imagen: r.result }))
-                               r.readAsDataURL(file)
+                               comprimirImagen(file, 800, 0.8).then(img => setFirma(f => ({ ...f, firma_imagen: img }))).catch(() => toast.error('Imagen no valida'))
                              }} />
                     </label>
                   )}

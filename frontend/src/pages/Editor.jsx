@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
          Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
 import { proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI } from '../services/api'
+import { comprimirImagen } from '../utils/imagen'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -923,9 +924,7 @@ export default function Editor() {
                            const file = e.target.files?.[0]
                            if (!file) return
                            if (file.size > 450 * 1024) { toast.error('Máximo 450KB'); return }
-                           const r = new FileReader()
-                           r.onload = () => setNuevoGasto(g => ({ ...g, foto: r.result }))
-                           r.readAsDataURL(file)
+                           comprimirImagen(file).then(foto => setNuevoGasto(g => ({ ...g, foto }))).catch(() => toast.error('Imagen no valida'))
                          }} />
                 </label>
                 <button onClick={async () => {
@@ -1054,9 +1053,7 @@ export default function Editor() {
                            const files = Array.from(e.target.files || []).slice(0, 3 - nuevoAvance.fotos.length)
                            files.forEach(file => {
                              if (file.size > 450 * 1024) { toast.error(`${file.name}: máximo 450KB por foto`); return }
-                             const r = new FileReader()
-                             r.onload = () => setNuevoAvance(a => ({ ...a, fotos: [...a.fotos, r.result].slice(0, 3) }))
-                             r.readAsDataURL(file)
+                             comprimirImagen(file).then(f => setNuevoAvance(a => ({ ...a, fotos: [...a.fotos, f].slice(0, 3) }))).catch(() => toast.error('Imagen no valida'))
                            })
                            e.target.value = ''
                          }} />

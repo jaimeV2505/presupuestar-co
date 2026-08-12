@@ -159,15 +159,18 @@ export default function Admin() {
         {/* Tickets de soporte */}
         <div>
           <h3 className="text-sm font-semibold text-slate-700 mb-2">
-            🛟 Tickets de soporte {tickets.filter(t => t.estado === 'abierto').length > 0 &&
-              <span className="text-red-500">({tickets.filter(t => t.estado === 'abierto').length} abiertos)</span>}
+            🛟 Tickets de soporte {tickets.filter(t => t.estado === 'pendiente_soporte').length > 0 &&
+              <span className="text-red-500">({tickets.filter(t => t.estado === 'pendiente_soporte').length} esperan tu respuesta)</span>}
           </h3>
           {tickets.length === 0 ? (
             <p className="text-sm text-slate-400 py-4 text-center bg-white rounded-xl border border-slate-100">Sin tickets</p>
           ) : (
             <div className="space-y-2">
               {tickets.slice(0, 30).map(t => (
-                <div key={t.id} className={`bg-white rounded-xl border p-4 ${t.estado === 'abierto' ? 'border-red-200' : 'border-slate-100 opacity-60'}`}>
+                <div key={t.id} className={`bg-white rounded-xl border p-4 ${t.estado === 'pendiente_soporte' ? 'border-red-200' : t.estado === 'pendiente_cliente' ? 'border-blue-200' : 'border-slate-100 opacity-60'}`}>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${t.estado === 'pendiente_soporte' ? 'bg-red-100 text-red-600' : t.estado === 'pendiente_cliente' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                    {t.estado === 'pendiente_soporte' ? '🔴 Te espera' : t.estado === 'pendiente_cliente' ? '🔵 Esperando al usuario' : '✓ Finalizado'}
+                  </span>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-700">#{t.id} · {t.asunto}</p>
@@ -186,14 +189,18 @@ export default function Admin() {
                     </div>
                   </div>
 
-                  {t.respuesta && (
-                    <div className="mt-2 bg-navy-50 border border-navy-100 rounded-lg p-2.5">
-                      <p className="text-[10px] font-bold text-navy-600 mb-0.5">💬 Tu respuesta</p>
-                      <p className="text-[11px] text-slate-600 whitespace-pre-wrap">{t.respuesta}</p>
+                  {(t.mensajes || []).length > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                      {t.mensajes.map((m, i) => (
+                        <div key={i} className={`rounded-lg p-2.5 text-[11px] whitespace-pre-wrap border ${m.autor === 'soporte' ? 'bg-navy-50 border-navy-100' : 'bg-amber-50 border-amber-100'}`}>
+                          <p className="text-[9px] font-bold mb-0.5 opacity-70">{m.autor === 'soporte' ? '🛟 Soporte (tú)' : `👤 ${t.usuario.nombre}`}{m.fecha && ` · ${m.fecha}`}</p>
+                          {m.texto}
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  {t.estado === 'abierto' && (
+                  {t.estado !== 'finalizado' && (
                     <div className="mt-3 flex gap-2">
                       <input className="input flex-1 !py-2 text-xs"
                              placeholder="Escribe la respuesta al usuario..."
@@ -203,13 +210,25 @@ export default function Admin() {
                                 const txt = (respuestas[t.id] || '').trim()
                                 if (!txt) { toast.error('Escribe la respuesta'); return }
                                 try {
-                                  await soporteAPI.adminResponder({ ticket_id: t.id, respuesta: txt, resolver: true })
-                                  setTickets(prev => prev.map(x => x.id === t.id ? { ...x, estado: 'resuelto', respuesta: txt } : x))
-                                  toast.success('Respondido y resuelto — el usuario lo verá en su panel')
+                                  await soporteAPI.adminResponder({ ticket_id: t.id, respuesta: txt })
+                                  setTickets(prev => prev.map(x => x.id === t.id ? { ...x, estado: 'pendiente_cliente', mensajes: [...(x.mensajes || []), { autor: 'soporte', texto: txt, fecha: 'ahora' }] } : x))
+                                  setRespuestas(r => ({ ...r, [t.id]: '' }))
+                                  toast.success('Respuesta enviada — el usuario fue notificado 🔔')
                                 } catch (e2) { toast.error(e2.message) }
                               }}
-                              className="shrink-0 text-xs font-bold bg-emerald-500 text-white px-3 py-2 rounded-lg">
-                        Responder ✓
+                              className="shrink-0 text-xs font-bold bg-navy-600 text-white px-3 py-2 rounded-lg">
+                        Responder
+                      </button>
+                      <button onClick={async () => {
+                                try {
+                                  await soporteAPI.adminFinalizar(t.id)
+                                  setTickets(prev => prev.map(x => x.id === t.id ? { ...x, estado: 'finalizado' } : x))
+                                  toast.success('Ticket finalizado — el usuario fue notificado')
+                                } catch (e2) { toast.error(e2.message) }
+                              }}
+                              className="shrink-0 text-xs font-bold bg-emerald-500 text-white px-3 py-2 rounded-lg"
+                              title="Cierra el ticket (el usuario puede reabrirlo respondiendo)">
+                        ✓ Finalizar
                       </button>
                     </div>
                   )}

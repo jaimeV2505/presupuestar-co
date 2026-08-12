@@ -9,12 +9,13 @@ Incluye las imagenes base64 (firmas, fotos, recibos) — el respaldo es total.
 import json
 import logging
 from datetime import datetime, timezone, date
-from fastapi import APIRouter, Depends
+import os
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.db import (get_db, Usuario, Cliente, Proyecto, EventoShare, Avance,
                     Gasto, CuentaCobro, Encuesta, Notificacion, PagoWompi)
-from app.api.pagos import admin_actual
+from app.api.pagos import admin_actual, _admins
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -34,7 +35,24 @@ def _serializar(obj):
 
 
 @router.get("/completo")
-def backup_completo(admin: Usuario = Depends(admin_actual), db: Session = Depends(get_db)):
+def backup_completo(x_backup_token: str = Header(default=""),
+                    authorization: str = Header(default=""),
+                    db: Session = Depends(get_db)):
+    """Autenticacion dual: JWT de admin (boton del panel) o BACKUP_TOKEN (GitHub Action)."""
+    esperado = os.environ.get("BACKUP_TOKEN", "").strip()
+    admin_email = "github-action"
+    if not (esperado and x_backup_token == esperado):
+        try:
+            import jwt as _jwt
+            from app.api.auth import JWT_SECRET, JWT_ALG
+            token = (authorization or "").replace("Bearer ", "").strip()
+            payload = _jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+            u = db.query(Usuario).filter(Usuario.id == int(payload["sub"])).first()
+            assert u and u.email.lower() in _admins()
+            admin_email = u.email
+        except Exception:
+            raise HTTPException(401, "Solo administradores")
+    admin = type("A", (), {"email": admin_email})()
     def generar():
         yield '{"generado": "%s", "version": 1' % datetime.now(timezone.utc).isoformat()
         for modelo in MODELOS:

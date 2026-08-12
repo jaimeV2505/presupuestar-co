@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Response, Query
 from typing import Optional
 from app.services import apu_service as APU
 
 router = APIRouter()
 
 @router.get("/")
-def get_precios(
+def get_precios(response: Response, 
     region: str = Query("bogota"),
     categoria: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
@@ -23,6 +23,7 @@ def get_precios(
         if q and _st(q) not in _st(item["descripcion"]) and _st(q) not in _st(item.get("categoria", "")): continue
         results.append({**item, "precio": round(item["precio"] * factor)})
 
+    response.headers["Cache-Control"] = "public, max-age=3600, s-maxage=86400"
     return {
         "items": results[:limit],
         "total": len(results),

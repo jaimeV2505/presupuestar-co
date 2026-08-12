@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Upload, Building2, Save } from 'lucide-react'
 import { authAPI, shareAPI } from '../services/api'
+import { comprimirImagen } from '../utils/imagen'
 
 const CONDICIONES_EJEMPLO = `Validez de la oferta: 15 dias calendario.
 Forma de pago: 50% anticipo, 30% avance de obra, 20% contra entrega.
@@ -67,9 +68,7 @@ function FirmaContratista({ form, setForm, guardar }) {
                        const file = e.target.files?.[0]
                        if (!file) return
                        if (file.size > 400 * 1024) { toast.error('Máximo 400KB'); return }
-                       const r = new FileReader()
-                       r.onload = () => { setForm(f => ({ ...f, firma_b64: r.result })); guardar({ firma_b64: r.result }); setModo('ver') }
-                       r.readAsDataURL(file)
+                       comprimirImagen(file, 800, 0.8).then(b64 => { setForm(f => ({ ...f, firma_b64: b64 })); guardar({ firma_b64: b64 }); setModo('ver') }).catch(() => toast.error('Imagen no valida'))
                      }} />
             </label>
           </div>
@@ -164,9 +163,7 @@ export default function Perfil() {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 500 * 1024) { toast.error('El logo debe pesar menos de 500KB'); return }
-    const reader = new FileReader()
-    reader.onload = () => setLogo(reader.result)
-    reader.readAsDataURL(file)
+    comprimirImagen(file, 600, 0.85).then(setLogo).catch(() => toast.error('Imagen no valida'))
   }
 
   const guardar = async () => {

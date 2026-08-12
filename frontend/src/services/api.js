@@ -132,8 +132,9 @@ export const notificacionesAPI = {
 export const soporteAPI = {
   crear: (data) => api.post('/soporte', data).then(r => r.data),
   adminListar: () => api.get('/soporte/admin').then(r => r.data),
-  adminResolver: (id) => api.post('/soporte/admin/resolver', { ticket_id: id }).then(r => r.data),
   adminResponder: (data) => api.post('/soporte/admin/responder', data).then(r => r.data),
+  adminFinalizar: (ticket_id) => api.post('/soporte/admin/finalizar', { ticket_id }).then(r => r.data),
+  responder: (id, texto) => api.post(`/soporte/${id}/responder`, { texto }).then(r => r.data),
   misTickets: () => api.get('/soporte/mis-tickets').then(r => r.data),
 }
 

@@ -189,6 +189,16 @@ class IntentoAcceso(Base):
     actualizado = Column(DateTime, default=utcnow)
 
 
+class MensajeSoporte(Base):
+    """Hilo de conversacion de cada ticket."""
+    __tablename__ = "mensajes_soporte"
+    id = Column(Integer, primary_key=True)
+    ticket_id = Column(Integer, ForeignKey("tickets_soporte.id"), nullable=False, index=True)
+    autor = Column(String(10), default="usuario")  # usuario | soporte
+    texto = Column(Text, nullable=False)
+    creado = Column(DateTime, default=utcnow)
+
+
 class Notificacion(Base):
     __tablename__ = "notificaciones"
     id = Column(Integer, primary_key=True)

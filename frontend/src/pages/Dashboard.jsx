@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2, LifeBuoy, Camera, X, Bell, TrendingUp, Users } from 'lucide-react'
 import { proyectosAPI, pagosAPI, soporteAPI, notificacionesAPI, clientesAPI, onboardingAPI } from '../services/api'
+import { comprimirImagen } from '../utils/imagen'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -25,6 +26,7 @@ export default function Dashboard() {
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
   const [infoPago, setInfoPago] = useState(null)
   const [showSoporte, setShowSoporte] = useState(false)
+  const [respuestas, setRespuestas] = useState({})   // {ticketId: texto}
   const [ticket, setTicket] = useState({ asunto: '', descripcion: '', fotos: [] })
   const [enviandoTicket, setEnviandoTicket] = useState(false)
   const [ticketEnviado, setTicketEnviado] = useState(null)
@@ -41,12 +43,13 @@ export default function Dashboard() {
 
   // Celebraciones de primera vez (usa las notificaciones cargadas)
   useEffect(() => {
-    if (!Array.isArray(notifs) || notifs.length === 0) return
-    if (notifs.some(x => x.tipo === 'firmado') && !localStorage.getItem('cel_firma')) {
+    const lista = notifs.notificaciones || []
+    if (lista.length === 0) return
+    if (lista.some(x => x.tipo === 'firmado') && !localStorage.getItem('cel_firma')) {
       localStorage.setItem('cel_firma', '1')
       toast('🎉 ¡Tu primer contrato firmado! Ya puedes publicar avances de obra', { duration: 6000, icon: '✍️' })
     }
-    if (notifs.some(x => (x.tipo || '').includes('entrega')) && !localStorage.getItem('cel_entrega')) {
+    if (lista.some(x => (x.tipo || '').includes('entrega')) && !localStorage.getItem('cel_entrega')) {
       localStorage.setItem('cel_entrega', '1')
       toast('🏁 ¡Primera entrega confirmada! La calificación de tu cliente alimenta tu reputación', { duration: 6000, icon: '🤝' })
     }
@@ -160,7 +163,11 @@ export default function Dashboard() {
                       <p className="text-center text-xs text-slate-400 py-8">Sin notificaciones aún</p>
                     ) : notifs.notificaciones.map(n => (
                       <button key={n.id}
-                              onClick={() => { if (n.proyecto_id) nav(`/proyecto/${n.proyecto_id}`) }}
+                              onClick={() => {
+                                setShowNotifs(false)
+                                if (n.tipo === 'soporte') { setShowSoporte(true); setTabSoporte('mis'); return }
+                                if (n.proyecto_id) nav(`/proyecto/${n.proyecto_id}`)
+                              }}
                               className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition ${!n.leida ? 'bg-blue-50/50' : ''}`}>
                         <p className="text-xs font-semibold text-slate-700">{n.icono} {n.titulo}</p>
                         {n.cuerpo && <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{n.cuerpo}</p>}
@@ -382,7 +389,7 @@ export default function Dashboard() {
                   <button onClick={() => { setTabSoporte('mis'); soporteAPI.misTickets().then(setMisTickets).catch(() => {}) }}
                           className={`flex-1 text-xs font-medium py-2 rounded-lg transition ${tabSoporte === 'mis' ? 'bg-white text-navy-600 shadow-sm' : 'text-slate-500'}`}>
                     Mis reportes {misTickets.length > 0 && `(${misTickets.length})`}
-                    {misTickets.some(t => t.estado === 'resuelto' && t.respuesta) && ' 💬'}
+                    {misTickets.some(t => t.estado === 'pendiente_cliente') && ' 💬'}
                   </button>
                 </div>
 
@@ -390,26 +397,55 @@ export default function Dashboard() {
                   <div className="space-y-2 max-h-[55vh] overflow-y-auto">
                     {misTickets.length === 0 ? (
                       <p className="text-center text-xs text-slate-400 py-8">Aún no has creado reportes</p>
-                    ) : misTickets.map(t => (
-                      <div key={t.id} className={`border rounded-xl p-3 ${t.estado === 'abierto' ? 'border-amber-200 bg-amber-50/40' : 'border-emerald-200 bg-emerald-50/30'}`}>
+                    ) : misTickets.map(t => {
+                      const chip = t.estado === 'finalizado'
+                        ? ['bg-slate-100 text-slate-500', '✓ Finalizado']
+                        : t.estado === 'pendiente_cliente'
+                          ? ['bg-blue-100 text-blue-700', '💬 Te respondieron']
+                          : ['bg-amber-100 text-amber-700', '⏳ Esperando a soporte']
+                      return (
+                      <div key={t.id} className="border border-slate-200 rounded-xl p-3 bg-white">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-slate-700">#{t.id} · {t.asunto}</p>
                             <p className="text-[10px] text-slate-400">{t.fecha}{t.num_fotos > 0 && ` · ${t.num_fotos} 📷`}</p>
                           </div>
-                          <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${t.estado === 'abierto' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                            {t.estado === 'abierto' ? '⏳ En revisión' : '✓ Resuelto'}
-                          </span>
+                          <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${chip[0]}`}>{chip[1]}</span>
                         </div>
-                        {t.descripcion && <p className="text-[11px] text-slate-500 mt-1.5 line-clamp-2">{t.descripcion}</p>}
-                        {t.respuesta && (
-                          <div className="mt-2 bg-white border border-slate-100 rounded-lg p-2.5">
-                            <p className="text-[10px] font-bold text-navy-500 mb-0.5">💬 Respuesta del equipo{t.fecha_respuesta && ` · ${t.fecha_respuesta}`}</p>
-                            <p className="text-[11px] text-slate-600 whitespace-pre-wrap">{t.respuesta}</p>
+                        {t.descripcion && <p className="text-[11px] text-slate-500 mt-1.5">{t.descripcion}</p>}
+
+                        {(t.mensajes || []).length > 0 && (
+                          <div className="mt-2 space-y-1.5">
+                            {t.mensajes.map((m, i) => (
+                              <div key={i} className={`rounded-lg p-2.5 text-[11px] whitespace-pre-wrap ${m.autor === 'soporte' ? 'bg-navy-50 border border-navy-100 text-slate-700' : 'bg-slate-50 border border-slate-100 text-slate-600'}`}>
+                                <p className="text-[9px] font-bold mb-0.5 opacity-70">{m.autor === 'soporte' ? '🛟 Soporte' : '👤 Tú'}{m.fecha && ` · ${m.fecha}`}</p>
+                                {m.texto}
+                              </div>
+                            ))}
                           </div>
                         )}
+
+                        <div className="flex gap-2 mt-2">
+                          <input className="input !py-2 text-xs flex-1"
+                                 placeholder={t.estado === 'finalizado' ? 'Responder (reabre el ticket)...' : 'Responder...'}
+                                 value={respuestas[t.id] || ''}
+                                 onChange={e => setRespuestas(r => ({ ...r, [t.id]: e.target.value }))} />
+                          <button onClick={async () => {
+                                    const texto = (respuestas[t.id] || '').trim()
+                                    if (!texto) return
+                                    try {
+                                      await soporteAPI.responder(t.id, texto)
+                                      setRespuestas(r => ({ ...r, [t.id]: '' }))
+                                      soporteAPI.misTickets().then(setMisTickets).catch(() => {})
+                                      toast.success('Enviado a soporte')
+                                    } catch (e) { toast.error(e.message) }
+                                  }}
+                                  className="text-xs font-bold bg-navy-600 text-white rounded-lg px-3">
+                            Enviar
+                          </button>
+                        </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 ) : (
                 <div className="space-y-3">
@@ -428,9 +464,7 @@ export default function Dashboard() {
                                const files = Array.from(e.target.files || []).slice(0, 2 - ticket.fotos.length)
                                files.forEach(file => {
                                  if (file.size > 450 * 1024) { toast.error(`${file.name}: máximo 450KB`); return }
-                                 const r = new FileReader()
-                                 r.onload = () => setTicket(t => ({ ...t, fotos: [...t.fotos, r.result].slice(0, 2) }))
-                                 r.readAsDataURL(file)
+                                 comprimirImagen(file).then(f => setTicket(t => ({ ...t, fotos: [...t.fotos, f].slice(0, 2) }))).catch(() => toast.error('Imagen no valida'))
                                })
                                e.target.value = ''
                              }} />
