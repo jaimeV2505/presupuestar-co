@@ -57,6 +57,8 @@ export const proyectosAPI = {
 }
 
 export const shareAPI = {
+  otrosiAprobar: (token, id, firma) => api.post(`/share/publico/${token}/otrosi/${id}/aprobar`, firma).then(r => r.data),
+  otrosiRechazar: (token, id, motivo) => api.post(`/share/publico/${token}/otrosi/${id}/rechazar`, { motivo }).then(r => r.data),
   compartir: (id) => api.post(`/share/proyectos/${id}/compartir`).then(r => r.data),
   eventos: (id) => api.get(`/share/proyectos/${id}/eventos`).then(r => r.data),
   verPublico: (token) => api.get(`/share/publico/${token}`).then(r => r.data),
@@ -92,6 +94,12 @@ export const pagosAPI = {
 export const recuperarAPI = {
   olvide: (email) => api.post('/auth/olvide', { email }).then(r => r.data),
   restablecer: (data) => api.post('/auth/restablecer', data).then(r => r.data),
+}
+
+export const otrosiesAPI = {
+  listar: (proyectoId) => api.get(`/otrosies/${proyectoId}`).then(r => r.data),
+  crear: (data) => api.post('/otrosies', data).then(r => r.data),
+  eliminar: (id) => api.delete(`/otrosies/${id}`).then(r => r.data),
 }
 
 export const wompiAPI = {

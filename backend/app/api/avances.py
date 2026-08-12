@@ -42,7 +42,15 @@ def _calcular_avance(proyecto: Proyecto, items_pct: List[ItemAvance]):
     Cruza los % por actividad con los items del presupuesto.
     Retorna (porcentaje_ponderado, valor_ejecutado, detalle).
     """
-    items_presupuesto = json.loads(proyecto.items_json or "[]")
+    from app.services.otrosi_service import items_efectivos
+    # Incluye los adicionales aprobados (otrosies) — el avance y el ejecutado los cubren
+    try:
+        from app.db import SessionLocal
+        _db = SessionLocal()
+        items_presupuesto = items_efectivos(proyecto, _db)
+        _db.close()
+    except Exception:
+        items_presupuesto = json.loads(proyecto.items_json or "[]")
     pct_map = {i.id: max(0.0, min(100.0, float(i.pct or 0))) for i in items_pct}
 
     total = 0.0

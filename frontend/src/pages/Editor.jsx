@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
          Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
-import { proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI } from '../services/api'
+import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI } from '../services/api'
 import { comprimirImagen } from '../utils/imagen'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
@@ -35,6 +35,13 @@ export default function Editor() {
   const [avances, setAvances] = useState([])
   const [nuevoAvance, setNuevoAvance] = useState({ titulo: '', descripcion: '', fotos: [] })
   const [avanceItems, setAvanceItems] = useState({})  // {itemId: pct}
+  // ── Adicionales (otrosies) ──
+  const [otrosies, setOtrosies] = useState([])
+  const [showOtrosi, setShowOtrosi] = useState(false)
+  const [otMotivo, setOtMotivo] = useState('')
+  const [otItems, setOtItems] = useState([{ descripcion: '', unidad: 'un', cantidad: 1, precio_unitario: '' }])
+  const [otBusca, setOtBusca] = useState('')
+  const [otResultados, setOtResultados] = useState([])
   const [valorTotalDirecto, setValorTotalDirecto] = useState(0)
   const [subiendoAvance, setSubiendoAvance] = useState(false)
   const [calificacion, setCalificacion] = useState(null)
@@ -59,6 +66,9 @@ export default function Editor() {
   useEffect(() => {
     proyectosAPI.obtener(id).then(data => {
       if (data.es_demo) { onboardingAPI.marcar('explora').catch(() => {}) }
+      if (!['borrador', 'enviado', 'visto', 'rechazado'].includes(data.estado)) {
+        otrosiesAPI.listar(id).then(setOtrosies).catch(() => {})
+      }
       if (['aceptado', 'entrega_solicitada', 'terminado'].includes(data.estado) && !localStorage.getItem('tip_obra')) {
         setTipObra(true)
       }
@@ -357,6 +367,18 @@ export default function Editor() {
                  className="text-[11px] font-medium text-navy-600 border border-navy-200 rounded-lg px-2.5 py-1.5">
                 📄 Acta de Entrega
               </a>
+            )}
+            {['aceptado', 'entrega_solicitada'].includes(p.estado) && (
+              <button onClick={() => setShowOtrosi(true)}
+                      className="relative flex items-center gap-1.5 border border-amber-300 text-amber-700 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-amber-50"
+                      title="Trabajos extra aprobados con nueva firma del cliente">
+                ➕ <span className="hidden sm:inline">Adicionales</span>
+                {otrosies.filter(o => o.estado === 'aprobado').length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                    {otrosies.filter(o => o.estado === 'aprobado').length}
+                  </span>
+                )}
+              </button>
             )}
             {['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado) && (
               <button onClick={() => {
@@ -847,6 +869,138 @@ export default function Editor() {
         </div>
       )}
 
+      {/* Modal ADICIONALES (otrosies) */}
+      {showOtrosi && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+             onClick={() => setShowOtrosi(false)}>
+          <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[92vh] overflow-y-auto"
+               onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
+              <h3 className="font-semibold text-slate-800">➕ Adicionales de obra</h3>
+              <button onClick={() => setShowOtrosi(false)}><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <p className="text-[11px] text-slate-400 -mt-1">
+                Trabajos extra que aparecieron tras la firma. Tu cliente los aprueba con nueva firma
+                desde su enlace y se genera el <strong>Otrosí en PDF</strong> — entran a avances y cuentas automáticamente.
+              </p>
+
+              {otrosies.map(o => (
+                <div key={o.id} className={`border rounded-xl p-3 ${o.estado === 'aprobado' ? 'border-emerald-200 bg-emerald-50/40' : o.estado === 'rechazado' ? 'border-slate-200 opacity-60' : 'border-amber-200 bg-amber-50/40'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-700">Otrosí N.{o.numero} · {COP(o.totales?.total || 0)}</p>
+                    <span className={`text-[9px] font-bold px-2 py-1 rounded-full ${o.estado === 'aprobado' ? 'bg-emerald-100 text-emerald-700' : o.estado === 'rechazado' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
+                      {o.estado === 'aprobado' ? `✍️ Firmado por ${o.nombre_firma}` : o.estado === 'rechazado' ? 'Rechazado' : '⏳ Esperando al cliente'}
+                    </span>
+                  </div>
+                  {o.motivo && <p className="text-[10px] text-slate-400 mt-0.5">{o.motivo}</p>}
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {o.items.map(i => i.descripcion).join(' · ').slice(0, 120)}
+                  </p>
+                  <div className="flex gap-2 mt-2">
+                    {o.estado === 'aprobado' && p.share_token && (
+                      <a href={`/api/share/publico/${p.share_token}/otrosi/${o.id}.pdf`} target="_blank" rel="noreferrer"
+                         className="text-[10px] font-bold text-navy-600 border border-navy-200 rounded-lg px-2 py-1">
+                        📄 Otrosí PDF
+                      </a>
+                    )}
+                    {o.estado === 'propuesto' && (
+                      <>
+                        <button onClick={() => avisarCliente(`Hola! Te propuse un adicional para tu obra "${p.nombre}" por ${COP(o.totales?.total || 0)}. Apruébalo con tu firma aquí:`)}
+                                className="text-[10px] font-bold bg-emerald-500 text-white rounded-lg px-2 py-1">
+                          Enviar por WhatsApp
+                        </button>
+                        <button onClick={async () => {
+                                  try { await otrosiesAPI.eliminar(o.id); setOtrosies(prev => prev.filter(x => x.id !== o.id)); toast.success('Eliminado') }
+                                  catch (e) { toast.error(e.message) }
+                                }}
+                                className="text-[10px] text-red-500 border border-red-200 rounded-lg px-2 py-1">
+                          Eliminar
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Nuevo adicional */}
+              <div className="border-2 border-dashed border-slate-200 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-semibold text-slate-600">Proponer nuevo adicional</p>
+                <input className="input !py-2 text-xs" placeholder="Motivo (ej: El cliente pidió además el mesón en granito)"
+                       value={otMotivo} onChange={e => setOtMotivo(e.target.value)} maxLength={300} />
+
+                <div className="relative">
+                  <input className="input !py-2 text-xs" placeholder="🔍 Buscar en la base APU para agregar..."
+                         value={otBusca}
+                         onChange={e => {
+                           const q = e.target.value
+                           setOtBusca(q)
+                           if (q.trim().length >= 3) {
+                             preciosAPI.buscar({ query: q, region: p.region || 'bogota', limit: 5 })
+                               .then(r => setOtResultados(r.items || [])).catch(() => {})
+                           } else setOtResultados([])
+                         }} />
+                  {otResultados.length > 0 && (
+                    <div className="absolute z-20 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto">
+                      {otResultados.map((r, i) => (
+                        <button key={i} onClick={() => {
+                                  setOtItems(rows => [...rows.filter(x => x.descripcion || x.precio_unitario),
+                                    { descripcion: r.descripcion, unidad: r.unidad, cantidad: 1, precio_unitario: r.precio, codigo: r.codigo }])
+                                  setOtBusca(''); setOtResultados([])
+                                }}
+                                className="w-full text-left px-3 py-2 text-[11px] text-slate-600 hover:bg-slate-50 border-b border-slate-50">
+                          {r.descripcion} · <span className="text-slate-400">{COP(r.precio)}/{r.unidad}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {otItems.map((row, i) => (
+                  <div key={i} className="flex gap-1.5 items-center">
+                    <input className="input !py-1.5 text-[11px] flex-1" placeholder="Descripción del trabajo"
+                           value={row.descripcion}
+                           onChange={e => setOtItems(rows => rows.map((r, j) => j === i ? { ...r, descripcion: e.target.value } : r))} />
+                    <input className="input !py-1.5 text-[11px] !w-14" placeholder="und" value={row.unidad}
+                           onChange={e => setOtItems(rows => rows.map((r, j) => j === i ? { ...r, unidad: e.target.value } : r))} />
+                    <input className="input !py-1.5 text-[11px] !w-14 text-right" type="number" placeholder="cant" value={row.cantidad}
+                           onChange={e => setOtItems(rows => rows.map((r, j) => j === i ? { ...r, cantidad: e.target.value } : r))} />
+                    <input className="input !py-1.5 text-[11px] !w-24 text-right" type="number" placeholder="$ unit" value={row.precio_unitario}
+                           onChange={e => setOtItems(rows => rows.map((r, j) => j === i ? { ...r, precio_unitario: e.target.value } : r))} />
+                    <button onClick={() => setOtItems(rows => rows.length > 1 ? rows.filter((_, j) => j !== i) : rows)}
+                            className="text-slate-300 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between">
+                  <button onClick={() => setOtItems(rows => [...rows, { descripcion: '', unidad: 'un', cantidad: 1, precio_unitario: '' }])}
+                          className="text-[11px] font-medium text-navy-600">＋ Agregar fila</button>
+                  <p className="text-[11px] text-slate-500">
+                    Total con tu AIU: <strong className="text-slate-700">
+                      {COP(calcularLocal(otItems.filter(r => r.descripcion && r.precio_unitario), aiu)?.total || 0)}
+                    </strong>
+                  </p>
+                </div>
+                <button onClick={async () => {
+                          const filas = otItems.filter(r => r.descripcion.trim() && parseFloat(r.precio_unitario) > 0)
+                          if (filas.length === 0) { toast.error('Agrega al menos un trabajo con precio'); return }
+                          try {
+                            const nuevo = await otrosiesAPI.crear({ proyecto_id: parseInt(id), motivo: otMotivo, items: filas })
+                            setOtrosies(prev => [...prev, nuevo])
+                            setOtItems([{ descripcion: '', unidad: 'un', cantidad: 1, precio_unitario: '' }])
+                            setOtMotivo('')
+                            toast.success(`Otrosí N.${nuevo.numero} propuesto — envíaselo al cliente por WhatsApp`)
+                          } catch (e) { toast.error(e.message) }
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition">
+                  Proponer al cliente
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal GASTOS */}
       {showGastos && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowGastos(false)}>
@@ -1002,7 +1156,10 @@ export default function Editor() {
                 <div className="px-3 py-2 border-b border-slate-100 sticky top-0 bg-white">
                   <p className="text-[11px] font-semibold text-slate-500 uppercase">% de avance por actividad</p>
                 </div>
-                {items.map(it => {
+                {[...items, ...otrosies.filter(o => o.estado === 'aprobado').flatMap(o =>
+                    o.items.map(it => ({ ...it, id: `ot${o.numero}:${it.id || it.codigo || ''}`,
+                                         descripcion: `[Otrosí ${o.numero}] ${it.descripcion}` })))
+                 ].map(it => {
                   const valorItem = Math.round((parseFloat(it.cantidad)||0) * (parseFloat(it.precio_unitario)||0))
                   const pct = avanceItems[it.id] ?? 0
                   return (

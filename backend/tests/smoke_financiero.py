@@ -64,4 +64,23 @@ _, _, n3 = liquidar(10_000_000, 7_000_000, 50)
 assert ant + n1 + n2 + n3 == tot, f"cuadre: {ant + n1 + n2 + n3:,}"
 print(f"  ✓ cuadre exacto: {ant:,} + {n1:,} + {n2:,} + {n3:,} = {tot:,}")
 
+print("── otrosies: amortizacion con tope ──")
+from app.services.otrosi_service import amortizacion_con_tope
+# Contrato 10M ant 50% (anticipo=5M) + otrosi aprobado de 2M -> total efectivo 12M
+ANT_TOTAL = 5_000_000
+a1 = amortizacion_con_tope(3_000_000, 50, ANT_TOTAL, 0)
+assert a1 == 1_500_000, a1
+a2 = amortizacion_con_tope(4_000_000, 50, ANT_TOTAL, 1_500_000)
+assert a2 == 2_000_000, a2
+# Corte final 5M (incluye el adicional): teorica 2.5M pero solo restan 1.5M por amortizar
+a3 = amortizacion_con_tope(5_000_000, 50, ANT_TOTAL, 3_500_000)
+assert a3 == 1_500_000, a3
+print("  ✓ el tope recorta la amortizacion al anticipo restante")
+n1, n2, n3 = 3_000_000 - a1, 4_000_000 - a2, 5_000_000 - a3
+assert ANT_TOTAL + n1 + n2 + n3 == 12_000_000, ANT_TOTAL + n1 + n2 + n3
+print(f"  ✓ cuadre CON adicional: {ANT_TOTAL:,} + {n1:,} + {n2:,} + {n3:,} = 12.000.000 (10M + otrosi 2M)")
+# Sin tope habria amortizado 6M (mas que el anticipo recibido) — el contratista perderia 1M
+assert round(12_000_000 * 0.5) - ANT_TOTAL == 1_000_000
+print("  ✓ sin el tope, el contratista perderia $1.000.000 — candado justificado")
+
 print("\nNUCLEO FINANCIERO INTACTO ✅")

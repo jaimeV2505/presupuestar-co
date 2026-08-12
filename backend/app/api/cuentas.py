@@ -50,7 +50,14 @@ def _liquidar(p: Proyecto, avance: Avance, db: Session) -> dict:
 
     cfg = json.loads(p.contrato_json or "{}")
     anticipo_pct = float(cfg.get("anticipo_pct") or 0)
-    amortizacion = round(valor_corte * anticipo_pct / 100)
+    # El anticipo se pacto sobre el contrato ORIGINAL: la amortizacion acumulada
+    # nunca supera ese valor aunque los cortes incluyan adicionales (otrosies).
+    from app.services.calculo_presupuesto import calcular_totales as _ct
+    total_original = _ct(json.loads(p.items_json or "[]"), json.loads(p.aiu_json or "{}"))["total"]
+    anticipo_total = round(total_original * anticipo_pct / 100)
+    amortizado_previo = sum(c.amortizacion or 0 for c in ya_cobrado)
+    from app.services.otrosi_service import amortizacion_con_tope
+    amortizacion = amortizacion_con_tope(valor_corte, anticipo_pct, anticipo_total, amortizado_previo)
     neto = valor_corte - amortizacion
 
     return {

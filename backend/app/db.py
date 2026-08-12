@@ -189,6 +189,23 @@ class IntentoAcceso(Base):
     actualizado = Column(DateTime, default=utcnow)
 
 
+class Otrosi(Base):
+    """Adicionales de obra: items extra aprobados por el cliente con nueva firma."""
+    __tablename__ = "otrosies"
+    id = Column(Integer, primary_key=True)
+    proyecto_id = Column(Integer, ForeignKey("proyectos.id"), nullable=False, index=True)
+    numero = Column(Integer, default=1)              # Otrosi N.1, N.2...
+    items_json = Column(Text, default="[]")          # items adicionales (mismo formato)
+    totales_json = Column(Text, default="{}")        # congelado al aprobar (mismo AIU del contrato)
+    estado = Column(String(15), default="propuesto")  # propuesto | aprobado | rechazado
+    motivo = Column(String(300), default="")          # "El cliente pidio ademas..."
+    nombre_firma = Column(String(120), default="")
+    documento_firma = Column(String(30), default="")
+    firma_imagen = Column(Text, default="")
+    creado = Column(DateTime, default=utcnow)
+    resuelto = Column(DateTime, nullable=True)        # fecha de aprobacion/rechazo
+
+
 class MensajeSoporte(Base):
     """Hilo de conversacion de cada ticket."""
     __tablename__ = "mensajes_soporte"

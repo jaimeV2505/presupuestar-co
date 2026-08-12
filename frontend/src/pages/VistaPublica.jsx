@@ -71,6 +71,8 @@ export default function VistaPublica() {
   const [firma, setFirma] = useState({ nombre: '', documento: '', firma_imagen: '' })
   const [modoFirma, setModoFirma] = useState('dibujar')  // dibujar | subir | escribir
   const [firmaInfo, setFirmaInfo] = useState(null)
+  const [otrosiFirmando, setOtrosiFirmando] = useState(null)  // otrosi en proceso de aprobacion
+  const [otResuelto, setOtResuelto] = useState({})            // {id: 'aprobado'|'rechazado'} local
   const [contrato, setContrato] = useState(null)
   const [leido, setLeido] = useState(false)
   const [avances, setAvances] = useState(null)
@@ -380,6 +382,73 @@ export default function VistaPublica() {
           <div className="bg-white rounded-xl p-4 mt-2">
             <p className="text-xs font-semibold text-slate-600 mb-2">Condiciones</p>
             <p className="text-[11px] text-slate-400 whitespace-pre-wrap leading-relaxed">{c.condiciones}</p>
+          </div>
+        )}
+
+        {/* ➕ ADICIONALES (otrosies) — el cliente aprueba con nueva firma */}
+        {aceptado && data.otrosies?.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <p className="text-sm font-semibold text-slate-700 px-1">➕ Adicionales de obra</p>
+            {data.otrosies.map(o => {
+              const estado = otResuelto[o.id] || o.estado
+              return (
+              <div key={o.id} className={`bg-white rounded-xl p-4 border-2 ${estado === 'propuesto' ? 'border-amber-300' : estado === 'aprobado' ? 'border-emerald-200' : 'border-slate-100 opacity-60'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-slate-700">Otrosí N.{o.numero} · {COP(o.total)}</p>
+                    {o.motivo && <p className="text-[11px] text-slate-400">{o.motivo}</p>}
+                  </div>
+                  {estado === 'aprobado' && (
+                    <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full shrink-0">✍️ Aprobado</span>
+                  )}
+                  {estado === 'rechazado' && (
+                    <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-full shrink-0">No aprobado</span>
+                  )}
+                </div>
+                <div className="mt-2 space-y-1">
+                  {o.items.map((it, i) => (
+                    <div key={i} className="flex justify-between text-[11px] text-slate-500">
+                      <span className="truncate mr-2">{it.descripcion}</span>
+                      <span className="shrink-0">{parseFloat(it.cantidad) || 0} {it.unidad} × {COP(it.precio_unitario)}</span>
+                    </div>
+                  ))}
+                </div>
+                {estado === 'propuesto' && (
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={() => { setOtrosiFirmando(o); setFirma({ nombre: firmaInfo?.nombre || '', documento: '', firma_imagen: '' }) }}
+                            className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white text-xs font-bold">
+                      ✍️ Aprobar y firmar
+                    </button>
+                    <button onClick={async () => {
+                              try {
+                                await shareAPI.otrosiRechazar(token, o.id, '')
+                                setOtResuelto(m => ({ ...m, [o.id]: 'rechazado' }))
+                                toast('El contratista fue notificado')
+                              } catch (e) { toast.error(e.message) }
+                            }}
+                            className="py-2.5 px-4 rounded-xl border border-slate-300 text-slate-500 text-xs font-medium">
+                      No por ahora
+                    </button>
+                  </div>
+                )}
+                {estado === 'aprobado' && (
+                  <a href={`/api/share/publico/${token}/otrosi/${o.id}.pdf`} target="_blank" rel="noreferrer"
+                     className="inline-block mt-2 text-[11px] font-bold text-navy-600 border border-navy-200 rounded-lg px-2.5 py-1.5">
+                    📄 Descargar Otrosí firmado (PDF)
+                  </a>
+                )}
+              </div>
+            )})}
+            {(() => {
+              const aprobadosTotal = data.otrosies.filter(o => (otResuelto[o.id] || o.estado) === 'aprobado')
+                                       .reduce((s, o) => s + (o.total || 0), 0)
+              return aprobadosTotal > 0 && data.totales && (
+                <p className="text-[11px] text-slate-500 text-center bg-white rounded-xl py-2.5">
+                  Valor actualizado del contrato: <strong className="text-slate-700">{COP((data.totales.total || 0) + aprobadosTotal)}</strong>
+                  <span className="text-slate-400"> (original {COP(data.totales.total)} + adicionales {COP(aprobadosTotal)})</span>
+                </p>
+              )
+            })()}
           </div>
         )}
 
@@ -710,6 +779,39 @@ export default function VistaPublica() {
           <button onClick={rechazar} className="w-full text-center text-[11px] text-slate-400 py-1">
             No me interesa este presupuesto
           </button>
+          </div>
+        </div>
+      )}
+      {/* Modal: firma del OTROSI */}
+      {otrosiFirmando && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+             onClick={() => setOtrosiFirmando(null)}>
+          <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-slate-800 mb-1">✍️ Aprobar Otrosí N.{otrosiFirmando.numero}</h3>
+            <p className="text-[11px] text-slate-400 mb-3">
+              Adicional por <strong>{COP(otrosiFirmando.total)}</strong> — se suma al contrato que ya firmaste.
+              Tu firma genera el Otrosí en PDF con validez legal (Ley 527 de 1999).
+            </p>
+            <input className="input mb-2" placeholder="Tu nombre completo *" value={firma.nombre}
+                   onChange={e => setFirma(f => ({ ...f, nombre: e.target.value }))} />
+            <input className="input mb-2" placeholder="Cédula (opcional)" value={firma.documento}
+                   onChange={e => setFirma(f => ({ ...f, documento: e.target.value }))} />
+            <p className="text-[10px] text-slate-400 mb-1">Firma aquí con tu dedo:</p>
+            <PadFirma onChange={img => setFirma(f => ({ ...f, firma_imagen: img }))} />
+            <button onClick={async () => {
+                      if (!firma.nombre.trim()) { toast.error('Tu nombre es requerido'); return }
+                      try {
+                        await shareAPI.otrosiAprobar(token, otrosiFirmando.id, firma)
+                        setOtResuelto(m => ({ ...m, [otrosiFirmando.id]: 'aprobado' }))
+                        setOtrosiFirmando(null)
+                        toast.success('¡Adicional aprobado y firmado! 🎉', { duration: 5000 })
+                      } catch (e) { toast.error(e.message) }
+                    }}
+                    className="w-full mt-3 py-3 rounded-xl bg-emerald-500 text-white font-bold text-sm">
+              Aprobar adicional por {COP(otrosiFirmando.total)}
+            </button>
+            <button onClick={() => setOtrosiFirmando(null)}
+                    className="w-full mt-2 py-2 text-xs text-slate-400">Cancelar</button>
           </div>
         </div>
       )}

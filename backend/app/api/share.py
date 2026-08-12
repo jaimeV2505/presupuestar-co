@@ -188,6 +188,7 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
         },
         "capitulos": capitulos,
         "totales": totales,
+        "otrosies": _otrosies_publicos(p, db),
         "notas": p.notas,
         "fecha": p.actualizado.strftime("%d/%m/%Y") if p.actualizado else "",
     }
@@ -907,3 +908,210 @@ def publicar_resena(req: PublicarResena, user: Usuario = Depends(usuario_actual)
     fila.publico = bool(req.publico)
     db.commit()
     return {"ok": True, "publico": fila.publico}
+
+
+# ═══════════════════ OTROSIES (adicionales) — lado del cliente ═══════════════════
+from app.db import Otrosi
+from app.services.otrosi_service import totales_otrosi, valor_adicionales
+
+
+def _otrosies_publicos(p, db):
+    """Los adicionales que el cliente ve en su enlace, con vista previa liquidada."""
+    aiu = json.loads(p.aiu_json or "{}")
+    lst = (db.query(Otrosi).filter(Otrosi.proyecto_id == p.id)
+           .order_by(Otrosi.numero).all())
+    out = []
+    for o in lst:
+        items = json.loads(o.items_json or "[]")
+        totales = json.loads(o.totales_json or "{}") or totales_otrosi(items, aiu)
+        out.append({
+            "id": o.id, "numero": o.numero, "estado": o.estado, "motivo": o.motivo,
+            "items": [{"descripcion": i.get("descripcion"), "unidad": i.get("unidad"),
+                       "cantidad": i.get("cantidad"), "precio_unitario": i.get("precio_unitario")}
+                      for i in items],
+            "total": totales.get("total", 0),
+            "nombre_firma": o.nombre_firma,
+            "resuelto": o.resuelto.strftime("%d/%m/%Y") if o.resuelto else None,
+        })
+    return out
+
+
+class OtrosiFirmaRequest(BaseModel):
+    nombre: str
+    documento: str = ""
+    firma_imagen: str = ""
+
+
+@router.post("/publico/{token}/otrosi/{otrosi_id}/aprobar")
+def otrosi_aprobar(token: str, otrosi_id: int, req: OtrosiFirmaRequest,
+                   db: Session = Depends(get_db)):
+    p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if not p:
+        raise HTTPException(404, "Enlace no valido")
+    o = db.query(Otrosi).filter(Otrosi.id == otrosi_id, Otrosi.proyecto_id == p.id).first()
+    if not o:
+        raise HTTPException(404, "Adicional no encontrado")
+    if o.estado != "propuesto":
+        return {"ok": True, "mensaje": f"Este adicional ya fue {o.estado}"}
+    if not req.nombre.strip():
+        raise HTTPException(400, "Tu nombre es requerido para aprobar")
+
+    # CONGELAR: totales con el mismo AIU/IVA del contrato original
+    items = json.loads(o.items_json or "[]")
+    totales = totales_otrosi(items, json.loads(p.aiu_json or "{}"))
+    o.totales_json = json.dumps(totales, ensure_ascii=False)
+    o.estado = "aprobado"
+    o.nombre_firma = req.nombre.strip()[:120]
+    o.documento_firma = (req.documento or "").strip()[:30]
+    o.firma_imagen = req.firma_imagen or ""
+    o.resuelto = datetime.now(timezone.utc)
+
+    db.add(EventoShare(proyecto_id=p.id, tipo="otrosi_aprobado",
+                       nombre_firma=o.nombre_firma, documento_firma=o.documento_firma,
+                       firma_imagen=o.firma_imagen))
+    db.commit()
+    notificar(db, p.user_id, "firmado",
+              f"Aprobaron el Otrosi N.{o.numero} de {p.numero}",
+              f"{o.nombre_firma} firmo el adicional por ${totales['total']:,.0f}. "
+              f"Ya cuenta en avances y cuentas de cobro.".replace(",", "."),
+              p.id)
+    logger.info(f"Otrosi N.{o.numero} APROBADO en {p.numero} por {o.nombre_firma}")
+    return {"ok": True, "mensaje": "Adicional aprobado y firmado", "total": totales["total"]}
+
+
+class OtrosiRechazoRequest(BaseModel):
+    motivo: str = ""
+
+
+@router.post("/publico/{token}/otrosi/{otrosi_id}/rechazar")
+def otrosi_rechazar(token: str, otrosi_id: int, req: OtrosiRechazoRequest,
+                    db: Session = Depends(get_db)):
+    p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if not p:
+        raise HTTPException(404, "Enlace no valido")
+    o = db.query(Otrosi).filter(Otrosi.id == otrosi_id, Otrosi.proyecto_id == p.id).first()
+    if not o or o.estado != "propuesto":
+        raise HTTPException(400, "Este adicional ya fue resuelto")
+    o.estado = "rechazado"
+    o.motivo = (o.motivo + " | Cliente: " + (req.motivo or "").strip()[:150]).strip(" |")[:300]
+    o.resuelto = datetime.now(timezone.utc)
+    db.commit()
+    notificar(db, p.user_id, "rechazado",
+              f"Rechazaron el Otrosi N.{o.numero} de {p.numero}",
+              (req.motivo or "El cliente no aprobo el adicional.")[:180], p.id)
+    return {"ok": True}
+
+
+@router.get("/publico/{token}/otrosi/{otrosi_id}.pdf")
+def otrosi_pdf(token: str, otrosi_id: int, db: Session = Depends(get_db)):
+    """PDF del Otrosi aprobado — descargable por ambas partes."""
+    p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if not p:
+        raise HTTPException(404, "Enlace no valido")
+    o = db.query(Otrosi).filter(Otrosi.id == otrosi_id, Otrosi.proyecto_id == p.id).first()
+    if not o or o.estado != "aprobado":
+        raise HTTPException(404, "El otrosi debe estar aprobado")
+    user = db.query(Usuario).filter(Usuario.id == p.user_id).first()
+    items = json.loads(o.items_json or "[]")
+    tot = json.loads(o.totales_json or "{}")
+    tot_orig = calcular_totales(json.loads(p.items_json or "[]"), json.loads(p.aiu_json or "{}"))
+    adic_hasta = valor_adicionales(p, db)
+
+    import io
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors as rcolors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=1.8*cm, bottomMargin=1.8*cm,
+                            leftMargin=2*cm, rightMargin=2*cm)
+    st = getSampleStyleSheet()
+    tit = ParagraphStyle("t", parent=st["Title"], fontSize=13, spaceAfter=4)
+    cu = ParagraphStyle("c", parent=st["Normal"], fontSize=9, leading=13, alignment=4)
+    fcop = lambda v: "$" + f"{round(v):,}".replace(",", ".")
+
+    story = [
+        Paragraph(f"OTROSI N.{o.numero} AL CONTRATO DE EJECUCION DE OBRA CIVIL", tit),
+        Paragraph(f"Referencia: {p.numero} — {p.nombre}", cu), Spacer(1, 8),
+        Paragraph(f"Entre <b>{p.cliente_nombre or o.nombre_firma}</b> (EL CONTRATANTE) y "
+                  f"<b>{user.nombre}{' — ' + user.empresa if user.empresa else ''}</b> (EL CONTRATISTA), "
+                  f"quienes suscribieron el contrato de la referencia, se acuerda ADICIONAR las siguientes "
+                  f"actividades de obra{': ' + o.motivo if o.motivo else '.'}", cu),
+        Spacer(1, 8),
+    ]
+    data = [["DESCRIPCION", "UND", "CANT", "V. UNIT", "SUBTOTAL"]]
+    for it in items:
+        data.append([Paragraph(str(it.get("descripcion", ""))[:120], cu),
+                     it.get("unidad", ""), f'{it.get("cantidad", 0):g}',
+                     fcop(it.get("precio_unitario", 0)),
+                     fcop(float(it.get("cantidad", 0)) * float(it.get("precio_unitario", 0)))])
+    t = Table(data, colWidths=[8.2*cm, 1.4*cm, 1.6*cm, 2.6*cm, 2.8*cm])
+    t.setStyle(TableStyle([
+        ("GRID", (0, 0), (-1, -1), 0.4, rcolors.HexColor("#CBD5E1")),
+        ("BACKGROUND", (0, 0), (-1, 0), rcolors.HexColor("#1C3A5E")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), rcolors.white),
+        ("FONTSIZE", (0, 0), (-1, -1), 8), ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    story += [t, Spacer(1, 8)]
+    resumen = [
+        ["Subtotal adicional", fcop(tot.get("subtotal_directo", 0))],
+        [f"AIU ({tot.get('admin_pct', 0):g}/{tot.get('imprevistos_pct', 0):g}/{tot.get('utilidad_pct', 0):g})",
+         fcop(tot.get("aiu_total", 0))],
+        ["IVA", fcop(tot.get("iva", 0))],
+        ["VALOR DE ESTE OTROSI", fcop(tot.get("total", 0))],
+        ["Valor contrato original", fcop(tot_orig["total"])],
+        ["NUEVO VALOR TOTAL DEL CONTRATO", fcop(tot_orig["total"] + adic_hasta)],
+    ]
+    tr = Table(resumen, colWidths=[11*cm, 5.6*cm])
+    tr.setStyle(TableStyle([
+        ("FONTSIZE", (0, 0), (-1, -1), 9), ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("FONTNAME", (0, 3), (-1, 3), "Helvetica-Bold"),
+        ("FONTNAME", (0, 5), (-1, 5), "Helvetica-Bold"),
+        ("LINEABOVE", (0, 5), (-1, 5), 0.8, rcolors.HexColor("#1C3A5E")),
+    ]))
+    story += [tr, Spacer(1, 10),
+              Paragraph("Las demas clausulas del contrato original (plazo salvo pacto en contrario, "
+                        "garantias, forma de pago proporcional a los cortes de avance) permanecen vigentes "
+                        "y aplican integramente a las actividades aqui adicionadas. Firmado electronicamente "
+                        "al amparo de la Ley 527 de 1999.", cu),
+              Spacer(1, 18)]
+    fdata = [["", ""],
+             [f"{o.nombre_firma}\nC.C. {o.documento_firma or '—'}\nEL CONTRATANTE — "
+              f"{o.resuelto.strftime('%d/%m/%Y %H:%M') if o.resuelto else ''}",
+              f"{user.nombre}\n{user.empresa or ''}\nEL CONTRATISTA"]]
+    ft = Table(fdata, colWidths=[8.3*cm, 8.3*cm], rowHeights=[1.6*cm, None])
+    ft.setStyle(TableStyle([
+        ("LINEABOVE", (0, 1), (0, 1), 0.8, rcolors.black),
+        ("LINEABOVE", (1, 1), (1, 1), 0.8, rcolors.black),
+        ("FONTSIZE", (0, 1), (-1, 1), 8), ("ALIGN", (0, 1), (-1, 1), "CENTRE"),
+    ]))
+    # firmas dibujadas si existen
+    try:
+        from reportlab.platypus import Image as RLImage
+        import base64
+        def _img(b64):
+            if not b64 or "," not in b64:
+                return ""
+            return RLImage(io.BytesIO(base64.b64decode(b64.split(",", 1)[1])),
+                           width=3.6*cm, height=1.4*cm, kind="proportional")
+        fdata[0][0] = _img(o.firma_imagen) or ""
+        fdata[0][1] = _img(getattr(user, "firma_b64", "")) or ""
+        ft = Table(fdata, colWidths=[8.3*cm, 8.3*cm], rowHeights=[1.6*cm, None])
+        ft.setStyle(TableStyle([
+            ("LINEABOVE", (0, 1), (0, 1), 0.8, rcolors.black),
+            ("LINEABOVE", (1, 1), (1, 1), 0.8, rcolors.black),
+            ("FONTSIZE", (0, 1), (-1, 1), 8), ("ALIGN", (0, 0), (-1, -1), "CENTRE"),
+            ("VALIGN", (0, 0), (-1, 0), "BOTTOM"),
+        ]))
+    except Exception:
+        pass
+    story.append(ft)
+    doc.build(story)
+    buf.seek(0)
+    from fastapi.responses import StreamingResponse
+    return StreamingResponse(buf, media_type="application/pdf",
+                             headers={"Content-Disposition":
+                                      f'inline; filename="otrosi-{o.numero}-{p.numero}.pdf"'})
