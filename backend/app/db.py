@@ -48,6 +48,8 @@ class Usuario(Base):
     slug = Column(String(80), unique=True, nullable=True, index=True)  # perfil publico /c/{slug}
     firma_b64 = Column(Text, default="")         # firma manuscrita del contratista (PNG base64)
     onboarding_json = Column(Text, default="{}")  # {tipo, flags de misiones, cerrado}
+    reset_token_hash = Column(String(64), nullable=True)   # sha256 del token de recuperacion
+    reset_expira = Column(DateTime, nullable=True)
     plan = Column(String(20), default="gratis")  # gratis | pro
     plan_vence = Column(DateTime, nullable=True)  # cuando expira el plan pro
     presupuestos_mes = Column(Integer, default=0)
@@ -229,6 +231,8 @@ def init_db():
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS cliente_id INTEGER",
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS onboarding_json TEXT DEFAULT '{}'",
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS es_demo BOOLEAN DEFAULT FALSE",
+                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_token_hash VARCHAR(64)",
+                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_expira TIMESTAMP",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -253,6 +257,8 @@ def init_db():
                     ("proyectos", "cliente_id", "ALTER TABLE proyectos ADD COLUMN cliente_id INTEGER"),
                     ("usuarios", "onboarding_json", "ALTER TABLE usuarios ADD COLUMN onboarding_json TEXT DEFAULT '{}'"),
                     ("proyectos", "es_demo", "ALTER TABLE proyectos ADD COLUMN es_demo BOOLEAN DEFAULT 0"),
+                    ("usuarios", "reset_token_hash", "ALTER TABLE usuarios ADD COLUMN reset_token_hash VARCHAR(64)"),
+                    ("usuarios", "reset_expira", "ALTER TABLE usuarios ADD COLUMN reset_expira TIMESTAMP"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]

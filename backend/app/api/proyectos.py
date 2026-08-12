@@ -22,8 +22,7 @@ def _mes_actual() -> str:
 
 
 def _verificar_limite(user: Usuario, db: Session):
-    """Plan gratis: limite mensual. DESACTIVADO temporalmente para pruebas."""
-    return  # <- limite abierto durante fase de pruebas; quitar esta linea para reactivar
+    """Plan gratis: limite de 3 presupuestos al mes. Pro: ilimitado."""
     if user.plan != "gratis":
         return
     mes = _mes_actual()

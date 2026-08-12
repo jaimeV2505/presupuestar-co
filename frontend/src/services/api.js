@@ -89,6 +89,11 @@ export const pagosAPI = {
   adminPlanManual: (data) => api.post('/pagos/admin/plan-manual', data).then(r => r.data),
 }
 
+export const recuperarAPI = {
+  olvide: (email) => api.post('/auth/olvide', { email }).then(r => r.data),
+  restablecer: (data) => api.post('/auth/restablecer', data).then(r => r.data),
+}
+
 export const wompiAPI = {
   disponible: () => api.get('/wompi/disponible').then(r => r.data),
   link: () => api.post('/wompi/link').then(r => r.data),

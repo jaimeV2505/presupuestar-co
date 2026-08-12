@@ -11,6 +11,8 @@ import Pro from './pages/Pro'
 import Admin from './pages/Admin'
 import PerfilPublico from './pages/PerfilPublico'
 import Clientes from './pages/Clientes'
+import Restablecer from './pages/Restablecer'
+import Legal from './pages/Legal'
 
 function Privada({ children }) {
   const token = localStorage.getItem('token')
@@ -37,6 +39,8 @@ export default function App() {
         <Route path="/admin" element={<Privada><Admin /></Privada>} />
         <Route path="/c/:slug" element={<PerfilPublico />} />
         <Route path="/clientes" element={<Privada><Clientes /></Privada>} />
+        <Route path="/restablecer" element={<Restablecer />} />
+        <Route path="/legal" element={<Legal />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

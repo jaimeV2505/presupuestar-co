@@ -225,3 +225,105 @@ def actualizar_perfil(req: PerfilUpdate, user: Usuario = Depends(usuario_actual)
 
     db.commit()
     return _user_out(user)
+
+
+# ── RECUPERACION DE CONTRASENA ───────────────────────────────────────────────
+import hashlib
+import secrets as _secrets
+from datetime import timedelta as _td
+
+APP_URL = os.environ.get("APP_URL", "https://presupuestar-co.vercel.app").rstrip("/")
+
+
+def _enviar_email_reset(destino: str, nombre: str, link: str) -> bool:
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    if not api_key:
+        logger.warning("RESEND_API_KEY no configurada — email de reset no enviado")
+        return False
+    try:
+        import httpx
+        html = f"""
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <h2 style="color:#1C3A5E">Restablece tu contrasena</h2>
+          <p>Hola {nombre or ''},</p>
+          <p>Recibimos una solicitud para restablecer la contrasena de tu cuenta
+          en <b>PresupuestarCO</b>. Toca el boton (valido por 30 minutos):</p>
+          <p style="text-align:center;margin:28px 0">
+            <a href="{link}" style="background:#1C3A5E;color:#fff;padding:12px 28px;
+               border-radius:10px;text-decoration:none;font-weight:bold">
+               Crear nueva contrasena</a>
+          </p>
+          <p style="color:#64748B;font-size:13px">Si no fuiste tu, ignora este
+          correo — tu cuenta sigue segura y nada cambia.</p>
+        </div>"""
+        r = httpx.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "from": "PresupuestarCO <onboarding@resend.dev>",
+                "to": [destino],
+                "subject": "Restablece tu contrasena — PresupuestarCO",
+                "html": html,
+            }, timeout=15)
+        ok = r.status_code in (200, 201)
+        if not ok:
+            logger.warning(f"Resend reset fallo {r.status_code}: {r.text[:200]}")
+        return ok
+    except Exception as e:
+        logger.warning(f"Email reset no enviado: {e}")
+        return False
+
+
+class OlvideRequest(BaseModel):
+    email: str
+
+
+@router.post("/olvide")
+def olvide(req: OlvideRequest, db: Session = Depends(get_db)):
+    """Siempre responde ok (sin revelar si el email existe)."""
+    email = req.email.strip().lower()
+    user = db.query(Usuario).filter(Usuario.email == email).first()
+    if user:
+        token = _secrets.token_urlsafe(32)
+        user.reset_token_hash = hashlib.sha256(token.encode()).hexdigest()
+        user.reset_expira = datetime.now(timezone.utc) + _td(minutes=30)
+        db.commit()
+        link = f"{APP_URL}/restablecer?email={email}&token={token}"
+        enviado = _enviar_email_reset(email, user.nombre, link)
+        logger.info(f"Reset solicitado para {email} — email {'enviado' if enviado else 'NO enviado'}")
+    return {"ok": True, "mensaje": "Si el correo existe, te enviamos el enlace de recuperacion"}
+
+
+class RestablecerRequest(BaseModel):
+    email: str
+    token: str
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def _pw(cls, v):
+        if len(v) < 8:
+            raise ValueError("La contrasena debe tener al menos 8 caracteres")
+        return v
+
+
+@router.post("/restablecer")
+def restablecer(req: RestablecerRequest, db: Session = Depends(get_db)):
+    email = req.email.strip().lower()
+    user = db.query(Usuario).filter(Usuario.email == email).first()
+    generico = HTTPException(400, "El enlace no es valido o ya expiro — pide uno nuevo")
+    if not user or not user.reset_token_hash or not user.reset_expira:
+        raise generico
+    expira = user.reset_expira if user.reset_expira.tzinfo else user.reset_expira.replace(tzinfo=timezone.utc)
+    if expira < datetime.now(timezone.utc):
+        raise generico
+    import hmac as _hmac
+    recibido = hashlib.sha256(req.token.encode()).hexdigest()
+    if not _hmac.compare_digest(recibido, user.reset_token_hash):
+        raise generico
+    user.password_hash = _hash_password(req.password)
+    user.reset_token_hash = None
+    user.reset_expira = None
+    db.commit()
+    logger.info(f"Contrasena restablecida para {email}")
+    return {"ok": True, "mensaje": "Contrasena actualizada — ya puedes iniciar sesion"}

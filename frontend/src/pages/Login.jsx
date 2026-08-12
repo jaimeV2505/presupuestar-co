@@ -2,16 +2,28 @@ import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Building2 } from 'lucide-react'
-import { authAPI } from '../services/api'
+import { authAPI, recuperarAPI } from '../services/api'
 
 export default function Login({ modo = 'login' }) {
   const nav = useNavigate()
   const [form, setForm] = useState({ email: '', password: '', nombre: '', empresa: '', telefono: '' })
   const [loading, setLoading] = useState(false)
   const esRegistro = modo === 'registro'
+  const [olvide, setOlvide] = useState(false)
+  const [enviado, setEnviado] = useState(false)
 
   const submit = async (e) => {
     e.preventDefault()
+    if (olvide) {
+      if (!form.email) { toast.error('Escribe tu correo'); return }
+      setLoading(true)
+      try {
+        await recuperarAPI.olvide(form.email)
+        setEnviado(true)
+      } catch { setEnviado(true) }
+      finally { setLoading(false) }
+      return
+    }
     if (!form.email || !form.password) { toast.error('Email y contraseña requeridos'); return }
     if (esRegistro && !form.nombre) { toast.error('Tu nombre es requerido'); return }
     setLoading(true)
@@ -57,13 +69,35 @@ export default function Login({ modo = 'login' }) {
           )}
 
           <input className="input" type="email" placeholder="Email *" value={form.email} onChange={set('email')} autoComplete="email" />
-          <input className="input" type="password" placeholder={esRegistro ? 'Contraseña (mínimo 8 caracteres) *' : 'Contraseña *'}
-                 value={form.password} onChange={set('password')} autoComplete={esRegistro ? 'new-password' : 'current-password'} />
+          {!olvide && <input className="input" type="password" placeholder={esRegistro ? 'Contraseña (mínimo 8 caracteres) *' : 'Contraseña *'}
+                 value={form.password} onChange={set('password')} autoComplete={esRegistro ? 'new-password' : 'current-password'} />}
 
           <button disabled={loading}
                   className="w-full bg-navy-600 hover:bg-navy-700 text-white font-semibold rounded-xl py-3 transition disabled:opacity-50">
-            {loading ? 'Un momento...' : esRegistro ? 'Crear cuenta gratis' : 'Entrar'}
+            {loading ? 'Un momento...' : olvide ? 'Enviarme el enlace' : esRegistro ? 'Crear cuenta gratis' : 'Entrar'}
           </button>
+
+          {olvide && enviado && (
+            <p className="text-center text-xs text-emerald-600 bg-emerald-50 rounded-xl p-3">
+              ✓ Si el correo existe, te enviamos el enlace (revisa spam). Vale por 30 minutos.
+            </p>
+          )}
+          {!esRegistro && (
+            <p className="text-center text-xs">
+              <button type="button"
+                      onClick={() => { setOlvide(v => !v); setEnviado(false) }}
+                      className="text-slate-400 hover:text-navy-600 underline">
+                {olvide ? '← Volver a iniciar sesión' : '¿Olvidaste tu contraseña?'}
+              </button>
+            </p>
+          )}
+          {esRegistro && (
+            <p className="text-center text-[10px] text-slate-400">
+              Al crear tu cuenta aceptas los{' '}
+              <Link to="/legal" className="underline text-slate-500">Términos y la Política de datos</Link>
+              {' '}(Ley 1581 de 2012)
+            </p>
+          )}
 
           <p className="text-center text-sm text-slate-500">
             {esRegistro ? (

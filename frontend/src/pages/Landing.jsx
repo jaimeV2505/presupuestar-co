@@ -775,7 +775,10 @@ export default function Landing() {
             <Link to="/registro" className="hover:text-white transition">Registrarse</Link>
           </div>
         </div>
-      </footer>
+        <p className="text-center text-[10px] text-blue-300/50 pb-4">
+    <Link to="/legal" className="underline">Términos y política de datos personales</Link> · Ley 1581 de 2012
+  </p>
+</footer>
 
       <BotonWhatsApp />
     </div>
