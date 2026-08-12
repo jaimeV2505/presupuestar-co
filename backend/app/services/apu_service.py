@@ -308,13 +308,18 @@ def get_precio(codigo: str, region: str = "bogota") -> Optional[Dict]:
             return {**item, "precio": round(item["precio"] * f)}
     return None
 
+def _sin_tildes(s: str) -> str:
+    import unicodedata
+    return "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn").lower()
+
+
 def buscar(query: str, categoria: str = None, region: str = "bogota", limit: int = 10) -> List[Dict]:
-    db = load_apu_db(); f = _factor(region); q = query.lower()
+    db = load_apu_db(); f = _factor(region); q = _sin_tildes(query)
     results = []
     for item in db:
         if categoria and item["categoria"] != categoria:
             continue
-        if q in item["descripcion"].lower():
+        if q in _sin_tildes(item["descripcion"]):
             results.append({**item, "precio": round(item["precio"] * f)})
     return results[:limit]
 

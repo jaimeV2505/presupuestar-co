@@ -332,7 +332,40 @@ from fastapi.responses import StreamingResponse
 from app.services.contrato_service import generar_contrato
 
 
+def _demo_contrato():
+    """Contrato de muestra para /p/demo — el visitante descarga un PDF real."""
+    from types import SimpleNamespace
+    from datetime import datetime
+    items = [
+        {"capitulo": "PRELIMINARES", "descripcion": "Localizacion y replanteo", "unidad": "m2", "cantidad": 96, "precio_unitario": 4200},
+        {"capitulo": "ESTRUCTURA", "descripcion": "Columna en concreto 3000 PSI 30x30", "unidad": "m3", "cantidad": 6.5, "precio_unitario": 894601},
+        {"capitulo": "MAMPOSTERIA", "descripcion": "Muro en bloque de concreto e=15cm", "unidad": "m2", "cantidad": 210, "precio_unitario": 68450},
+        {"capitulo": "CUBIERTA", "descripcion": "Cubierta en teja sandwich cal. 26", "unidad": "m2", "cantidad": 110, "precio_unitario": 145900},
+        {"capitulo": "ACABADOS", "descripcion": "Panete liso muros interiores", "unidad": "m2", "cantidad": 380, "precio_unitario": 22800},
+    ]
+    aiu = {"admin": 15, "imprevistos": 5, "utilidad": 8, "aplicar": True, "iva_sobre_utilidad": True}
+    totales = calcular_totales(items, aiu)
+    p = SimpleNamespace(
+        id=0, nombre="Construccion local comercial — Covenas, Sucre",
+        numero="COT-2026-0001", cliente_nombre="Carlos Martinez",
+        cliente_telefono="", direccion="Covenas, Sucre", region="monteria",
+        contrato_json='{"plazo_dias": 45, "anticipo_pct": 50, "fecha_inicio": "", "lugar": "Covenas, Sucre"}',
+        share_token="demo",
+    )
+    user = SimpleNamespace(
+        nombre="Jaime Vergara", empresa="Construcciones JV",
+        documento="1.098.765.432", telefono="300 123 4567",
+        email="demo@presupuestar.co", ciudad="monteria",
+        logo_b64="", firma_b64="", pago_info="Nequi 300 123 4567",
+    )
+    firma = {"nombre": "Carlos Martinez", "documento": "9.876.543",
+             "fecha": "22/07/2026 10:14", "imagen": ""}
+    return p, user, generar_contrato(p, user, items, totales, firma)
+
+
 def _contrato_de_token(token: str, db: Session):
+    if token == "demo":
+        return _demo_contrato()
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
     if not p:
         raise HTTPException(404, "Enlace no valido")
