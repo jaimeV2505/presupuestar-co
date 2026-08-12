@@ -163,26 +163,6 @@ def mis_tickets(user: Usuario = Depends(usuario_actual), db: Session = Depends(g
     ]
 
 
-class ResponderUsuarioRequest(BaseModel):
-    texto: str
-
-
-@router.post("/{ticket_id}/responder")
-def responder_usuario(ticket_id: int, req: ResponderUsuarioRequest,
-                      user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
-    from app.db import MensajeSoporte
-    t = (db.query(TicketSoporte)
-         .filter(TicketSoporte.id == ticket_id, TicketSoporte.user_id == user.id).first())
-    if not t:
-        raise HTTPException(404, "Ticket no encontrado")
-    if not req.texto.strip():
-        raise HTTPException(400, "Escribe tu mensaje")
-    db.add(MensajeSoporte(ticket_id=t.id, autor="usuario", texto=req.texto.strip()[:2000]))
-    t.estado = "pendiente_soporte"   # reabre si estaba finalizado
-    db.commit()
-    return {"ok": True, "estado": t.estado}
-
-
 @router.get("/admin")
 def listar_tickets(admin: Usuario = Depends(admin_actual), db: Session = Depends(get_db)):
     tickets = (
@@ -273,3 +253,23 @@ def resolver(req: ResolverTicket, admin: Usuario = Depends(admin_actual),
     t.estado = "resuelto"
     db.commit()
     return {"ok": True}
+
+
+class ResponderUsuarioRequest(BaseModel):
+    texto: str
+
+
+@router.post("/{ticket_id}/responder")
+def responder_usuario(ticket_id: int, req: ResponderUsuarioRequest,
+                      user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    from app.db import MensajeSoporte
+    t = (db.query(TicketSoporte)
+         .filter(TicketSoporte.id == ticket_id, TicketSoporte.user_id == user.id).first())
+    if not t:
+        raise HTTPException(404, "Ticket no encontrado")
+    if not req.texto.strip():
+        raise HTTPException(400, "Escribe tu mensaje")
+    db.add(MensajeSoporte(ticket_id=t.id, autor="usuario", texto=req.texto.strip()[:2000]))
+    t.estado = "pendiente_soporte"   # reabre si estaba finalizado
+    db.commit()
+    return {"ok": True, "estado": t.estado}

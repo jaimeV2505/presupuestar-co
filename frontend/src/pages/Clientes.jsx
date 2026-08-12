@@ -86,7 +86,7 @@ export default function Clientes() {
                     )}
                     <div className="space-y-1.5">
                       {c.proyectos.map(p => (
-                        <button key={p.id} onClick={() => nav(`/proyecto/${p.id}`)}
+                        <button key={p.id} onClick={() => nav(`/editor/${p.id}`)}
                                 className="w-full flex items-center justify-between gap-2 hover:bg-slate-50 rounded-lg px-2 py-1.5 transition text-left">
                           <span className="text-xs text-slate-600 truncate">
                             <span className="text-slate-400">{p.numero}</span> · {p.nombre}

@@ -166,7 +166,7 @@ export default function Dashboard() {
                               onClick={() => {
                                 setShowNotifs(false)
                                 if (n.tipo === 'soporte') { setShowSoporte(true); setTabSoporte('mis'); return }
-                                if (n.proyecto_id) nav(`/proyecto/${n.proyecto_id}`)
+                                if (n.proyecto_id) nav(`/editor/${n.proyecto_id}`)
                               }}
                               className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition ${!n.leida ? 'bg-blue-50/50' : ''}`}>
                         <p className="text-xs font-semibold text-slate-700">{n.icono} {n.titulo}</p>
@@ -270,9 +270,9 @@ export default function Dashboard() {
               {[
                 { k: 'm1_presupuesto', label: 'Crea tu primer presupuesto', accion: () => { setShowNuevo(true); setPlantillaSel(null); proyectosAPI.plantillas().then(setPlantillas).catch(() => {}); clientesAPI.listar().then(setMisClientes).catch(() => {}) } },
                 { k: 'm2_marca', label: 'Ponle tu marca (logo, cédula y firma)', accion: () => nav('/perfil') },
-                { k: 'm3_whatsapp', label: 'Comparte un presupuesto por WhatsApp', accion: () => { const real = proyectos.find(p => !p.es_demo); real ? nav(`/proyecto/${real.id}`) : toast('Primero crea un presupuesto (misión 1)') } },
+                { k: 'm3_whatsapp', label: 'Comparte un presupuesto por WhatsApp', accion: () => { const real = proyectos.find(p => !p.es_demo); real ? nav(`/editor/${real.id}`) : toast('Primero crea un presupuesto (misión 1)') } },
                 { k: 'm4_vista_cliente', label: 'Mira lo que verá tu cliente', accion: () => { if (onb.demo) { window.open(`/p/${onb.demo.share_token}`, '_blank'); onboardingAPI.marcar('vista_cliente').catch(() => {}); setOnb(o => ({ ...o, misiones: { ...o.misiones, m4_vista_cliente: true }, progreso: Math.min(100, o.progreso + 20) })) } } },
-                { k: 'm5_explora', label: 'Explora avances y cobros en el ejemplo', accion: () => { if (onb.demo) { onboardingAPI.marcar('explora').catch(() => {}); nav(`/proyecto/${onb.demo.id}`) } } },
+                { k: 'm5_explora', label: 'Explora avances y cobros en el ejemplo', accion: () => { if (onb.demo) { onboardingAPI.marcar('explora').catch(() => {}); nav(`/editor/${onb.demo.id}`) } } },
               ].map(m => (
                 <button key={m.k} onClick={m.accion} disabled={onb.misiones[m.k]}
                         className={`w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition ${onb.misiones[m.k] ? 'opacity-50' : 'hover:bg-slate-50'}`}>
@@ -589,7 +589,7 @@ export default function Dashboard() {
                           if (nuevo.region) extra.region = nuevo.region
                           if (Object.keys(extra).length) await proyectosAPI.actualizar(p.id, extra).catch(() => {})
                           toast.success(`Plantilla cargada con sus actividades — ajusta cantidades`)
-                          nav(`/proyecto/${p.id}`)
+                          nav(`/editor/${p.id}`)
                         } catch (e) { toast.error(e.message) }
                         finally { setCreandoTpl(false) }
                       }}
