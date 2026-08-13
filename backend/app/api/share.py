@@ -226,7 +226,7 @@ def aceptar_publico(token: str, firma: FirmaRequest, request: Request, db: Sessi
     if img and (not img.startswith("data:image") or len(img) > 600_000):
         img = ""
     ev = EventoShare(
-        proyecto_id=p.id, tipo="aceptado", user_agent=ua,
+        proyecto_id=p.id, tipo="aceptado", user_agent=ua, ip=_ip_de(request),
         nombre_firma=nombre[:160],
         documento_firma=(firma.documento or "").strip()[:30],
         firma_imagen=img,
@@ -266,6 +266,7 @@ def avances_publico(token: str, db: Session = Depends(get_db)):
     items_p = _json.loads(p.items_json or "[]")
     total_directo = round(sum((i.get("cantidad") or 0) * (i.get("precio_unitario") or 0) for i in items_p))
     ultimo = avances[0] if avances else None
+    _lote = _interacciones_lote(p.id, db)
 
     # Cuentas de cobro visibles para el cliente
     from app.db import CuentaCobro, Abono
@@ -305,7 +306,7 @@ def avances_publico(token: str, db: Session = Depends(get_db)):
                 "items": _json.loads(a.items_json or "[]"),
                 "fotos": _json.loads(a.fotos_json or "[]"),
                 "fecha": a.creado.strftime("%d/%m/%Y %H:%M"),
-                **_interacciones_de(a.id, db),
+                **(_lote.get(a.id) or {"reacciones": {}, "comentarios": []}),
             } for a in avances
         ],
     }
@@ -709,7 +710,7 @@ def confirmar_entrega(token: str, req: ConfirmarEntregaRequest, request: Request
     if img and (not img.startswith("data:image") or len(img) > 600_000):
         img = ""
     ua = (request.headers.get("user-agent") or "")[:300]
-    db.add(EventoShare(proyecto_id=p.id, tipo="entrega_confirmada", user_agent=ua,
+    db.add(EventoShare(proyecto_id=p.id, tipo="entrega_confirmada", user_agent=ua, ip=_ip_de(request),
                        nombre_firma=nombre[:160],
                        documento_firma=(req.documento or "").strip()[:30],
                        firma_imagen=img))
@@ -926,6 +927,15 @@ from app.db import Otrosi
 from app.services.otrosi_service import totales_otrosi, valor_adicionales
 
 
+def _ip_de(request) -> str:
+    """IP real detras del proxy de Vercel (primer x-forwarded-for)."""
+    try:
+        fwd = request.headers.get("x-forwarded-for", "")
+        return (fwd.split(",")[0].strip() or (request.client.host if request.client else ""))[:45]
+    except Exception:
+        return ""
+
+
 def _otrosies_publicos(p, db):
     """Los adicionales que el cliente ve en su enlace, con vista previa liquidada."""
     aiu = json.loads(p.aiu_json or "{}")
@@ -954,7 +964,7 @@ class OtrosiFirmaRequest(BaseModel):
 
 
 @router.post("/publico/{token}/otrosi/{otrosi_id}/aprobar")
-def otrosi_aprobar(token: str, otrosi_id: int, req: OtrosiFirmaRequest,
+def otrosi_aprobar(token: str, otrosi_id: int, request: Request, req: OtrosiFirmaRequest,
                    db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
     if not p:
@@ -978,6 +988,7 @@ def otrosi_aprobar(token: str, otrosi_id: int, req: OtrosiFirmaRequest,
     if img and (not img.startswith("data:image") or len(img) > 600_000):
         img = ""   # imagen invalida o gigante: se descarta, la firma vale por nombre+cedula+hora
     o.firma_imagen = img
+    o.ip_firma = _ip_de(request)
     o.resuelto = datetime.now(timezone.utc)
 
     db.add(EventoShare(proyecto_id=p.id, tipo="otrosi_aprobado",
@@ -1136,6 +1147,24 @@ def otrosi_pdf(token: str, otrosi_id: int, db: Session = Depends(get_db)):
 # ═══════════════ PARTICIPACION DEL CLIENTE (reacciones y comentarios) ═══════════════
 REACCIONES_VALIDAS = ("👍", "❤️", "👏")
 MAX_INTERACCIONES_DIA = 40   # candado anti-spam por proyecto
+
+
+def _interacciones_lote(proyecto_id: int, db) -> dict:
+    """TODAS las interacciones del proyecto en UNA query, agrupadas por avance (anti N+1)."""
+    from app.db import InteraccionCliente
+    rows = (db.query(InteraccionCliente)
+            .filter(InteraccionCliente.proyecto_id == proyecto_id)
+            .order_by(InteraccionCliente.creado).all())
+    por_avance = {}
+    for r in rows:
+        d = por_avance.setdefault(r.avance_id, {"reacciones": {}, "comentarios": []})
+        if r.tipo == "reaccion":
+            d["reacciones"][r.valor] = d["reacciones"].get(r.valor, 0) + 1
+        else:
+            d["comentarios"].append({"texto": r.valor, "nombre": r.nombre or "Cliente",
+                                     "autor": getattr(r, "autor", "cliente") or "cliente",
+                                     "fecha": r.creado.strftime("%d/%m %H:%M")})
+    return por_avance
 
 
 def _interacciones_de(avance_id: int, db) -> dict:

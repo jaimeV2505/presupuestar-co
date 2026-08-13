@@ -101,6 +101,7 @@ class EventoShare(Base):
     firma_imagen = Column(Text, default="")            # firma dibujada/subida (base64 PNG)
     documento_firma = Column(String(30), default="")   # cedula/NIT del firmante
     user_agent = Column(String(300), default="")
+    ip = Column(String(45), default="")          # evidencia forense de la firma
     creado = Column(DateTime, default=utcnow)
 
 
@@ -301,6 +302,8 @@ def init_db():
                     "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS retencion INTEGER DEFAULT 0",
                     "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS tipo VARCHAR(15) DEFAULT 'corte'",
                     "ALTER TABLE interacciones_cliente ADD COLUMN IF NOT EXISTS autor VARCHAR(12) DEFAULT 'cliente'",
+                    "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS ip VARCHAR(45) DEFAULT ''",
+                    "ALTER TABLE otrosies ADD COLUMN IF NOT EXISTS ip_firma VARCHAR(45) DEFAULT ''",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -330,6 +333,8 @@ def init_db():
                     ("cuentas_cobro", "retencion", "ALTER TABLE cuentas_cobro ADD COLUMN retencion INTEGER DEFAULT 0"),
                     ("cuentas_cobro", "tipo", "ALTER TABLE cuentas_cobro ADD COLUMN tipo VARCHAR(15) DEFAULT 'corte'"),
                     ("interacciones_cliente", "autor", "ALTER TABLE interacciones_cliente ADD COLUMN autor VARCHAR(12) DEFAULT 'cliente'"),
+                    ("eventos_share", "ip", "ALTER TABLE eventos_share ADD COLUMN ip VARCHAR(45) DEFAULT ''"),
+                    ("otrosies", "ip_firma", "ALTER TABLE otrosies ADD COLUMN ip_firma VARCHAR(45) DEFAULT ''"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]

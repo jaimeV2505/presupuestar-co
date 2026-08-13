@@ -109,7 +109,7 @@ def listar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sessio
     total = round(sum((i.get("cantidad") or 0) * (i.get("precio_unitario") or 0) for i in items))
     return {
         "valor_total_directo": total,
-        "avances": [{**_avance_out(a), **_inter_de(a.id, db)} for a in avances],
+        "avances": _con_hilos(avances, p.id, db),
     }
 
 
@@ -201,3 +201,13 @@ def responder_comentario(avance_id: int, req: RespuestaComentario,
         autor="contratista", valor=texto, nombre=(user.nombre or "Contratista")[:120]))
     db.commit()
     return {"ok": True, **_inter_de(a.id, db)}
+
+
+def _con_hilos(avances, proyecto_id, db):
+    """Serializa avances del contratista con sus hilos — una sola query (anti N+1)."""
+    from app.api.share import _interacciones_lote
+    try:
+        lote = _interacciones_lote(proyecto_id, db)
+    except Exception:
+        lote = {}
+    return [{**_avance_out(a), **(lote.get(a.id) or {"reacciones": {}, "comentarios": []})} for a in avances]

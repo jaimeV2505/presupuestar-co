@@ -112,6 +112,16 @@ async def health():
 from fastapi.responses import HTMLResponse, Response as _Resp
 
 
+@app.middleware("http")
+async def headers_de_seguridad(request, call_next):
+    """Blindaje perimetral: anti-iframe (phishing), anti-sniffing, referrer sobrio."""
+    resp = await call_next(request)
+    resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    return resp
+
+
 @app.get("/api/s/{token}")
 def preview_social(token: str):
     import html as _html

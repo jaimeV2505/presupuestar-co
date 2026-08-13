@@ -125,7 +125,9 @@ PASOS.append("hilo de dos voces")
 print("═══ ACTO 3.2: EL PREVIEW DE WHATSAPP (OG) ═══")
 r = c.get(f"/api/s/{TOKEN}")
 assert r.status_code == 200 and "og:title" in r.text and "Remodelacion bano viaje" in r.text
-print("  ✓ /api/s/{token}: HTML con og:title de LA obra")
+assert r.headers.get("X-Frame-Options") == "SAMEORIGIN", "faltan headers de seguridad"
+assert r.headers.get("X-Content-Type-Options") == "nosniff"
+print("  ✓ /api/s/{token}: HTML con og:title de LA obra + headers de seguridad")
 PASOS.append("preview OG")
 r = c.get("/api/s/token-que-no-existe")
 assert r.status_code == 404

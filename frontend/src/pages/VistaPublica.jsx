@@ -81,6 +81,14 @@ export default function VistaPublica() {
   const [verHistoria, setVerHistoria] = useState(false)
   const [hintGuardar, setHintGuardar] = useState(() => !localStorage.getItem('obra_guardada_hint'))
 
+  const AvisoFirma = () => (
+    <p className="text-[9px] text-slate-400 leading-relaxed mt-2 text-center">
+      🔒 Firma electrónica con validez legal (Ley 527 de 1999). Al firmar autorizas el tratamiento de tus
+      datos (nombre, documento, firma y datos del dispositivo) para la gestión documental de esta obra.{' '}
+      <a href="/legal" target="_blank" rel="noreferrer" className="underline text-slate-500">Términos y política de datos</a>
+    </p>
+  )
+
   const Cejilla = ({ children }) => (
     <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-400 mb-2 mt-6 px-1">{children}</p>
   )
@@ -790,7 +798,8 @@ export default function VistaPublica() {
             <input className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-emerald-400"
                    placeholder="Cédula (opcional)"
                    value={firma.documento} onChange={e => setFirma(f => ({ ...f, documento: e.target.value }))} />
-            <div className="flex gap-2">
+            <AvisoFirma />
+            <div className="flex gap-2 mt-2">
               <button onClick={() => setShowEntrega(false)}
                       className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm">Cancelar</button>
               <button onClick={async () => {
@@ -946,6 +955,7 @@ export default function VistaPublica() {
                       className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium">
                 Cancelar
               </button>
+              <AvisoFirma />
               <button onClick={confirmarFirma} disabled={aceptando || !leido}
                       className="flex-[2] py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold disabled:opacity-40">
                 {aceptando ? 'Firmando...' : 'Firmar contrato'}
@@ -978,6 +988,15 @@ export default function VistaPublica() {
           </div>
         </div>
       )}
+      {/* Pie legal: la plataforma es herramienta neutral */}
+      <div className="max-w-lg mx-auto px-4 mt-8 pb-4 text-center">
+        <p className="text-[9px] text-slate-300 leading-relaxed">
+          Enlace seguro provisto por <strong className="text-slate-400">PresupuestarCO</strong> — plataforma
+          neutral de gestión documental. El contrato es entre el contratista y su cliente.{' '}
+          <a href="/legal" target="_blank" rel="noreferrer" className="underline">Términos y datos</a>
+        </p>
+      </div>
+
       {/* Galeria a pantalla completa */}
       {galeria && <Lightbox fotos={galeria.fotos} inicial={galeria.inicial} onCerrar={() => setGaleria(null)} />}
 
@@ -997,6 +1016,7 @@ export default function VistaPublica() {
                    onChange={e => setFirma(f => ({ ...f, documento: e.target.value }))} />
             <p className="text-[10px] text-slate-400 mb-1">Firma aquí con tu dedo:</p>
             <PadFirma onChange={img => setFirma(f => ({ ...f, firma_imagen: img }))} />
+            <AvisoFirma />
             <button onClick={async () => {
                       if (!firma.nombre.trim()) { toast.error('Tu nombre es requerido'); return }
                       try {
