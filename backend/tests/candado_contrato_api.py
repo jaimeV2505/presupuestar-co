@@ -27,6 +27,7 @@ def llamadas_frontend():
     llamadas = []
     for m in re.finditer(r'api\.(get|post|put|delete)\((`[^`]+`|\'[^\']+\'|"[^"]+")', src):
         ruta = m.group(2)[1:-1]
+        ruta = ruta.split('?')[0]                          # query string no es parte de la ruta
         ruta = re.sub(r'\$\{[^}]+\}', '{X}', ruta)   # template vars -> comodin
         llamadas.append(ruta)
     return llamadas

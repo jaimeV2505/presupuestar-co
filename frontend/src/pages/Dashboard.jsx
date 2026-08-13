@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [proyectos, setProyectos] = useState([])
   const [loading, setLoading] = useState(true)
   const [showNuevo, setShowNuevo] = useState(false)
-  const [nuevo, setNuevo] = useState({ nombre: '', cliente_nombre: '', cliente_telefono: '', region: 'bogota' })
+  const [nuevo, setNuevo] = useState({ nombre: '', cliente_nombre: '', cliente_telefono: '', region: 'bogota', sector: 'privado', entidad_nombre: '', contrato_numero: '', supervisor_nombre: '' })
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
   const [infoPago, setInfoPago] = useState(null)
   const [showSoporte, setShowSoporte] = useState(false)
@@ -508,6 +508,34 @@ export default function Dashboard() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowNuevo(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-slate-800">Nuevo presupuesto</h3>
+
+            {/* Sector: obra privada u obra publica */}
+            <div className="grid grid-cols-2 gap-1.5">
+              {[['privado', '🏠 Obra privada', 'Cliente final con enlace y firma'],
+                ['publico', '🏛️ Obra pública', 'Contrato estatal — control interno']].map(([v, t, s]) => (
+                <button key={v} onClick={() => setNuevo(n => ({ ...n, sector: v }))}
+                        className={`rounded-xl border-2 p-2.5 text-left transition ${nuevo.sector === v ? 'border-navy-400 bg-navy-50' : 'border-slate-100'}`}>
+                  <p className="text-xs font-bold text-slate-700">{t}</p>
+                  <p className="text-[9px] text-slate-400 leading-tight mt-0.5">{s}</p>
+                </button>
+              ))}
+            </div>
+
+            {nuevo.sector === 'publico' && (
+              <div className="space-y-2">
+                <input className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5"
+                       placeholder="Entidad contratante (ej: Alcaldía de...)"
+                       value={nuevo.entidad_nombre} onChange={e => setNuevo(n => ({ ...n, entidad_nombre: e.target.value }))} />
+                <div className="flex gap-2">
+                  <input className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2.5"
+                         placeholder="No. de contrato" value={nuevo.contrato_numero}
+                         onChange={e => setNuevo(n => ({ ...n, contrato_numero: e.target.value }))} />
+                  <input className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2.5"
+                         placeholder="Supervisor/interventor" value={nuevo.supervisor_nombre}
+                         onChange={e => setNuevo(n => ({ ...n, supervisor_nombre: e.target.value }))} />
+                </div>
+              </div>
+            )}
 
             {/* Plantillas */}
             {plantillas.length > 0 && (

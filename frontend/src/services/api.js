@@ -56,6 +56,25 @@ export const proyectosAPI = {
   desdePlantilla: (data) => api.post('/proyectos/desde-plantilla', data).then(r => r.data),
 }
 
+export const apusAPI = {
+  listar: (params) => api.get('/apus', { params }).then(r => r.data),
+  crear: (data) => api.post('/apus', data).then(r => r.data),
+  duplicarDeBase: (codigo, region) => api.post(`/apus/duplicar-de-base?codigo=${encodeURIComponent(codigo)}&region=${region || 'bogota'}`).then(r => r.data),
+  componer: (data) => api.post('/apus/componer', data).then(r => r.data),
+  actualizar: (id, data) => api.put(`/apus/${id}`, data).then(r => r.data),
+  guardarDesglose: (id, data) => api.put(`/apus/${id}/desglose`, data).then(r => r.data),
+  eliminar: (id) => api.delete(`/apus/${id}`).then(r => r.data),
+}
+
+export const proveedoresAPI = {
+  listar: () => api.get('/proveedores').then(r => r.data),
+  crear: (data) => api.post('/proveedores', data).then(r => r.data),
+  eliminar: (id) => api.delete(`/proveedores/${id}`).then(r => r.data),
+  precios: (id) => api.get(`/proveedores/${id}/precios`).then(r => r.data),
+  agregarPrecio: (id, data) => api.post(`/proveedores/${id}/precios`, data).then(r => r.data),
+  eliminarPrecio: (precioId) => api.delete(`/proveedores/precios/${precioId}`).then(r => r.data),
+}
+
 export const shareAPI = {
   interactuar: (token, avanceId, data) => api.post(`/share/publico/${token}/avances/${avanceId}/interaccion`, data).then(r => r.data),
   otrosiAprobar: (token, id, firma) => api.post(`/share/publico/${token}/otrosi/${id}/aprobar`, firma).then(r => r.data),
@@ -99,6 +118,7 @@ export const recuperarAPI = {
 }
 
 export const otrosiesAPI = {
+  aprobarInterno: (id) => api.post(`/otrosies/${id}/aprobar-interno`).then(r => r.data),
   listar: (proyectoId) => api.get(`/otrosies/${proyectoId}`).then(r => r.data),
   crear: (data) => api.post('/otrosies', data).then(r => r.data),
   eliminar: (id) => api.delete(`/otrosies/${id}`).then(r => r.data),

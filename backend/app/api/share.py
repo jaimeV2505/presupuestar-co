@@ -25,6 +25,9 @@ router = APIRouter()
 
 @router.post("/proyectos/{proyecto_id}/compartir")
 def compartir(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    _p_chk = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
+    if _p_chk and (_p_chk.sector or "privado") == "publico":
+        raise HTTPException(400, "Los proyectos de obra publica no usan enlace de cliente — todo el control vive en tu tablero")
     p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
     if not p:
         raise HTTPException(404, "Proyecto no encontrado")

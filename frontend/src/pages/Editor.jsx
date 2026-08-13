@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
          Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
-import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI } from '../services/api'
+import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI } from '../services/api'
 import { comprimirImagen } from '../utils/imagen'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
@@ -25,6 +25,16 @@ export default function Editor() {
   const [categorias, setCategorias] = useState([])
   const [buscando, setBuscando] = useState(false)
   const [showBuscador, setShowBuscador] = useState(false)
+  const [fuenteApu, setFuenteApu] = useState('base')        // base | mios
+  const [misApus, setMisApus] = useState([])
+  const [showProveedores, setShowProveedores] = useState(false)
+  const [proveedores, setProveedores] = useState([])
+  const [provSel, setProvSel] = useState(null)              // {id, nombre, precios: []}
+  const [nuevoProv, setNuevoProv] = useState({ nombre: '', telefono: '' })
+  const [nuevoPrecio, setNuevoPrecio] = useState({ insumo: '', unidad: 'un', precio: '' })
+  const [showConstructor, setShowConstructor] = useState(false)
+  const [construyendo, setConstruyendo] = useState({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5 })
+  const [previewComp, setPreviewComp] = useState(null)
 
   // Calculadora de cantidades + Preview
   const [calcAbierta, setCalcAbierta] = useState(null)  // idx del item con calc abierta
@@ -194,6 +204,24 @@ export default function Editor() {
       finally { setBuscando(false) }
     }, 300)
   }, [q, categoria, showBuscador, p?.region])
+
+  const esPublico = p?.sector === 'publico'
+
+  useEffect(() => {
+    if (!showBuscador || fuenteApu !== 'mios') return
+    apusAPI.listar({ q: q || undefined, sector: esPublico ? 'publico' : 'privado' })
+      .then(r => setMisApus(r.items || [])).catch(() => setMisApus([]))
+  }, [q, showBuscador, fuenteApu, esPublico])
+
+  const duplicarComoMio = async (apu, e) => {
+    e.stopPropagation()
+    try {
+      await apusAPI.duplicarDeBase(apu.codigo, p?.region || 'bogota')
+      toast.success('Copiado a Mis APUs — edítalo a tu gusto ⧉')
+    } catch (err) { toast.error(err.message) }
+  }
+
+  const cargarProveedores = () => proveedoresAPI.listar().then(r => setProveedores(r.proveedores || [])).catch(() => {})
 
   const agregarItem = (apu) => {
     const nuevo = {
@@ -468,10 +496,17 @@ export default function Editor() {
                     title="Ver como lo verá tu cliente">
               <Eye className="w-4 h-4" /> <span className="hidden sm:inline">Ver</span>
             </button>
+            <button onClick={() => { cargarProveedores(); setShowProveedores(true) }}
+                    className="flex items-center gap-1.5 border border-slate-200 hover:border-emerald-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"
+                    title="Mis proveedores y sus precios">
+              🏪 <span className="hidden sm:inline">Proveedores</span>
+            </button>
+            {!esPublico && (
             <button onClick={compartir}
                     className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
               <MessageCircle className="w-4 h-4" /> <span className="hidden sm:inline">WhatsApp</span>
             </button>
+            )}
           </div>
         </div>
       </header>
@@ -776,7 +811,21 @@ export default function Editor() {
                   <X className="w-4 h-4 text-slate-400" />
                 </button>
               </div>
-              <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
+              <div className="flex gap-1.5 mt-3">
+                {[['base', '📚 Base 2026'], ['mios', '⭐ Mis APUs']].map(([v, t]) => (
+                  <button key={v} onClick={() => setFuenteApu(v)}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-lg transition ${fuenteApu === v ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                    {t}
+                  </button>
+                ))}
+                {fuenteApu === 'mios' && (
+                  <button onClick={() => { setShowConstructor(true); setPreviewComp(null); setConstruyendo({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5 }) }}
+                          className="text-xs font-bold px-3 py-1.5 rounded-lg bg-navy-600 text-white ml-auto">
+                    + Construir APU
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-1.5 mt-2 overflow-x-auto pb-1" style={{ display: fuenteApu === 'base' ? 'flex' : 'none' }}>
                 <button onClick={() => setCategoria('')}
                         className={`text-xs px-3 py-1.5 rounded-full whitespace-nowrap transition ${!categoria ? 'bg-navy-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                   Todas
@@ -797,17 +846,25 @@ export default function Editor() {
                   {q ? 'Sin resultados — prueba otra palabra' : 'Escribe para buscar en 2,288 actividades'}
                 </p>
               ) : (
-                resultados.map(apu => (
-                  <button key={apu.codigo} onClick={() => agregarItem(apu)}
+                (fuenteApu === 'mios' ? misApus : resultados).map(apu => (
+                  <button key={apu.id || apu.codigo} onClick={() => agregarItem(apu)}
                           className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl text-left transition group">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-700 leading-snug">{apu.descripcion}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">{apu.categoria} · {apu.codigo}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {fuenteApu === 'mios'
+                          ? <>⭐ {apu.codigo || 'mío'}{apu.origen_base ? ` · de la base ${apu.origen_base}` : ''}{apu.desglose ? ' · compuesto' : ''}</>
+                          : <>{apu.categoria} · {apu.codigo}</>}
+                      </p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-semibold text-slate-800">{COP(apu.precio)}</p>
                       <p className="text-[10px] text-slate-400">/{apu.unidad}</p>
                     </div>
+                    {fuenteApu === 'base' && (
+                      <span onClick={(e) => duplicarComoMio(apu, e)} title="Duplicar como mío (editable)"
+                            className="text-[10px] font-bold text-navy-500 border border-navy-200 rounded-lg px-1.5 py-1 hover:bg-navy-50 shrink-0">⧉</span>
+                    )}
                     <Plus className="w-4 h-4 text-slate-300 group-hover:text-navy-600 shrink-0" />
                   </button>
                 ))
@@ -817,12 +874,146 @@ export default function Editor() {
         </div>
       )}
 
+      {/* Modal CONSTRUCTOR DE APU (componer con mis insumos) */}
+      {showConstructor && (
+        <div className="fixed inset-0 bg-black/40 z-[60] flex items-start justify-center p-4 pt-[6vh]" onClick={() => setShowConstructor(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[86vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-slate-800 mb-1">🧱 Construir mi APU</h3>
+            <p className="text-[11px] text-slate-400 mb-3">Insumos + mano de obra + herramienta → tu precio unitario compuesto</p>
+            <input className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 mb-2" placeholder="Descripción (ej: Pañete 1:4 muros interiores)"
+                   value={construyendo.descripcion} onChange={e => setConstruyendo(c => ({ ...c, descripcion: e.target.value }))} />
+            <div className="flex gap-2 mb-3">
+              <input className="w-24 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="unidad"
+                     value={construyendo.unidad} onChange={e => setConstruyendo(c => ({ ...c, unidad: e.target.value }))} />
+              <input type="number" className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="Mano de obra por unidad ($)"
+                     value={construyendo.mano_obra} onChange={e => setConstruyendo(c => ({ ...c, mano_obra: e.target.value }))} />
+              <input type="number" className="w-24 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="herr %"
+                     value={construyendo.herramienta_pct} onChange={e => setConstruyendo(c => ({ ...c, herramienta_pct: e.target.value }))} />
+            </div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Insumos</p>
+            {construyendo.insumos.map((ins, i) => (
+              <div key={i} className="flex gap-1.5 mb-1.5">
+                <input className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="insumo" value={ins.nombre}
+                       onChange={e => setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x) }))} />
+                <input type="number" className="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="cant" value={ins.cantidad}
+                       onChange={e => setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, cantidad: e.target.value } : x) }))} />
+                <input type="number" className="w-24 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="precio" value={ins.precio}
+                       onChange={e => setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, precio: e.target.value } : x) }))} />
+                <button onClick={() => setConstruyendo(c => ({ ...c, insumos: c.insumos.filter((_, j) => j !== i) }))}
+                        className="text-slate-300 hover:text-red-400 px-1">×</button>
+              </div>
+            ))}
+            <button onClick={() => setConstruyendo(c => ({ ...c, insumos: [...c.insumos, { nombre: '', cantidad: '', precio: '' }] }))}
+                    className="text-xs font-medium text-navy-600 mb-3">+ agregar insumo</button>
+
+            <button onClick={async () => {
+                      try {
+                        const r = await apusAPI.componer({
+                          insumos: construyendo.insumos.map(i => ({ nombre: i.nombre, cantidad: parseFloat(i.cantidad) || 0, precio: parseFloat(i.precio) || 0 })),
+                          mano_obra: parseInt(construyendo.mano_obra) || 0,
+                          herramienta_pct: parseFloat(construyendo.herramienta_pct) || 0,
+                        })
+                        setPreviewComp(r)
+                      } catch (e) { toast.error(e.message) }
+                    }}
+                    className="w-full py-2.5 rounded-xl border border-navy-300 text-navy-600 text-sm font-bold mb-2">
+              Calcular precio compuesto
+            </button>
+            {previewComp && (
+              <div className="bg-emerald-50 rounded-xl p-3 mb-2 text-xs text-slate-600">
+                Materiales {COP(previewComp.materiales)} + MO {COP(previewComp.mano_obra)} + herramienta {COP(previewComp.herramienta)}
+                <p className="text-lg font-black text-emerald-700 mt-1">= {COP(previewComp.precio_unitario)} <span className="text-xs font-medium">/{construyendo.unidad}</span></p>
+              </div>
+            )}
+            <button disabled={!previewComp || !construyendo.descripcion.trim()}
+                    onClick={async () => {
+                      try {
+                        const a = await apusAPI.crear({ descripcion: construyendo.descripcion, unidad: construyendo.unidad, precio: 0, sector_tag: esPublico ? 'publico' : 'ambos' })
+                        await apusAPI.guardarDesglose(a.id, {
+                          insumos: construyendo.insumos.map(i => ({ nombre: i.nombre, cantidad: parseFloat(i.cantidad) || 0, precio: parseFloat(i.precio) || 0 })),
+                          mano_obra: parseInt(construyendo.mano_obra) || 0,
+                          herramienta_pct: parseFloat(construyendo.herramienta_pct) || 0,
+                        })
+                        toast.success('APU compuesto guardado en Mis APUs 🧱')
+                        setShowConstructor(false); setFuenteApu('mios'); setQ('')
+                      } catch (e) { toast.error(e.message) }
+                    }}
+                    className="w-full py-3 rounded-xl bg-emerald-500 text-white text-sm font-bold disabled:opacity-40">
+              Guardar en Mis APUs
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal MIS PROVEEDORES */}
+      {showProveedores && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => { setShowProveedores(false); setProvSel(null) }}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[86vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-slate-800 mb-3">🏪 Mis proveedores</h3>
+            {!provSel ? (
+              <>
+                {proveedores.map(pr => (
+                  <div key={pr.id} className="flex items-center justify-between border border-slate-100 rounded-xl px-3 py-2.5 mb-1.5">
+                    <button onClick={() => proveedoresAPI.precios(pr.id).then(r => setProvSel({ ...pr, precios: r.precios }))} className="text-left flex-1">
+                      <p className="text-sm font-medium text-slate-700">{pr.nombre}</p>
+                      <p className="text-[10px] text-slate-400">{pr.n_precios} precio{pr.n_precios !== 1 ? 's' : ''} capturado{pr.n_precios !== 1 ? 's' : ''}</p>
+                    </button>
+                    <button onClick={async () => { if (confirm('¿Eliminar proveedor y sus precios?')) { await proveedoresAPI.eliminar(pr.id); cargarProveedores() } }}
+                            className="text-slate-300 hover:text-red-400 text-sm px-2">×</button>
+                  </div>
+                ))}
+                <div className="flex gap-1.5 mt-3">
+                  <input className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="Nombre (ej: Ferretería El Roble)"
+                         value={nuevoProv.nombre} onChange={e => setNuevoProv(n => ({ ...n, nombre: e.target.value }))} />
+                  <button onClick={async () => {
+                            if (!nuevoProv.nombre.trim()) return
+                            try { await proveedoresAPI.crear(nuevoProv); setNuevoProv({ nombre: '', telefono: '' }); cargarProveedores() }
+                            catch (e) { toast.error(e.message) }
+                          }}
+                          className="text-sm font-bold text-white bg-navy-600 rounded-xl px-4">+</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <button onClick={() => setProvSel(null)} className="text-xs text-slate-400 mb-2">← volver</button>
+                <p className="text-sm font-bold text-slate-700 mb-2">{provSel.nombre}</p>
+                {provSel.precios.map(pc => (
+                  <div key={pc.id} className="flex items-center justify-between text-xs border-b border-slate-50 py-1.5">
+                    <span className="text-slate-600 flex-1">{pc.insumo} <span className="text-slate-300">/{pc.unidad}</span></span>
+                    <span className="font-semibold text-slate-700 tabular-nums">{COP(pc.precio)}</span>
+                    <span className="text-[9px] text-slate-300 ml-2">{pc.capturado}</span>
+                    <button onClick={async () => { await proveedoresAPI.eliminarPrecio(pc.id); const r = await proveedoresAPI.precios(provSel.id); setProvSel(s => ({ ...s, precios: r.precios })) }}
+                            className="text-slate-300 hover:text-red-400 ml-2">×</button>
+                  </div>
+                ))}
+                <div className="flex gap-1.5 mt-3">
+                  <input className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-2" placeholder="Insumo (ej: Cemento gris)"
+                         value={nuevoPrecio.insumo} onChange={e => setNuevoPrecio(n => ({ ...n, insumo: e.target.value }))} />
+                  <input className="w-14 text-xs border border-slate-200 rounded-lg px-2 py-2" placeholder="un"
+                         value={nuevoPrecio.unidad} onChange={e => setNuevoPrecio(n => ({ ...n, unidad: e.target.value }))} />
+                  <input type="number" className="w-24 text-xs border border-slate-200 rounded-lg px-2 py-2" placeholder="precio"
+                         value={nuevoPrecio.precio} onChange={e => setNuevoPrecio(n => ({ ...n, precio: e.target.value }))} />
+                  <button onClick={async () => {
+                            try {
+                              await proveedoresAPI.agregarPrecio(provSel.id, { ...nuevoPrecio, precio: parseInt(nuevoPrecio.precio) || 0 })
+                              const r = await proveedoresAPI.precios(provSel.id)
+                              setProvSel(s => ({ ...s, precios: r.precios })); setNuevoPrecio({ insumo: '', unidad: 'un', precio: '' })
+                            } catch (e) { toast.error(e.message) }
+                          }}
+                          className="text-xs font-bold text-white bg-emerald-500 rounded-lg px-3">+</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modal COBROS */}
       {showCobros && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowCobros(false)}>
           <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-slate-800">💵 Cuentas de cobro</h3>
+              <h3 className="font-semibold text-slate-800">💵 {esPublico ? 'Actas parciales de obra' : 'Cuentas de cobro'}</h3>
               <button onClick={() => setShowCobros(false)} className="text-slate-400 text-lg">×</button>
             </div>
 
@@ -952,6 +1143,18 @@ export default function Editor() {
                       {c.estado === 'pagada' ? '✓ Pagada' : '⏳ Enviada'}
                     </span>
                   </div>
+                  {esPublico && o.estado !== 'aprobado' && o.estado !== 'rechazado' && (
+                    <button onClick={async () => {
+                              try {
+                                await otrosiesAPI.aprobarInterno(o.id)
+                                toast.success('Adicional aprobado — ya entra en avances y actas ✍️')
+                                otrosiesAPI.listar(id).then(setOtrosies).catch(() => {})
+                              } catch (e) { toast.error(e.message) }
+                            }}
+                            className="mt-1.5 text-[10px] font-bold text-white bg-navy-600 rounded-lg px-2.5 py-1.5">
+                      ✍️ Aprobar internamente
+                    </button>
+                  )}
                   <div className="flex gap-1.5 mt-2 flex-wrap">
                     <a href={`/api/cuentas/publico/${p.share_token}/${c.id}.pdf`} target="_blank" rel="noreferrer"
                        className="text-[10px] font-medium text-navy-600 border border-navy-200 rounded-lg px-2 py-1">📄 PDF</a>
@@ -1022,14 +1225,14 @@ export default function Editor() {
           <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[92vh] overflow-y-auto"
                onClick={e => e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
-              <h3 className="font-semibold text-slate-800">➕ Adicionales de obra</h3>
+              <h3 className="font-semibold text-slate-800">➕ {esPublico ? 'Adicionales / Mayores cantidades' : 'Adicionales de obra'}</h3>
               <button onClick={() => setShowOtrosi(false)}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
 
             <div className="p-4 space-y-3">
               <p className="text-[11px] text-slate-400 -mt-1">
                 Trabajos extra que aparecieron tras la firma. Tu cliente los aprueba con nueva firma
-                desde su enlace y se genera el <strong>Otrosí en PDF</strong> — entran a avances y cuentas automáticamente.
+                {esPublico ? 'Se aprueban internamente (obra pública: sin cliente final) y entran a avances y actas automáticamente.' : <>desde su enlace y se genera el <strong>Otrosí en PDF</strong> — entran a avances y cuentas automáticamente.</>}
               </p>
 
               {otrosies.map(o => (
@@ -1037,7 +1240,7 @@ export default function Editor() {
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-slate-700">Otrosí N.{o.numero} · {COP(o.totales?.total || 0)}</p>
                     <span className={`text-[9px] font-bold px-2 py-1 rounded-full ${o.estado === 'aprobado' ? 'bg-emerald-100 text-emerald-700' : o.estado === 'rechazado' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
-                      {o.estado === 'aprobado' ? `✍️ Firmado por ${o.nombre_firma}` : o.estado === 'rechazado' ? 'Rechazado' : '⏳ Esperando al cliente'}
+                      {o.estado === 'aprobado' ? `✍️ ${esPublico ? 'Aprobado' : 'Firmado'} por ${o.nombre_firma}` : o.estado === 'rechazado' ? 'Rechazado' : esPublico ? '⏳ Por aprobar' : '⏳ Esperando al cliente'}
                     </span>
                   </div>
                   {o.motivo && <p className="text-[10px] text-slate-400 mt-0.5">{o.motivo}</p>}

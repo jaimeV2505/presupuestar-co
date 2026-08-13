@@ -88,6 +88,10 @@ class Proyecto(Base):
     notas = Column(Text, default="")
     contrato_json = Column(Text, default="{}")  # {plazo_dias, anticipo_pct, fecha_inicio, lugar}
     share_token = Column(String(40), unique=True, index=True, nullable=True)
+    sector = Column(String(10), default="privado")        # privado | publico
+    entidad_nombre = Column(String(200), default="")      # publico: entidad contratante
+    contrato_numero = Column(String(60), default="")      # publico: No. de contrato estatal
+    supervisor_nombre = Column(String(120), default="")   # publico: supervisor/interventor
     creado = Column(DateTime, default=utcnow)
     actualizado = Column(DateTime, default=utcnow, onupdate=utcnow)
 
@@ -193,6 +197,49 @@ class IntentoAcceso(Base):
     fallidos = Column(Integer, default=0)
     bloqueado_hasta = Column(DateTime, nullable=True)
     actualizado = Column(DateTime, default=utcnow)
+
+
+class ApuUsuario(Base):
+    """Mis APUs: analisis de precios propios del usuario. La base 2026 es INMUTABLE;
+    esto es la coleccion personal (manual, duplicado de la base, o compuesto por insumos)."""
+    __tablename__ = "apus_usuario"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    codigo = Column(String(30), default="")            # codigo propio (ej: "MI-001")
+    descripcion = Column(String(300), nullable=False)
+    unidad = Column(String(15), default="un")
+    precio = Column(Integer, default=0)                # COP
+    sector_tag = Column(String(10), default="ambos")   # privado | publico | ambos
+    region = Column(String(30), default="")
+    origen_base = Column(String(30), default="")       # codigo del APU base si nacio de "Duplicar"
+    desglose_json = Column(Text, default="")           # insumos que lo componen (constructor)
+    creado = Column(DateTime, default=utcnow)
+    actualizado = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class Proveedor(Base):
+    """Mis Proveedores: la ferreteria/deposito del contratista con sus precios negociados."""
+    __tablename__ = "proveedores"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    nombre = Column(String(120), nullable=False)
+    categoria = Column(String(40), default="ferreteria")
+    ciudad = Column(String(60), default="")
+    telefono = Column(String(20), default="")
+    notas = Column(String(300), default="")
+    creado = Column(DateTime, default=utcnow)
+
+
+class PrecioProveedor(Base):
+    """Precio de un insumo segun MI proveedor — con fecha de captura (honestidad de frescura)."""
+    __tablename__ = "precios_proveedor"
+    id = Column(Integer, primary_key=True)
+    proveedor_id = Column(Integer, ForeignKey("proveedores.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    insumo = Column(String(160), nullable=False)
+    unidad = Column(String(15), default="un")
+    precio = Column(Integer, default=0)
+    capturado = Column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class InteraccionCliente(Base):
@@ -304,6 +351,10 @@ def init_db():
                     "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS tipo VARCHAR(15) DEFAULT 'corte'",
                     "ALTER TABLE interacciones_cliente ADD COLUMN IF NOT EXISTS autor VARCHAR(12) DEFAULT 'cliente'",
                     "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS ip VARCHAR(45) DEFAULT ''",
+                    "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS sector VARCHAR(10) DEFAULT 'privado'",
+                    "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS entidad_nombre VARCHAR(200) DEFAULT ''",
+                    "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS contrato_numero VARCHAR(60) DEFAULT ''",
+                    "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS supervisor_nombre VARCHAR(120) DEFAULT ''",
                     "ALTER TABLE otrosies ADD COLUMN IF NOT EXISTS ip_firma VARCHAR(45) DEFAULT ''",
                 ]:
                     conn.execute(text(sql))
@@ -335,6 +386,10 @@ def init_db():
                     ("cuentas_cobro", "tipo", "ALTER TABLE cuentas_cobro ADD COLUMN tipo VARCHAR(15) DEFAULT 'corte'"),
                     ("interacciones_cliente", "autor", "ALTER TABLE interacciones_cliente ADD COLUMN autor VARCHAR(12) DEFAULT 'cliente'"),
                     ("eventos_share", "ip", "ALTER TABLE eventos_share ADD COLUMN ip VARCHAR(45) DEFAULT ''"),
+                    ("proyectos", "sector", "ALTER TABLE proyectos ADD COLUMN sector VARCHAR(10) DEFAULT 'privado'"),
+                    ("proyectos", "entidad_nombre", "ALTER TABLE proyectos ADD COLUMN entidad_nombre VARCHAR(200) DEFAULT ''"),
+                    ("proyectos", "contrato_numero", "ALTER TABLE proyectos ADD COLUMN contrato_numero VARCHAR(60) DEFAULT ''"),
+                    ("proyectos", "supervisor_nombre", "ALTER TABLE proyectos ADD COLUMN supervisor_nombre VARCHAR(120) DEFAULT ''"),
                     ("otrosies", "ip_firma", "ALTER TABLE otrosies ADD COLUMN ip_firma VARCHAR(45) DEFAULT ''"),
                 ]
                 for tabla, col, sql in migs:

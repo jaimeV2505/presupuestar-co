@@ -65,6 +65,10 @@ def _proyecto_out(p: Proyecto, incluir_items: bool = False) -> Dict:
         "contrato": json.loads(p.contrato_json or "{}"),
         "totales": calcular_totales(items, aiu),
         "share_token": p.share_token,
+        "sector": p.sector or "privado",
+        "entidad_nombre": p.entidad_nombre or "",
+        "contrato_numero": p.contrato_numero or "",
+        "supervisor_nombre": p.supervisor_nombre or "",
         "notas": p.notas,
         "creado": p.creado.isoformat() if p.creado else None,
         "actualizado": p.actualizado.isoformat() if p.actualizado else None,
@@ -80,10 +84,19 @@ class ProyectoCreate(BaseModel):
     cliente_telefono: str = ""
     direccion: str = ""
     region: str = "bogota"
+    sector: str = "privado"
+    entidad_nombre: str = ""
+    contrato_numero: str = ""
+    supervisor_nombre: str = ""
+
 
 
 class ProyectoUpdate(BaseModel):
     nombre: Optional[str] = None
+    sector: Optional[str] = None
+    entidad_nombre: Optional[str] = None
+    contrato_numero: Optional[str] = None
+    supervisor_nombre: Optional[str] = None
     cliente_nombre: Optional[str] = None
     cliente_telefono: Optional[str] = None
     direccion: Optional[str] = None
@@ -173,14 +186,24 @@ def listar(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db
 
 
 @router.post("")
+def _esta_firmado(p) -> bool:
+    return p.estado not in ("borrador", "enviado", "visto", "rechazado")
+
+
 def crear(req: ProyectoCreate, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     _verificar_limite(user, db)
     if not req.nombre.strip():
         raise HTTPException(400, "El proyecto necesita un nombre")
+    if req.sector not in ("privado", "publico"):
+        raise HTTPException(400, "Sector no valido")
     p = Proyecto(
         user_id=user.id,
         numero=_generar_numero(user.id, db),
         nombre=req.nombre.strip()[:200],
+        sector=req.sector,
+        entidad_nombre=(req.entidad_nombre or "").strip()[:200],
+        contrato_numero=(req.contrato_numero or "").strip()[:60],
+        supervisor_nombre=(req.supervisor_nombre or "").strip()[:120],
         cliente_nombre=req.cliente_nombre.strip()[:160],
         cliente_telefono=req.cliente_telefono.strip()[:30],
         direccion=req.direccion.strip()[:250],
@@ -274,6 +297,18 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
     if not p:
         raise HTTPException(404, "Proyecto no encontrado")
 
+    if req.sector is not None and req.sector != p.sector:
+        if _esta_firmado(p):
+            raise HTTPException(400, "El sector no se cambia despues de la firma del contrato")
+        if req.sector not in ("privado", "publico"):
+            raise HTTPException(400, "Sector no valido")
+        p.sector = req.sector
+    if req.entidad_nombre is not None:
+        p.entidad_nombre = req.entidad_nombre.strip()[:200]
+    if req.contrato_numero is not None:
+        p.contrato_numero = req.contrato_numero.strip()[:60]
+    if req.supervisor_nombre is not None:
+        p.supervisor_nombre = req.supervisor_nombre.strip()[:120]
     if req.nombre is not None: p.nombre = req.nombre.strip()[:200]
     if req.cliente_nombre is not None:
         p.cliente_nombre = req.cliente_nombre.strip()[:160]

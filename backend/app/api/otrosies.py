@@ -118,3 +118,31 @@ def eliminar(otrosi_id: int, user: Usuario = Depends(usuario_actual),
     db.delete(o)
     db.commit()
     return {"ok": True}
+
+
+@router.post("/{otrosi_id}/aprobar-interno")
+def aprobar_interno(otrosi_id: int, user: Usuario = Depends(usuario_actual),
+                    db: Session = Depends(get_db)):
+    """OBRA PUBLICA: el adicional/mayores cantidades se aprueba internamente
+    (no hay cliente final — el registro queda a nombre del contratista)."""
+    o = db.query(Otrosi).filter(Otrosi.id == otrosi_id).first()
+    if not o:
+        raise HTTPException(404, "Adicional no encontrado")
+    p = db.query(Proyecto).filter(Proyecto.id == o.proyecto_id,
+                                  Proyecto.user_id == user.id).first()
+    if not p:
+        raise HTTPException(404, "Adicional no encontrado")
+    if (p.sector or "privado") != "publico":
+        raise HTTPException(400, "En proyectos privados el adicional lo firma el cliente desde su enlace")
+    if o.estado == "aprobado":
+        raise HTTPException(400, "Este adicional ya esta aprobado")
+    from app.services.otrosi_service import totales_otrosi
+    import json as _json
+    items = _json.loads(o.items_json or "[]")
+    aiu = _json.loads(p.aiu_json or "{}")
+    o.totales_json = _json.dumps(totales_otrosi(items, aiu), ensure_ascii=False)
+    o.estado = "aprobado"
+    o.nombre_firma = (user.nombre or "Contratista")[:120]
+    o.resuelto = datetime.now(timezone.utc)
+    db.commit()
+    return {"ok": True, "estado": "aprobado"}

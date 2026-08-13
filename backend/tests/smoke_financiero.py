@@ -105,3 +105,33 @@ assert recibido == 10_000_000, recibido
 print(f"  ✓ rete 5%: retenido {rete_total:,} por el camino, liberado al acta — cuadre {recibido:,}")
 
 print("\nNUCLEO FINANCIERO INTACTO ✅")
+
+
+# ═══ CONSTRUCTOR DE APU PROPIO (composicion determinista) ═══
+from app.services.apu_propio_service import componer_precio
+
+# Caso 1: panete 1:4 por m2 — 0.35 bulto cemento($28.500, 5% desp) + 0.04 m3 arena($65.000) + MO $9.000 + herr 5%
+r = componer_precio(
+    [{"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.35, "precio": 28500, "desperdicio_pct": 5},
+     {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}],
+    mano_obra=9000, herramienta_pct=5)
+assert r["materiales"] == round(0.35*28500*1.05 + 0.04*65000) == 13074, r["materiales"]
+assert r["herramienta"] == 450
+assert r["precio_unitario"] == 13074 + 9000 + 450 == 22524, r["precio_unitario"]
+
+# Caso 2: solo mano de obra (instalacion) — sin insumos
+r = componer_precio([], mano_obra=45000, herramienta_pct=10)
+assert r["precio_unitario"] == 49500 and r["materiales"] == 0
+
+# Caso 3: candados del constructor
+for malo in [
+    ([{"cantidad": -1, "precio": 100}], 0, 0),
+    ([{"cantidad": 1, "precio": 100, "desperdicio_pct": 80}], 0, 0),
+    ([], 1000, 45),
+]:
+    try:
+        componer_precio(*malo); assert False, "debia rechazar"
+    except ValueError:
+        pass
+
+print("OK constructor de APU: 2 composiciones exactas + 3 candados")
