@@ -81,6 +81,10 @@ export default function VistaPublica() {
   const [verHistoria, setVerHistoria] = useState(false)
   const [hintGuardar, setHintGuardar] = useState(() => !localStorage.getItem('obra_guardada_hint'))
 
+  const Cejilla = ({ children }) => (
+    <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-400 mb-2 mt-6 px-1">{children}</p>
+  )
+
   const interactuar = async (avanceId, tipo, valor) => {
     try {
       const r = await shareAPI.interactuar(token, avanceId, {
@@ -238,21 +242,24 @@ export default function VistaPublica() {
   const c = data.contratista
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-28">
+    <div className="min-h-screen bg-slate-50 pb-32">
       {data.demo && (
         <div className="bg-amber-400 text-amber-900 text-center text-xs font-bold py-2 px-4">
           🧪 Presupuesto de DEMOSTRACIÓN — así lo verá tu cliente ·{' '}
           <a href="/registro" className="underline">Crea el tuyo gratis</a>
         </div>
       )}
-      {/* Header del contratista */}
-      <div className="bg-navy-800 text-white px-5 pt-8 pb-12">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center gap-3 mb-6">
+      {/* Header del contratista — papel de plano */}
+      <div className="relative bg-navy-900 text-white px-5 pt-8 pb-14 overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.07] pointer-events-none"
+             style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-emerald-400/10 blur-3xl pointer-events-none" />
+        <div className="relative max-w-lg mx-auto">
+          <div className="flex items-center gap-3 mb-7">
             {c.logo_b64 ? (
-              <img src={c.logo_b64} alt="" className="w-12 h-12 rounded-xl object-contain bg-white p-1" />
+              <img src={c.logo_b64} alt="" className="w-12 h-12 rounded-2xl object-contain bg-white p-1 ring-2 ring-white/20" />
             ) : (
-              <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center ring-2 ring-white/10">
                 <Building2 className="w-6 h-6" />
               </div>
             )}
@@ -267,21 +274,23 @@ export default function VistaPublica() {
               )}
             </div>
           </div>
-          <p className="text-blue-200 text-xs uppercase tracking-wide mb-1">
-            Presupuesto de obra {data.numero && <span className="font-bold text-white">· {data.numero}</span>}
+          <p className="text-emerald-300/80 text-[10px] uppercase tracking-[0.2em] font-bold mb-1.5">
+            Presupuesto de obra {data.numero && <span className="text-white/60 tracking-normal">· {data.numero}</span>}
           </p>
-          <h1 className="text-xl font-bold leading-tight">{data.proyecto}</h1>
-          {data.cliente && <p className="text-sm text-blue-200 mt-1">Para: {data.cliente}</p>}
-          {data.direccion && <p className="text-xs text-blue-300">{data.direccion}</p>}
-          <p className="text-xs text-blue-300 mt-2">Fecha: {data.fecha}</p>
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight">{data.proyecto}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-2 text-xs text-blue-200/80">
+            {data.cliente && <span>Para <strong className="text-white/90 font-semibold">{data.cliente}</strong></span>}
+            {data.direccion && <span className="text-blue-300/70">· {data.direccion}</span>}
+            <span className="text-blue-300/70">· {data.fecha}</span>
+          </div>
         </div>
       </div>
 
       {/* Total destacado */}
-      <div className="max-w-lg mx-auto px-4 -mt-6">
-        <div className="bg-white rounded-2xl shadow-lg p-5 text-center">
-          <p className="text-xs text-slate-400 uppercase tracking-wide">Valor total</p>
-          <p className="text-3xl font-black text-slate-800 mt-1">{COP(t.total)}</p>
+      <div className="max-w-lg mx-auto px-4 -mt-8">
+        <div className="bg-white rounded-2xl shadow-xl shadow-navy-900/10 ring-1 ring-slate-100 p-5 text-center">
+          <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-bold">Valor total de tu obra</p>
+          <p className="text-[34px] font-black text-navy-800 mt-1 tracking-tight tabular-nums">{COP(t.total)}</p>
           {aceptado && (
             <div className="mt-2">
               <span className="inline-flex items-center gap-1.5 text-sm text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full font-medium">
@@ -331,9 +340,10 @@ export default function VistaPublica() {
       )}
 
       {/* Capitulos */}
-      <div className="max-w-lg mx-auto px-4 mt-4 space-y-2">
+      <div className="max-w-lg mx-auto px-4 space-y-2">
+        <Cejilla>Tu presupuesto, capítulo por capítulo</Cejilla>
         {Object.entries(data.capitulos || {}).map(([cap, info]) => (
-          <div key={cap} className="bg-white rounded-xl overflow-hidden">
+          <div key={cap} className="bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100">
             <button onClick={() => setAbiertos(a => ({ ...a, [cap]: !a[cap] }))}
                     className="w-full flex items-center justify-between p-4">
               <div className="text-left">
@@ -341,8 +351,8 @@ export default function VistaPublica() {
                 <p className="text-xs text-slate-400">{info.items.length} ítem{info.items.length !== 1 ? 's' : ''}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-800">{COP(info.subtotal)}</span>
-                {abiertos[cap] ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                <span className="text-sm font-semibold text-slate-800 tabular-nums">{COP(info.subtotal)}</span>
+                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${abiertos[cap] ? 'rotate-180' : ''}`} />
               </div>
             </button>
             {abiertos[cap] && (
@@ -365,8 +375,9 @@ export default function VistaPublica() {
       </div>
 
       {/* Resumen financiero */}
-      <div className="max-w-lg mx-auto px-4 mt-4">
-        <div className="bg-white rounded-xl p-4 space-y-2 text-sm">
+      <div className="max-w-lg mx-auto px-4">
+        <Cejilla>Así se compone el valor</Cejilla>
+        <div className="bg-white rounded-2xl ring-1 ring-slate-100 p-4 space-y-2 text-sm">
           <div className="flex justify-between text-slate-600">
             <span>Costo directo</span><span>{COP(t.subtotal_directo)}</span>
           </div>
@@ -406,6 +417,7 @@ export default function VistaPublica() {
         )}
 
         {/* ═══ HERO: TU OBRA, en primera persona ═══ */}
+        {aceptado && avances && <Cejilla>Tu obra en vivo</Cejilla>}
         {aceptado && avances && (
           (() => {
             const pct = avances.porcentaje_actual || 0
@@ -414,7 +426,7 @@ export default function VistaPublica() {
                                    .reduce((s, o) => s + (o.total || 0), 0)
             const pagado = avances.pagado_total || 0
             return (
-              <div className="bg-gradient-to-br from-navy-700 to-navy-900 rounded-2xl p-5 text-white shadow-lg">
+              <div className="bg-gradient-to-br from-navy-700 to-navy-900 rounded-2xl p-5 text-white shadow-xl shadow-navy-900/20 ring-1 ring-white/10">
                 <p className="text-[11px] uppercase tracking-wide text-white/60 font-bold">Tu obra</p>
                 <p className="text-2xl font-bold mt-0.5">
                   {pct >= 100 ? '¡Terminada! 🎉' : `Va en ${Math.round(pct)}% 🏗️`}
@@ -526,9 +538,9 @@ export default function VistaPublica() {
 
             {/* ESTADO DE PAGOS */}
             {avances.cuentas?.length > 0 && (
-              <div className="bg-white rounded-xl p-4 mb-2">
+              <div className="bg-white rounded-2xl ring-1 ring-slate-100 p-4 mb-2">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold text-slate-700">💵 Estado de pagos</p>
+                  <p className="text-sm font-semibold text-slate-700">💵 Tus pagos, claros</p>
                   {avances.pendiente_total > 0 && (
                     <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
                       Pendiente: {COP(avances.pendiente_total)}
@@ -582,7 +594,7 @@ export default function VistaPublica() {
             {/* Cortes de avance */}
             <div className="space-y-2">
               {avances.avances.map(a => (
-                <div key={a.id} className="bg-white rounded-xl p-4">
+                <div key={a.id} className="bg-white rounded-2xl ring-1 ring-slate-100 p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-medium text-slate-700">{a.titulo}</p>
@@ -667,9 +679,10 @@ export default function VistaPublica() {
         )}
 
         {/* ═══ 📂 MIS DOCUMENTOS: el expediente completo del cliente ═══ */}
+        {aceptado && !data.demo && <Cejilla>Tus documentos</Cejilla>}
         {aceptado && !data.demo && (
-          <div className="bg-white rounded-xl p-4 mt-4">
-            <p className="text-sm font-semibold text-slate-700 mb-2">📂 Mis documentos</p>
+          <div className="bg-white rounded-2xl ring-1 ring-slate-100 p-4">
+            <p className="text-sm font-semibold text-slate-700 mb-2">📂 Todo tu expediente en un lugar</p>
             <div className="space-y-1.5">
               <a href={`/api/share/publico/${token}/contrato.pdf`} target="_blank" rel="noreferrer"
                  className="flex items-center justify-between text-xs text-slate-600 border border-slate-100 rounded-lg px-3 py-2.5 hover:border-navy-300">
@@ -699,7 +712,7 @@ export default function VistaPublica() {
 
         {/* ═══ 📖 LA HISTORIA DE TU OBRA (timeline) ═══ */}
         {aceptado && !data.demo && avances && (
-          <div className="bg-white rounded-xl p-4 mt-3">
+          <div className="bg-white rounded-2xl ring-1 ring-slate-100 p-4 mt-3">
             <button onClick={() => setVerHistoria(v => !v)} className="w-full flex items-center justify-between">
               <p className="text-sm font-semibold text-slate-700">📖 La historia de tu obra</p>
               <span className="text-slate-400 text-xs">{verHistoria ? '▲' : '▼'}</span>
@@ -944,7 +957,7 @@ export default function VistaPublica() {
 
       {/* Barra de accion fija */}
       {!aceptado && !rechazado && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4">
+        <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200/80 p-4 shadow-[0_-8px_30px_-12px_rgba(15,42,74,0.15)]">
           <div className="max-w-lg mx-auto space-y-2">
           <div className="flex gap-2">
             {c.telefono && (
@@ -954,7 +967,7 @@ export default function VistaPublica() {
               </a>
             )}
             <button onClick={aceptar} disabled={aceptando}
-                    className="flex items-center justify-center gap-2 flex-[2] py-3 rounded-xl bg-emerald-500 text-white text-sm font-bold disabled:opacity-50">
+                    className="flex items-center justify-center gap-2 flex-[2] py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-white text-sm font-bold shadow-lg shadow-emerald-500/30 transition disabled:opacity-50">
               <CheckCircle2 className="w-4 h-4" />
               {aceptando ? 'Confirmando...' : 'Aceptar presupuesto'}
             </button>
