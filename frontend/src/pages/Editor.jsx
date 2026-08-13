@@ -14,7 +14,7 @@ export default function Editor() {
   const [p, setP] = useState(null)
   const [items, setItems] = useState([])
   const [aiu, setAiu] = useState({ admin: 15, imprevistos: 5, utilidad: 8, aplicar: true, iva_sobre_utilidad: true })
-  const [contrato, setContrato] = useState({ plazo_dias: 45, anticipo_pct: 50, retegarantia_pct: 0, fecha_inicio: '', lugar: '' })
+  const [contrato, setContrato] = useState({ plazo_dias: 45, anticipo_pct: 50, retegarantia_pct: 0, fecha_inicio: '', lugar: '', deducciones: [] })
   const [totales, setTotales] = useState(null)
   const [guardando, setGuardando] = useState(false)
 
@@ -796,6 +796,34 @@ export default function Editor() {
                        onChange={e => setContratoYGuardar({ ...contrato, lugar: e.target.value })} />
               </div>
             </div>
+            {esPublico && (
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1.5">
+                  Deducciones de ley por acta 🏛️ <span className="normal-case">(la entidad las retiene de cada pago)</span>
+                </p>
+                {(contrato.deducciones || []).map((dd, i) => (
+                  <div key={i} className="flex gap-1.5 mb-1.5">
+                    <input className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5" value={dd.nombre}
+                           onChange={e => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x) })} />
+                    <input type="number" min="0" max="25" className="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1.5" value={dd.pct}
+                           onChange={e => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.map((x, j) => j === i ? { ...x, pct: Math.max(0, Math.min(25, parseFloat(e.target.value) || 0)) } : x) })} />
+                    <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.filter((_, j) => j !== i) })}
+                            className="text-slate-300 hover:text-red-400 px-1">×</button>
+                  </div>
+                ))}
+                {(contrato.deducciones || []).length === 0 && (
+                  <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: [
+                            { nombre: 'Contribución obra pública 5% (Ley 1106/2006)', pct: 5 },
+                            { nombre: 'Estampillas territoriales', pct: 4 },
+                            { nombre: 'Retefuente construcción', pct: 2 }] })}
+                          className="text-xs font-medium text-navy-600">+ cargar las 3 típicas (5% + 4% + 2%) — ajusta las estampillas a tu territorio</button>
+                )}
+                {(contrato.deducciones || []).length > 0 && (
+                  <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: [...contrato.deducciones, { nombre: '', pct: 0 }] })}
+                          className="text-xs font-medium text-navy-600">+ agregar deducción</button>
+                )}
+              </div>
+            )}
             {totales && contrato.anticipo_pct > 0 && (
               <p className="text-[11px] text-slate-500 mt-2.5 bg-slate-50 rounded-lg p-2">
                 Forma de pago: anticipo {contrato.anticipo_pct}% = <strong>{COP(totales.total * contrato.anticipo_pct / 100)}</strong>
@@ -1147,6 +1175,9 @@ export default function Editor() {
                   {liquidacion.retencion > 0 && (
                     <div className="flex justify-between"><span className="text-slate-500">(−) Retegarantía ({liquidacion.retegarantia_pct}%) 🔒</span><span>− {COP(liquidacion.retencion)}</span></div>
                   )}
+                  {(liquidacion.deducciones || []).map((dd, k) => (
+                    <div key={k} className="flex justify-between"><span className="text-slate-500">(−) {dd.nombre} ({dd.pct}%) 🏛️</span><span>− {COP(dd.valor)}</span></div>
+                  ))}
                   <div className="flex justify-between text-sm font-black text-emerald-700 border-t border-emerald-200 pt-1.5 mt-1.5">
                     <span>NETO A COBRAR</span><span>{COP(liquidacion.neto)}</span>
                   </div>
@@ -1225,6 +1256,7 @@ export default function Editor() {
                       <p className="text-[9px] text-slate-400">
                         {c.fecha}{c.fecha_pago && ` · pagada ${c.fecha_pago}`}
                         {c.retencion > 0 && ` · retuvo ${COP(c.retencion)}`}
+                        {c.deducciones > 0 && ` · deducciones de ley ${COP(c.deducciones)}`}
                       </p>
                       {c.estado !== 'pagada' && c.abonado > 0 && (
                         <div className="mt-1">

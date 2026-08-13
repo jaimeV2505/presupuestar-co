@@ -78,6 +78,11 @@ d = paso("duplicar de la base como MIO", c.post(
     f"/api/apus/duplicar-de-base?codigo={CODIGO_BASE}&region=bogota", headers=H),
     contiene=["MI-"])
 assert d["origen_base"] == CODIGO_BASE
+d = paso("EDITAR mi APU (el bug del doble body, vigilado)", c.put(f"/api/apus/{APU_MANUAL}", json={
+    "codigo": "MI-001", "descripcion": "Localizacion y replanteo via terciaria (rev.1)",
+    "unidad": "m2", "precio": 3600, "sector_tag": "publico"}, headers=H))
+assert d["precio"] == 3600 and "rev.1" in d["descripcion"]
+
 r = c.post("/api/apus/duplicar-de-base?codigo=NO-EXISTE-999", headers=H)
 paso("CANDADO: codigo inexistente en la base -> 404", r, status=404)
 
@@ -123,6 +128,21 @@ assert d["precio"] == 22524 and d["desglose"]["materiales"] == 13074
 d = paso("mis APUs listados (filtro sector publico)", c.get("/api/apus?sector=publico", headers=H))
 assert len(d["items"]) >= 3
 
+print("═══ ACTO 1.9: EL LADRON (ownership cruzado) ═══")
+d2 = paso("registro del intruso", c.post("/api/auth/registro",
+          json={"email": "intruso@publico.test", "password": "Intruso2026x"}))
+H2 = {"Authorization": f"Bearer {d2['token']}"}
+r = c.put(f"/api/apus/{APU_MANUAL}", json={"descripcion": "hackeado", "precio": 1}, headers=H2)
+paso("CANDADO: editar APU ajeno -> 404", r, status=404)
+r = c.delete(f"/api/apus/{APU_COMP}", headers=H2)
+paso("CANDADO: borrar APU ajeno -> 404", r, status=404)
+r = c.get(f"/api/proveedores/{PROV}/precios", headers=H2)
+paso("CANDADO: espiar precios de proveedor ajeno -> 404", r, status=404)
+d = c.get("/api/apus", headers=H2).json()
+assert d["total"] == 0, "el intruso VE apus ajenos!"
+print("  ✓ el intruso no ve, no edita, no borra nada ajeno")
+PASOS.append("ownership cruzado blindado")
+
 print("═══ ACTO 2: EL PRESUPUESTO OFICIAL Y LOS CANDADOS DEL SECTOR ═══")
 paso("items desde MIS APUs + contrato (anticipo 30%, rete 10%)", c.put(f"/api/proyectos/{PID}", json={
     "items": [
@@ -133,8 +153,24 @@ paso("items desde MIS APUs + contrato (anticipo 30%, rete 10%)", c.put(f"/api/pr
     ],
     "aiu": {"admin": 20, "imprevistos": 3, "utilidad": 7, "aplicar": True, "iva_sobre_utilidad": True},
     "contrato": {"plazo_dias": 90, "anticipo_pct": 30, "retegarantia_pct": 10,
-                 "fecha_inicio": "2026-09-01", "lugar": "Vereda El Roble"},
+                 "fecha_inicio": "2026-09-01", "lugar": "Vereda El Roble",
+                 "deducciones": [
+                     {"nombre": "Contribución obra pública 5% (Ley 1106/2006)", "pct": 5},
+                     {"nombre": "Estampillas territoriales", "pct": 4},
+                     {"nombre": "Retefuente construcción", "pct": 2}]},
 }, headers=H))
+
+r = c.put(f"/api/proyectos/{PID}", json={"contrato": {"anticipo_pct": 30, "retegarantia_pct": 10,
+    "deducciones": [{"nombre": "Estampilla absurda", "pct": 30}]}}, headers=H)
+paso("CANDADO: deduccion del 30% -> 400", r, status=400)
+# restaurar el contrato bueno (el candado no debe haberlo tocado)
+paso("contrato restaurado con las 3 de ley", c.put(f"/api/proyectos/{PID}", json={
+    "contrato": {"plazo_dias": 90, "anticipo_pct": 30, "retegarantia_pct": 10,
+                 "fecha_inicio": "2026-09-01", "lugar": "Vereda El Roble",
+                 "deducciones": [
+                     {"nombre": "Contribución obra pública 5% (Ley 1106/2006)", "pct": 5},
+                     {"nombre": "Estampillas territoriales", "pct": 4},
+                     {"nombre": "Retefuente construcción", "pct": 2}]}}, headers=H))
 
 r = c.post(f"/api/share/proyectos/{PID}/compartir", headers=H)
 paso("CANDADO ESTRELLA: obra publica NO comparte -> 400", r, status=400,
@@ -152,8 +188,16 @@ AV1 = d["id"]
 d = paso("acta parcial (cuenta) liquidada con anticipo 30% y rete 10%",
          c.post(f"/api/cuentas/proyectos/{PID}/cuentas", json={"avance_id": AV1}, headers=H))
 CID = d.get("id") or d.get("cuenta", {}).get("id")
-RETE = d.get("retencion") or d.get("cuenta", {}).get("retencion") or 0
-assert RETE > 0
+cc = d.get("cuenta") or d
+CORTE = cc["valor_corte"]; RETE = cc["retencion"]; AMORT = cc["amortizacion"]
+assert RETE == round(CORTE * 0.10), f"rete no es 10%: {RETE} de {CORTE} (BUG #2 vigilado)"
+DED = cc["deducciones"]
+esperado_ded = round(CORTE*0.05) + round(CORTE*0.04) + round(CORTE*0.02)
+assert DED == esperado_ded, f"deducciones {DED} != {esperado_ded}"
+assert len(cc["deducciones_detalle"]) == 3 and "Ley 1106" in cc["deducciones_detalle"][0]["nombre"]
+assert cc["neto"] == CORTE - AMORT - RETE - DED, "el NETO REAL no cuadra"
+print(f"  ✓ acta publica liquidada a peso: corte {CORTE:,} - amort {AMORT:,} - rete {RETE:,} - deducciones {DED:,} = neto {cc['neto']:,}")
+PASOS.append("deducciones de ley exactas")
 paso("acta cobrada (pagada por la entidad)", c.post(f"/api/cuentas/{CID}/pagada", headers=H))
 
 print("═══ ACTO 3.5: ADICIONAL / MAYORES CANTIDADES (aprobacion interna) ═══")

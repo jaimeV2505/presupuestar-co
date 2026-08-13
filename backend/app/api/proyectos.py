@@ -331,9 +331,16 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
         cfg = {
             "plazo_dias": max(1, min(720, int(c.get("plazo_dias") or 45))),
             "anticipo_pct": max(0, min(90, float(c.get("anticipo_pct") or 50))),
+            "retegarantia_pct": max(0, min(20, float(c.get("retegarantia_pct") or 0))),
             "fecha_inicio": str(c.get("fecha_inicio") or "")[:60],
             "lugar": str(c.get("lugar") or "")[:150],
         }
+        if c.get("deducciones") is not None:
+            from app.services.deducciones_service import validar_deducciones
+            try:
+                cfg["deducciones"] = validar_deducciones(c.get("deducciones"))
+            except ValueError as e:
+                raise HTTPException(400, str(e))
         p.contrato_json = json.dumps(cfg, ensure_ascii=False)
 
     if req.aiu is not None:

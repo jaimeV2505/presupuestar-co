@@ -109,7 +109,7 @@ def componer(req: ComponerRequest, user: Usuario = Depends(usuario_actual)):
 
 
 @router.put("/{apu_id}")
-def actualizar(apu_id: int, req: ApuRequest, componer_req: Optional[ComponerRequest] = None,
+def actualizar(apu_id: int, req: ApuRequest,
                user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     a = _mio(apu_id, user, db)
     desc = (req.descripcion or "").strip()

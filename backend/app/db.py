@@ -170,6 +170,8 @@ class CuentaCobro(Base):
     amortizacion = Column(Integer, default=0)
     neto = Column(Integer, default=0)                  # a cobrar
     retencion = Column(Integer, default=0)       # retegarantia del corte
+    deducciones = Column(Integer, default=0)     # total deducciones de ley (obra publica)
+    deducciones_json = Column(Text, default="")  # detalle [{nombre, pct, valor}]
     tipo = Column(String(15), default="corte")    # corte | retegarantia
     estado = Column(String(20), default="enviada")     # enviada | pagada
     creado = Column(DateTime, default=utcnow)
@@ -355,6 +357,8 @@ def init_db():
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS entidad_nombre VARCHAR(200) DEFAULT ''",
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS contrato_numero VARCHAR(60) DEFAULT ''",
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS supervisor_nombre VARCHAR(120) DEFAULT ''",
+                    "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS deducciones INTEGER DEFAULT 0",
+                    "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS deducciones_json TEXT DEFAULT ''",
                     "ALTER TABLE otrosies ADD COLUMN IF NOT EXISTS ip_firma VARCHAR(45) DEFAULT ''",
                 ]:
                     conn.execute(text(sql))
@@ -390,6 +394,8 @@ def init_db():
                     ("proyectos", "entidad_nombre", "ALTER TABLE proyectos ADD COLUMN entidad_nombre VARCHAR(200) DEFAULT ''"),
                     ("proyectos", "contrato_numero", "ALTER TABLE proyectos ADD COLUMN contrato_numero VARCHAR(60) DEFAULT ''"),
                     ("proyectos", "supervisor_nombre", "ALTER TABLE proyectos ADD COLUMN supervisor_nombre VARCHAR(120) DEFAULT ''"),
+                    ("cuentas_cobro", "deducciones", "ALTER TABLE cuentas_cobro ADD COLUMN deducciones INTEGER DEFAULT 0"),
+                    ("cuentas_cobro", "deducciones_json", "ALTER TABLE cuentas_cobro ADD COLUMN deducciones_json TEXT DEFAULT ''"),
                     ("otrosies", "ip_firma", "ALTER TABLE otrosies ADD COLUMN ip_firma VARCHAR(45) DEFAULT ''"),
                 ]
                 for tabla, col, sql in migs:

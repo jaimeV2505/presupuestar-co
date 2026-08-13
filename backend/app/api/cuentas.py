@@ -60,7 +60,13 @@ def _liquidar(p: Proyecto, avance: Avance, db: Session) -> dict:
     amortizacion = amortizacion_con_tope(valor_corte, anticipo_pct, anticipo_total, amortizado_previo)
     rete_pct = float(cfg.get("retegarantia_pct") or 0)
     retencion = round(valor_corte * rete_pct / 100)
-    neto = valor_corte - amortizacion - retencion
+    # OBRA PUBLICA: deducciones de ley (contribucion 5% Ley 1106, estampillas, retefuente)
+    deducciones_detalle, deducciones_total = [], 0
+    if (p.sector or "privado") == "publico" and cfg.get("deducciones"):
+        from app.services.deducciones_service import aplicar_deducciones
+        _d = aplicar_deducciones(valor_corte, cfg["deducciones"])
+        deducciones_detalle, deducciones_total = _d["detalle"], _d["total"]
+    neto = valor_corte - amortizacion - retencion - deducciones_total
 
     return {
         "avance_id": avance.id,
@@ -72,6 +78,8 @@ def _liquidar(p: Proyecto, avance: Avance, db: Session) -> dict:
         "anticipo_pct": anticipo_pct,
         "amortizacion": amortizacion,
         "retegarantia_pct": rete_pct,
+        "deducciones": deducciones_detalle,
+        "deducciones_total": deducciones_total,
         "retencion": retencion,
         "neto": neto,
     }
@@ -90,6 +98,8 @@ def _cc_out(c: CuentaCobro, db=None):
         "valor_corte": c.valor_corte, "anticipo_pct": c.anticipo_pct,
         "amortizacion": c.amortizacion, "neto": c.neto,
         "retencion": c.retencion or 0, "tipo": c.tipo or "corte",
+        "deducciones": c.deducciones or 0,
+        "deducciones_detalle": json.loads(c.deducciones_json) if c.deducciones_json else [],
         "abonos": _abonos_de(c, db) if db is not None else [],
         "abonado": sum(a["monto"] for a in (_abonos_de(c, db) if db is not None else [])),
         "estado": c.estado, "avance_id": c.avance_id,
@@ -160,6 +170,8 @@ def crear(pid: int, req: CrearCuentaRequest,
         amortizacion=liq["amortizacion"],
         neto=liq["neto"],
         retencion=liq.get("retencion", 0),
+        deducciones=liq.get("deducciones_total", 0),
+        deducciones_json=json.dumps(liq.get("deducciones") or [], ensure_ascii=False),
     )
     db.add(c)
     db.commit()

@@ -175,5 +175,38 @@ assert all(i["fuente"] == "referencia" and i["fecha"] for i in r)
 assert fuente_curada("ceramica") and fuente_curada("CERÁMICA")   # sin tildes, case-insensitive
 assert fuente_curada("zzz-no-existe") == []
 assert fuente_externa("cemento") == []   # sin cache configurado: degradacion elegante
+import os as _os, tempfile as _tf
+_bad = _tf.mktemp(suffix=".json"); open(_bad, "w").write("{corrupto sin cerrar")
+_os.environ["PRECIOS_EXTERNOS_JSON"] = _bad
+assert fuente_externa("cemento") == []   # cache CORRUPTO: degrada, no explota
+_ok = _tf.mktemp(suffix=".json")
+open(_ok, "w").write('[{"fuente": "homecenter", "nombre": "Cemento gris 50kg", "precio": 29900, "unidad": "bulto", "fecha": "01/08/2026"}]')
+_os.environ["PRECIOS_EXTERNOS_JSON"] = _ok
+_r = fuente_externa("cemento")
+assert _r and _r[0]["fuente"] == "homecenter" and _r[0]["precio"] == 29900
+del _os.environ["PRECIOS_EXTERNOS_JSON"]
 
 print("OK fuentes de precios: curada busca + externa degrada sin romper")
+
+
+# ═══ DEDUCCIONES DE LEY (obra publica) ═══
+from app.services.deducciones_service import aplicar_deducciones, validar_deducciones, SUGERIDAS
+
+# Corte de $6.227.160 con las 3 de ley: 5% + 4% + 2%
+d = aplicar_deducciones(6_227_160, SUGERIDAS)
+assert d["detalle"][0]["valor"] == round(6_227_160 * 0.05) == 311358
+assert d["detalle"][1]["valor"] == round(6_227_160 * 0.04) == 249086
+assert d["detalle"][2]["valor"] == round(6_227_160 * 0.02) == 124543
+assert d["total"] == 311358 + 249086 + 124543 == 684987
+assert "Ley 1106" in d["detalle"][0]["nombre"]
+
+# candados
+for malo in [[{"nombre": "x", "pct": 5}], [{"nombre": "Estampilla", "pct": 30}],
+             [{"nombre": "A", "pct": 20}, {"nombre": "B", "pct": 20}, {"nombre": "C", "pct": 20}]]:
+    try:
+        validar_deducciones(malo); assert False, f"debia rechazar {malo}"
+    except ValueError:
+        pass
+assert aplicar_deducciones(1_000_000, []) == {"detalle": [], "total": 0}
+
+print("OK deducciones de ley: 5+4+2 exactas a peso + 3 candados")

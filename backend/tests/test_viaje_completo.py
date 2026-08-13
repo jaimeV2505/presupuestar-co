@@ -196,6 +196,11 @@ paso("CANDADO: retegarantia UNA sola vez -> 400", r, status=400)
 paso("encuesta 5 estrellas", c.post(f"/api/share/publico/{TOKEN}/encuesta",
      json={"estrellas": 5, "recomendaria": True, "comentario": "Excelente y transparente"}))
 
+r = c.post(f"/api/share/proyectos/{PID}/interventoria", headers=H)
+assert r.status_code == 400, f"interventoria en proyecto PRIVADO debia dar 400: {r.status_code}"
+print("  ✓ candado simetrico: interventoria es solo para obra publica")
+PASOS.append("interventoria bloqueada en privado")
+
 print("═══ ACTO 5: LOS GUARDIANES (privacidad, pagos, respaldo) ═══")
 import json as _json
 
