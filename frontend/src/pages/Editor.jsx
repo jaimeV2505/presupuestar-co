@@ -265,14 +265,16 @@ export default function Editor() {
   }
 
   const urlPublica = shareData ? `${window.location.origin}${shareData.ruta_publica}` : ''
+  // La URL con preview OG (muestra nombre de la obra, monto y foto en el chat)
+  const urlPreview = shareData ? `${window.location.origin}${shareData.ruta_preview || shareData.ruta_publica}` : ''
   const abrirWhatsApp = () => {
-    const texto = encodeURIComponent(`${shareData.mensaje_whatsapp} ${urlPublica}`)
+    const texto = encodeURIComponent(`${shareData.mensaje_whatsapp} ${urlPreview}`)
     const base = shareData.telefono_cliente ? shareData.whatsapp_url_base : 'https://wa.me/'
     window.open(`${base}?text=${texto}`, '_blank')
   }
 
   const copiarLink = () => {
-    navigator.clipboard.writeText(urlPublica)
+    navigator.clipboard.writeText(urlPreview)
     toast.success('Enlace copiado')
   }
 

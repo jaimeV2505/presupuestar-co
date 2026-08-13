@@ -51,6 +51,7 @@ def compartir(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Ses
     return {
         "share_token": p.share_token,
         "ruta_publica": f"/p/{p.share_token}",
+        "ruta_preview": f"/api/s/{p.share_token}",   # URL con OG de la obra — usar en WhatsApp/copiar
         "mensaje_whatsapp": mensaje,
         "telefono_cliente": telefono,
         "whatsapp_url_base": (

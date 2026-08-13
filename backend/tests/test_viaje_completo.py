@@ -78,6 +78,9 @@ TOKEN = d["share_token"]
 TOTAL = round(d["totales"]["total"])
 print(f"     total del contrato: ${TOTAL:,}")
 
+d = paso("compartir devuelve ruta con preview OG", c.post(f"/api/share/proyectos/{PID}/compartir", headers=H),
+         contiene=["ruta_preview"])
+
 print("═══ ACTO 2: EL CLIENTE (sin cuenta, solo el link) ═══")
 paso("el cliente VE (evento visto)", c.get(f"/api/share/publico/{TOKEN}"), contiene=["capitulos"])
 paso("el cliente FIRMA", c.post(f"/api/share/publico/{TOKEN}/aceptar",
