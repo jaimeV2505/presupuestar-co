@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """PresupuestarCO v8 — Presupuestador APU para el contratista colombiano."""
 import logging
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

@@ -516,6 +516,7 @@ async def calcular_presupuesto(
 
     # -- Modulo D: Flete por distancia ------------------------------------------
     flete_info = None
+    notas = []   # notas acumuladas de esta corrida (flete, region, etc.)
     try:
         from app.services.flete_service import calcular_factor_flete
         tipo_est = "estructura_metalica" if tiene_metal else "concreto_reforzado"

@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 """Base de datos SQLite — simple, confiable, cero configuracion."""
 import os
+import logging
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from datetime import datetime, timezone
+
+logger = logging.getLogger("presupuestarco.db")
 
 # Postgres en produccion (Vercel/Neon via DATABASE_URL), SQLite en local
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL") or ""
