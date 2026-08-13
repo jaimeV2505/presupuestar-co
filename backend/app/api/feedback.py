@@ -1,5 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from app.db import Usuario
+from app.api.auth import usuario_actual
+from app.api.pagos import admin_actual
 from typing import Dict, Optional, List
 from app.services import feedback_service as FB
 
@@ -17,7 +20,7 @@ class AnalisisRequest(BaseModel):
     confianza: str
 
 @router.post("/correccion")
-def registrar_correccion(req: CorreccionRequest):
+def registrar_correccion(req: CorreccionRequest, user: Usuario = Depends(usuario_actual)):
     """Registra una corrección del ingeniero — alimenta el sistema de aprendizaje."""
     try:
         result = FB.registrar_correccion(
@@ -29,7 +32,7 @@ def registrar_correccion(req: CorreccionRequest):
         raise HTTPException(500, str(e))
 
 @router.post("/analisis")
-def registrar_analisis(req: AnalisisRequest):
+def registrar_analisis(req: AnalisisRequest, user: Usuario = Depends(usuario_actual)):
     """Registra que se procesó un plano."""
     try:
         FB.registrar_analisis(req.plano_nombre, req.elementos_extraidos, req.confianza)
@@ -38,12 +41,12 @@ def registrar_analisis(req: AnalisisRequest):
         raise HTTPException(500, str(e))
 
 @router.get("/stats")
-def get_stats():
+def get_stats(admin: Usuario = Depends(admin_actual)):
     """Estadísticas del sistema de aprendizaje."""
     return FB.get_stats()
 
 @router.get("/patrones")
-def get_patrones():
+def get_patrones(admin: Usuario = Depends(admin_actual)):
     """Lista de patrones aprendidos del feedback."""
     stats = FB.get_stats()
     return {
@@ -55,6 +58,6 @@ def get_patrones():
     }
 
 @router.delete("/limpiar")
-def limpiar(dias: int = 90):
+def limpiar(dias: int = 90, admin: Usuario = Depends(admin_actual)):
     """Limpia correcciones antiguas."""
     return FB.limpiar_patrones_antiguos(dias)
