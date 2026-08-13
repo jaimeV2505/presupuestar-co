@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 ICONOS = {"visto": "👁", "firmado": "✍️", "rechazado": "✕", "entrega": "🏁",
-          "pendientes": "⚠️", "encuesta": "⭐", "soporte": "💬", "info": "🔔"}
+          "pendientes": "⚠️", "encuesta": "⭐", "soporte": "🛟", "comentario": "💬", "info": "🔔"}
 
 
 def notificar(db: Session, user_id: int, tipo: str, titulo: str,

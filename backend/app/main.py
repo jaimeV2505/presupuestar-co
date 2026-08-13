@@ -104,3 +104,87 @@ async def health():
             "PREMIUM: lectura de planos con IA + validacion NSR-10",
         ],
     }
+
+# ═══════════ PREVIEW DE WHATSAPP: /api/s/{token} ═══════════
+# Los bots de WhatsApp/redes leen las meta OG (que una SPA no puede personalizar);
+# los humanos son redirigidos al instante a /p/{token}. El boton de compartir usa esta URL.
+from fastapi.responses import HTMLResponse, Response as _Resp
+
+
+@app.get("/api/s/{token}")
+def preview_social(token: str):
+    import html as _html
+    import json as _json
+    from app.db import SessionLocal, Proyecto, Usuario
+    db = SessionLocal()
+    try:
+        p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+        if not p:
+            return HTMLResponse("<h1>Este enlace no existe o fue retirado</h1>", status_code=404)
+        u = db.query(Usuario).filter(Usuario.id == p.user_id).first()
+        try:
+            from app.services.calculo_presupuesto import calcular_totales
+            from app.services.otrosi_service import valor_adicionales
+            total = calcular_totales(_json.loads(p.items_json or "[]"),
+                                     _json.loads(p.aiu_json or "{}"))["total"]
+            total += valor_adicionales(p, db)
+            total_txt = "$" + f"{round(total):,}".replace(",", ".")
+        except Exception:
+            total_txt = ""
+        titulo = _html.escape(f"🏗️ {p.nombre} — {u.empresa or u.nombre}")
+        firmado = p.estado not in ("borrador", "enviado", "visto", "rechazado")
+        desc = _html.escape(
+            (f"Presupuesto {total_txt} · Sigue el avance de tu obra en vivo, fotos y cuentas claras"
+             if firmado else
+             f"Presupuesto {total_txt} · Revisa el detalle y firma el contrato desde tu celular"))
+        destino = f"/p/{token}"
+        # ¿foto del ultimo avance como imagen del preview?
+        tiene_foto = False
+        try:
+            from app.db import Avance
+            ult = (db.query(Avance).filter(Avance.proyecto_id == p.id)
+                   .order_by(Avance.creado.desc()).first())
+            tiene_foto = bool(ult and _json.loads(ult.fotos_json or "[]"))
+        except Exception:
+            pass
+        imagen = f"/api/s/{token}/foto.jpg" if tiene_foto else "/og.png"
+        base = os.environ.get("APP_URL", "https://presupuestar-co.vercel.app").rstrip("/")
+        return HTMLResponse(f"""<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<title>{titulo}</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="{titulo}">
+<meta property="og:description" content="{desc}">
+<meta property="og:image" content="{base}{imagen}">
+<meta property="og:url" content="{base}{destino}">
+<meta name="twitter:card" content="summary_large_image">
+<meta http-equiv="refresh" content="0;url={destino}">
+</head><body>
+<p style="font-family:sans-serif">Abriendo tu obra... <a href="{destino}">clic aqui si no avanza</a></p>
+<script>location.replace("{destino}")</script>
+</body></html>""")
+    finally:
+        db.close()
+
+
+@app.get("/api/s/{token}/foto.jpg")
+def preview_foto(token: str):
+    """La foto del ultimo avance como imagen del preview (decodificada del base64)."""
+    import base64
+    import json as _json
+    from app.db import SessionLocal, Proyecto, Avance
+    db = SessionLocal()
+    try:
+        p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+        if not p:
+            return _Resp(status_code=404)
+        ult = (db.query(Avance).filter(Avance.proyecto_id == p.id)
+               .order_by(Avance.creado.desc()).first())
+        fotos = _json.loads(ult.fotos_json or "[]") if ult else []
+        if not fotos or "," not in fotos[0]:
+            return _Resp(status_code=404)
+        datos = base64.b64decode(fotos[0].split(",", 1)[1])
+        return _Resp(content=datos, media_type="image/jpeg",
+                     headers={"Cache-Control": "public, max-age=3600"})
+    finally:
+        db.close()

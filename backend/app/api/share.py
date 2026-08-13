@@ -303,6 +303,7 @@ def avances_publico(token: str, db: Session = Depends(get_db)):
                 "items": _json.loads(a.items_json or "[]"),
                 "fotos": _json.loads(a.fotos_json or "[]"),
                 "fecha": a.creado.strftime("%d/%m/%Y %H:%M"),
+                **_interacciones_de(a.id, db),
             } for a in avances
         ],
     }
@@ -1121,3 +1122,81 @@ def otrosi_pdf(token: str, otrosi_id: int, db: Session = Depends(get_db)):
     return StreamingResponse(buf, media_type="application/pdf",
                              headers={"Content-Disposition":
                                       f'inline; filename="otrosi-{o.numero}-{p.numero}.pdf"'})
+
+
+# ═══════════════ PARTICIPACION DEL CLIENTE (reacciones y comentarios) ═══════════════
+REACCIONES_VALIDAS = ("👍", "❤️", "👏")
+MAX_INTERACCIONES_DIA = 40   # candado anti-spam por proyecto
+
+
+def _interacciones_de(avance_id: int, db) -> dict:
+    """Reacciones (conteos) y comentarios de un avance — para ambos lados del puente."""
+    from app.db import InteraccionCliente
+    rows = (db.query(InteraccionCliente)
+            .filter(InteraccionCliente.avance_id == avance_id)
+            .order_by(InteraccionCliente.creado).all())
+    reacciones = {}
+    comentarios = []
+    for r in rows:
+        if r.tipo == "reaccion":
+            reacciones[r.valor] = reacciones.get(r.valor, 0) + 1
+        else:
+            comentarios.append({"texto": r.valor, "nombre": r.nombre or "Cliente",
+                                "fecha": r.creado.strftime("%d/%m %H:%M")})
+    return {"reacciones": reacciones, "comentarios": comentarios}
+
+
+class InteraccionRequest(BaseModel):
+    tipo: str            # reaccion | comentario
+    valor: str
+    nombre: str = ""
+
+
+@router.post("/publico/{token}/avances/{avance_id}/interaccion")
+def interactuar(token: str, avance_id: int, req: InteraccionRequest,
+                db: Session = Depends(get_db)):
+    """El cliente participa: reacciona o comenta un avance de SU obra."""
+    from app.db import InteraccionCliente, Avance
+    from datetime import timedelta
+    p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if not p:
+        raise HTTPException(404, "Enlace no valido")
+    if p.estado in ("borrador", "enviado", "visto", "rechazado"):
+        raise HTTPException(400, "La participacion se activa cuando el contrato este firmado")
+    a = db.query(Avance).filter(Avance.id == avance_id, Avance.proyecto_id == p.id).first()
+    if not a:
+        raise HTTPException(404, "Avance no encontrado")
+
+    # Candados de contenido
+    if req.tipo == "reaccion":
+        if req.valor not in REACCIONES_VALIDAS:
+            raise HTTPException(400, "Reaccion no valida")
+    elif req.tipo == "comentario":
+        texto = (req.valor or "").strip()
+        if not texto:
+            raise HTTPException(400, "Escribe tu comentario")
+        if len(texto) > 300:
+            raise HTTPException(400, "Maximo 300 caracteres")
+        req.valor = texto
+    else:
+        raise HTTPException(400, "Tipo no valido")
+
+    # Candado anti-spam: limite diario por proyecto
+    hace_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+    recientes = (db.query(InteraccionCliente)
+                 .filter(InteraccionCliente.proyecto_id == p.id,
+                         InteraccionCliente.creado >= hace_24h).count())
+    if recientes >= MAX_INTERACCIONES_DIA:
+        raise HTTPException(429, "Limite diario de interacciones alcanzado — intenta mañana")
+
+    db.add(InteraccionCliente(
+        proyecto_id=p.id, avance_id=a.id, tipo=req.tipo,
+        valor=req.valor, nombre=(req.nombre or "").strip()[:120]))
+    db.commit()
+
+    # El puente suena: notificar al contratista (solo comentarios; las reacciones no interrumpen)
+    if req.tipo == "comentario":
+        notificar(db, p.user_id, "comentario",
+                  f"💬 Comentario en {p.numero}",
+                  f'{req.nombre or "Tu cliente"}: "{req.valor[:140]}"', p.id)
+    return {"ok": True, **_interacciones_de(a.id, db)}

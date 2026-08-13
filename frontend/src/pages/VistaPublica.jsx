@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { CheckCircle2, ChevronDown, ChevronUp, Phone, Building2 } from 'lucide-react'
 import { shareAPI } from '../services/api'
+import InfoTip from '../components/InfoTip'
 import { comprimirImagen } from '../utils/imagen'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
@@ -73,6 +74,21 @@ export default function VistaPublica() {
   const [firmaInfo, setFirmaInfo] = useState(null)
   const [otrosiFirmando, setOtrosiFirmando] = useState(null)  // otrosi en proceso de aprobacion
   const [otResuelto, setOtResuelto] = useState({})            // {id: 'aprobado'|'rechazado'} local
+  const [comentando, setComentando] = useState({})            // {avanceId: texto}
+  const [interLocal, setInterLocal] = useState({})            // {avanceId: {reacciones, comentarios}} optimista
+
+  const interactuar = async (avanceId, tipo, valor) => {
+    try {
+      const r = await shareAPI.interactuar(token, avanceId, {
+        tipo, valor, nombre: firmaInfo?.nombre || data?.firma?.nombre || 'Cliente'
+      })
+      setInterLocal(m => ({ ...m, [avanceId]: { reacciones: r.reacciones, comentarios: r.comentarios } }))
+      if (tipo === 'comentario') {
+        setComentando(c => ({ ...c, [avanceId]: '' }))
+        toast.success('Tu contratista fue notificado 💬')
+      }
+    } catch (e) { toast.error(e.message) }
+  }
   const [contrato, setContrato] = useState(null)
   const [leido, setLeido] = useState(false)
   const [avances, setAvances] = useState(null)
@@ -353,18 +369,18 @@ export default function VistaPublica() {
           {t.aiu_total > 0 && (
             <>
               <div className="flex justify-between text-slate-500 text-xs">
-                <span>Administración ({t.admin_pct}%)</span><span>{COP(t.admin_valor)}</span>
+                <span>Administración ({t.admin_pct}%)<InfoTip texto="Los costos de gestionar tu obra: coordinación, transporte, herramienta. Junto con Imprevistos y Utilidad forman el AIU, el estándar de la construcción en Colombia." /></span><span>{COP(t.admin_valor)}</span>
               </div>
               <div className="flex justify-between text-slate-500 text-xs">
                 <span>Imprevistos ({t.imprevistos_pct}%)</span><span>{COP(t.imprevistos_valor)}</span>
               </div>
               <div className="flex justify-between text-slate-500 text-xs">
-                <span>Utilidad ({t.utilidad_pct}%)</span><span>{COP(t.utilidad_valor)}</span>
+                <span>Utilidad ({t.utilidad_pct}%)<InfoTip texto="La ganancia del contratista por dirigir tu obra — es transparente y está pactada desde el inicio, no escondida en los precios." /></span><span>{COP(t.utilidad_valor)}</span>
               </div>
             </>
           )}
           <div className="flex justify-between text-slate-600">
-            <span>IVA</span><span>{COP(t.iva)}</span>
+            <span>IVA<InfoTip texto="En contratos de construcción con AIU, la ley (Art. 462-1) calcula el IVA solo sobre la utilidad — por eso puede verse menor de lo que esperabas." /></span><span>{COP(t.iva)}</span>
           </div>
           <div className="flex justify-between font-bold text-slate-800 pt-2 border-t border-slate-100">
             <span>Total</span><span>{COP(t.total)}</span>
@@ -383,6 +399,36 @@ export default function VistaPublica() {
             <p className="text-xs font-semibold text-slate-600 mb-2">Condiciones</p>
             <p className="text-[11px] text-slate-400 whitespace-pre-wrap leading-relaxed">{c.condiciones}</p>
           </div>
+        )}
+
+        {/* ═══ HERO: TU OBRA, en primera persona ═══ */}
+        {aceptado && avances && (
+          (() => {
+            const pct = avances.porcentaje_actual || 0
+            const totalObra = (data.totales?.total || 0) +
+              (data.otrosies || []).filter(o => (otResuelto[o.id] || o.estado) === 'aprobado')
+                                   .reduce((s, o) => s + (o.total || 0), 0)
+            const pagado = avances.pagado_total || 0
+            return (
+              <div className="bg-gradient-to-br from-navy-700 to-navy-900 rounded-2xl p-5 text-white shadow-lg">
+                <p className="text-[11px] uppercase tracking-wide text-white/60 font-bold">Tu obra</p>
+                <p className="text-2xl font-bold mt-0.5">
+                  {pct >= 100 ? '¡Terminada! 🎉' : `Va en ${Math.round(pct)}% 🏗️`}
+                </p>
+                <div className="h-2.5 bg-white/15 rounded-full overflow-hidden mt-2">
+                  <div className="h-full bg-emerald-400 transition-all" style={{ width: `${Math.min(100, pct)}%` }} />
+                </div>
+                <div className="flex justify-between mt-3 text-[11px]">
+                  <span className="text-white/70">
+                    Pagado en cortes: <strong className="text-white">{COP(pagado)}</strong>
+                  </span>
+                  <span className="text-white/70">
+                    Valor de tu obra: <strong className="text-white">{COP(totalObra)}</strong>
+                  </span>
+                </div>
+              </div>
+            )
+          })()
         )}
 
         {/* ➕ ADICIONALES (otrosies) — el cliente aprueba con nueva firma */}
@@ -496,8 +542,18 @@ export default function VistaPublica() {
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-slate-700">{c.numero} · {COP(c.neto)}</p>
                         <p className="text-[9px] text-slate-400">
+                          {c.tipo === 'retegarantia' && '🔓 Retegarantía · '}
                           {c.estado === 'pagada' ? `✓ Pagada el ${c.fecha_pago}` : `Emitida el ${c.fecha}`}
                         </p>
+                        {c.retencion > 0 && (
+                          <p className="text-[9px] text-violet-500">
+                            🔒 Retegarantía retenida: {COP(c.retencion)}
+                            <InfoTip texto="Un porcentaje que se retiene de cada pago como garantía. Se paga al contratista cuando TÚ recibas la obra a satisfacción — es tu protección." />
+                          </p>
+                        )}
+                        {c.estado !== 'pagada' && c.abonado > 0 && (
+                          <p className="text-[9px] text-emerald-600">Abonado {COP(c.abonado)} · saldo {COP(c.neto - c.abonado)}</p>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {c.estado === 'enviada' && (
@@ -558,6 +614,45 @@ export default function VistaPublica() {
                       ))}
                     </div>
                   )}
+
+                  {/* ═══ PARTICIPACION: reacciones + comentarios ═══ */}
+                  {!data.demo && (() => {
+                    const inter = interLocal[a.id] || { reacciones: a.reacciones || {}, comentarios: a.comentarios || [] }
+                    return (
+                      <div className="mt-3 border-t border-slate-50 pt-2.5">
+                        <div className="flex items-center gap-1.5">
+                          {['👍', '❤️', '👏'].map(e => (
+                            <button key={e} onClick={() => interactuar(a.id, 'reaccion', e)}
+                                    className="flex items-center gap-1 text-sm bg-slate-50 hover:bg-emerald-50 border border-slate-100 rounded-full px-2.5 py-1 transition active:scale-95">
+                              {e}{(inter.reacciones[e] || 0) > 0 && <span className="text-[10px] font-bold text-slate-500">{inter.reacciones[e]}</span>}
+                            </button>
+                          ))}
+                        </div>
+                        {inter.comentarios.length > 0 && (
+                          <div className="mt-2 space-y-1.5">
+                            {inter.comentarios.map((cm, i) => (
+                              <div key={i} className="bg-slate-50 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-600">
+                                <span className="font-bold text-slate-500">{cm.nombre}</span>
+                                <span className="text-slate-300"> · {cm.fecha}</span>
+                                <p className="whitespace-pre-wrap">{cm.texto}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-1.5 mt-2">
+                          <input className="flex-1 text-[11px] border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-300"
+                                 placeholder="Escribe un comentario o pregunta..." maxLength={300}
+                                 value={comentando[a.id] || ''}
+                                 onChange={e => setComentando(c => ({ ...c, [a.id]: e.target.value }))}
+                                 onKeyDown={e => { if (e.key === 'Enter' && (comentando[a.id] || '').trim()) interactuar(a.id, 'comentario', comentando[a.id].trim()) }} />
+                          <button onClick={() => { const t = (comentando[a.id] || '').trim(); if (t) interactuar(a.id, 'comentario', t) }}
+                                  className="text-[11px] font-bold text-white bg-navy-600 rounded-lg px-3 active:scale-95">
+                            Enviar
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               ))}
             </div>

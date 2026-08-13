@@ -168,7 +168,7 @@ export default function Editor() {
   }
 
   const avisarCliente = (mensaje) => {
-    const link = `${window.location.origin}/p/${p.share_token}`
+    const link = `${window.location.origin}/api/s/${p.share_token}`   // URL con preview OG de la obra
     const tel = (p.cliente_telefono || '').replace(/\D/g, '')
     const base = tel ? `https://wa.me/${tel.startsWith('57') ? tel : '57' + tel}` : 'https://wa.me/'
     window.open(`${base}?text=${encodeURIComponent(mensaje + '\n\n' + link)}`, '_blank')

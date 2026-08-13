@@ -191,6 +191,18 @@ class IntentoAcceso(Base):
     actualizado = Column(DateTime, default=utcnow)
 
 
+class InteraccionCliente(Base):
+    """Participacion del cliente en su link: reacciones y comentarios sobre avances."""
+    __tablename__ = "interacciones_cliente"
+    id = Column(Integer, primary_key=True)
+    proyecto_id = Column(Integer, ForeignKey("proyectos.id"), nullable=False, index=True)
+    avance_id = Column(Integer, ForeignKey("avances.id"), nullable=False, index=True)
+    tipo = Column(String(12), default="reaccion")   # reaccion | comentario
+    valor = Column(String(300), default="")          # emoji o texto
+    nombre = Column(String(120), default="")         # quien (nombre de la firma o "Cliente")
+    creado = Column(DateTime, default=utcnow)
+
+
 class Abono(Base):
     """Pagos parciales de una cuenta de cobro — la norma en obra colombiana."""
     __tablename__ = "abonos"

@@ -90,6 +90,36 @@ d = paso("avance 40% (it1 100%, it2 ~44%)", c.post(f"/api/avances/proyectos/{PID
     "titulo": "Corte semana 1", "items": [{"id": "it1", "pct": 100}, {"id": "it2", "pct": 44.1}],
 }, headers=H))
 AV1 = d["id"]
+
+print("═══ ACTO 3.1: EL CLIENTE PARTICIPA (reacciones y comentarios) ═══")
+paso("el cliente reacciona ❤️ al avance", c.post(
+    f"/api/share/publico/{TOKEN}/avances/{AV1}/interaccion",
+    json={"tipo": "reaccion", "valor": "❤️", "nombre": "Dona Prueba"}))
+d = paso("el cliente comenta", c.post(
+    f"/api/share/publico/{TOKEN}/avances/{AV1}/interaccion",
+    json={"tipo": "comentario", "valor": "Quedo hermoso el enchape!", "nombre": "Dona Prueba"}),
+    contiene=["comentarios"])
+assert d["reacciones"].get("❤️") == 1 and len(d["comentarios"]) == 1
+r = c.post(f"/api/share/publico/{TOKEN}/avances/{AV1}/interaccion",
+           json={"tipo": "reaccion", "valor": "🔥"})
+paso("CANDADO: reaccion fuera de la lista -> 400", r, status=400)
+r = c.post(f"/api/share/publico/{TOKEN}/avances/{AV1}/interaccion",
+           json={"tipo": "comentario", "valor": "x" * 301})
+paso("CANDADO: comentario de 301 caracteres -> 400", r, status=400)
+r = c.get("/api/notificaciones", headers=H)
+notifs = r.json().get("notificaciones", [])
+assert any(n["tipo"] == "comentario" for n in notifs), "el contratista debia recibir la notificacion del comentario"
+print("  ✓ la campana del contratista sono: comentario notificado")
+
+print("═══ ACTO 3.2: EL PREVIEW DE WHATSAPP (OG) ═══")
+r = c.get(f"/api/s/{TOKEN}")
+assert r.status_code == 200 and "og:title" in r.text and "Remodelacion bano viaje" in r.text
+print("  ✓ /api/s/{token}: HTML con og:title de LA obra")
+PASOS.append("preview OG")
+r = c.get("/api/s/token-que-no-existe")
+assert r.status_code == 404
+print("  ✓ token falso -> 404")
+PASOS.append("preview OG 404")
 d = paso("liquidacion preview", c.get(f"/api/cuentas/proyectos/{PID}/cuentas/preview",
                                       params={"avance_id": AV1}, headers=H))
 d = paso("generar cuenta de cobro", c.post(f"/api/cuentas/proyectos/{PID}/cuentas",
