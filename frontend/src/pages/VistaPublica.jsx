@@ -287,7 +287,7 @@ export default function VistaPublica() {
       </div>
 
       {/* Total destacado */}
-      <div className="max-w-lg mx-auto px-4 -mt-8">
+      <div className="relative z-10 max-w-lg mx-auto px-4 -mt-8">
         <div className="bg-white rounded-2xl shadow-xl shadow-navy-900/10 ring-1 ring-slate-100 p-5 text-center">
           <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-bold">Valor total de tu obra</p>
           <p className="text-[34px] font-black text-navy-800 mt-1 tracking-tight tabular-nums">{COP(t.total)}</p>
