@@ -45,6 +45,7 @@ export const authAPI = {
 }
 
 export const proyectosAPI = {
+  balance: (id) => api.get(`/proyectos/${id}/balance`).then(r => r.data),
   listar: () => api.get('/proyectos').then(r => r.data),
   crear: (data) => api.post('/proyectos', data).then(r => r.data),
   obtener: (id) => api.get(`/proyectos/${id}`).then(r => r.data),
@@ -54,6 +55,11 @@ export const proyectosAPI = {
   metricas: () => api.get('/proyectos/metricas').then(r => r.data),
   plantillas: () => api.get('/proyectos/plantillas').then(r => r.data),
   desdePlantilla: (data) => api.post('/proyectos/desde-plantilla', data).then(r => r.data),
+}
+
+export const insumosAPI = {
+  buscar: (q) => api.get('/insumos/buscar', { params: { q } }).then(r => r.data),
+  comparar: (q) => api.get('/insumos/comparar', { params: { q } }).then(r => r.data),
 }
 
 export const apusAPI = {
@@ -76,6 +82,7 @@ export const proveedoresAPI = {
 }
 
 export const shareAPI = {
+  interventoria: (id) => api.post(`/share/proyectos/${id}/interventoria`).then(r => r.data),
   interactuar: (token, avanceId, data) => api.post(`/share/publico/${token}/avances/${avanceId}/interaccion`, data).then(r => r.data),
   otrosiAprobar: (token, id, firma) => api.post(`/share/publico/${token}/otrosi/${id}/aprobar`, firma).then(r => r.data),
   otrosiRechazar: (token, id, motivo) => api.post(`/share/publico/${token}/otrosi/${id}/rechazar`, { motivo }).then(r => r.data),

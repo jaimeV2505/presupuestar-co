@@ -91,6 +91,19 @@ r = c.post(f"/api/proveedores/{PROV}/precios",
            json={"insumo": "x", "precio": -5}, headers=H)
 paso("CANDADO: precio negativo -> 400", r, status=400)
 
+d = paso("buscar insumo MULTI-FUENTE (mi proveedor + referencia)",
+         c.get("/api/insumos/buscar?q=cemento", headers=H))
+fuentes = {r["fuente"] for r in d["resultados"]}
+assert "mi_proveedor" in fuentes and "referencia" in fuentes, fuentes
+mio = next(r for r in d["resultados"] if r["fuente"] == "mi_proveedor")
+assert mio["precio"] == 28500 and mio["detalle"] == "Ferreteria El Roble" and mio["fecha"]
+
+d = paso("comparador: mi precio vs referencia", c.get("/api/insumos/comparar?q=cemento", headers=H))
+assert d["mi_mejor"]["precio"] == 28500 and d["referencia"]["precio"] == 28500
+assert d["ahorro"] == 0   # mismo precio de referencia — el calculo cuadra
+r = c.get("/api/insumos/buscar?q=x", headers=H)
+paso("CANDADO: busqueda de 1 letra -> 4xx", r, status=422) if r.status_code == 422 else paso("CANDADO: busqueda corta rechazada", r, status=400)
+
 d = paso("componer APU con mis insumos (vista previa)", c.post("/api/apus/componer", json={
     "insumos": [
         {"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.35, "precio": 28500, "desperdicio_pct": 5},
@@ -158,6 +171,33 @@ paso("avance final con el adicional", c.post(f"/api/avances/proyectos/{PID}/avan
     "titulo": "Acta parcial No. 2 — final",
     "items": [{"id": "it1", "pct": 100}, {"id": "it2", "pct": 100}, {"id": "ot1:ex1", "pct": 100}],
 }, headers=H))
+
+print("═══ ACTO 3.75: BALANCE DE OBRA (oficial vs ejecutado) ═══")
+d = paso("balance del proyecto", c.get(f"/api/proyectos/{PID}/balance", headers=H))
+rs = d["resumen"]
+VALOR_BASE = 1200*3500 + 300*22524          # 10.957.200
+VALOR_ADIC = 80*95000                        # 7.600.000
+assert rs["valor_contrato_base"] == VALOR_BASE, rs
+assert rs["valor_adicionales"] == VALOR_ADIC, rs
+assert rs["valor_total"] == VALOR_BASE + VALOR_ADIC
+assert rs["avance_fisico_pct"] == 100.0      # avance final: todo al 100
+assert rs["facturado"] > 0 and rs["pagado"] > 0
+adicionales = [f for f in d["filas"] if f["es_adicional"]]
+assert len(adicionales) == 1 and adicionales[0]["id"] == "ot1:ex1"
+print("  ✓ el balance cuadra a peso: base + adicional + avances + actas")
+PASOS.append("balance de obra exacto")
+
+print("═══ ACTO 3.9: LINK DE INTERVENTORIA ═══")
+d = paso("generar enlace de interventoria", c.post(f"/api/share/proyectos/{PID}/interventoria", headers=H))
+TOKEN_INT = d["token"]
+assert d["modo"] == "interventoria"
+d = paso("el interventor VE el panel", c.get(f"/api/share/publico/{TOKEN_INT}"))
+assert d["sector"] == "publico" and "Alcaldia" in d["entidad_nombre"] and d["contrato_numero"] == "OP-2026-0457"
+cuerpo = str(d).lower()
+for prohibido in ["password", "gastos", "utilidad_real", "jwt"]:
+    assert prohibido not in cuerpo, f"FUGA en panel interventoria: {prohibido}"
+print("  ✓ interventoria: entidad y contrato visibles, cero datos intimos")
+PASOS.append("panel de interventoria blindado")
 
 print("═══ ACTO 4: LIQUIDACION DEL CONTRATO ═══")
 paso("terminar directo (publico: sin confirmacion de cliente)",

@@ -477,5 +477,24 @@ def _buscar_apu(palabras, apu_db, factor):
     return {**mejor, "precio": round(mejor["precio"] * factor)}
 
 
-
-
+@router.get("/{proyecto_id}/balance")
+def balance(proyecto_id: int, user: Usuario = Depends(usuario_actual),
+            db: Session = Depends(get_db)):
+    """BALANCE DE OBRA: oficial vs ejecutado — contrato + adicionales x avances x actas."""
+    p = db.query(Proyecto).filter(Proyecto.id == proyecto_id,
+                                  Proyecto.user_id == user.id).first()
+    if not p:
+        raise HTTPException(404, "Proyecto no encontrado")
+    from app.services.otrosi_service import items_efectivos
+    from app.services.balance_service import balance_de_obra
+    from app.db import Avance, CuentaCobro
+    items = items_efectivos(p, db)
+    # estado MAS RECIENTE por actividad: el maximo pct reportado
+    pct_por_item = {}
+    for a in db.query(Avance).filter(Avance.proyecto_id == p.id).all():
+        for it in json.loads(a.items_json or "[]"):
+            iid = str(it.get("id") or "")
+            pct_por_item[iid] = max(pct_por_item.get(iid, 0), float(it.get("pct") or 0))
+    cuentas = [{"total": c_.neto or 0, "pagada": c_.estado == "pagada"}
+               for c_ in db.query(CuentaCobro).filter(CuentaCobro.proyecto_id == p.id).all()]
+    return balance_de_obra(items, pct_por_item, cuentas)

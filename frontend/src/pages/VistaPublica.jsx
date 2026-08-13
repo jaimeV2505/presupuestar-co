@@ -283,11 +283,13 @@ export default function VistaPublica() {
             </div>
           </div>
           <p className="text-emerald-300/80 text-[10px] uppercase tracking-[0.2em] font-bold mb-1.5">
-            Presupuesto de obra {data.numero && <span className="text-white/60 tracking-normal">· {data.numero}</span>}
+            {data.sector === 'publico' ? 'Panel de seguimiento · Interventoría' : 'Presupuesto de obra'} {data.numero && <span className="text-white/60 tracking-normal">· {data.numero}</span>}
           </p>
           <h1 className="text-[26px] font-bold leading-tight tracking-tight">{data.proyecto}</h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-2 text-xs text-blue-200/80">
-            {data.cliente && <span>Para <strong className="text-white/90 font-semibold">{data.cliente}</strong></span>}
+            {data.sector === 'publico' && data.entidad_nombre && <span><strong className="text-white/90 font-semibold">{data.entidad_nombre}</strong></span>}
+            {data.sector === 'publico' && data.contrato_numero && <span className="text-blue-300/70">· Contrato {data.contrato_numero}</span>}
+            {data.sector !== 'publico' && data.cliente && <span>Para <strong className="text-white/90 font-semibold">{data.cliente}</strong></span>}
             {data.direccion && <span className="text-blue-300/70">· {data.direccion}</span>}
             <span className="text-blue-300/70">· {data.fecha}</span>
           </div>

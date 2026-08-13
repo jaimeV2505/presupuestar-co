@@ -135,3 +135,45 @@ for malo in [
         pass
 
 print("OK constructor de APU: 2 composiciones exactas + 3 candados")
+
+
+# ═══ BALANCE DE OBRA (oficial vs ejecutado) ═══
+from app.services.balance_service import balance_de_obra
+
+# Contrato: 2 items base ($4.2M + $6.76M) + 1 adicional ($7.6M). Avances: 100%, 30%, 50%.
+b = balance_de_obra(
+    [{"id": "it1", "descripcion": "Replanteo", "unidad": "m2", "cantidad": 1200, "precio_unitario": 3500},
+     {"id": "it2", "descripcion": "Panete", "unidad": "m2", "cantidad": 300, "precio_unitario": 22524},
+     {"id": "ot1:ex1", "descripcion": "Recebo", "unidad": "m3", "cantidad": 80, "precio_unitario": 95000}],
+    {"it1": 100, "it2": 30, "ot1:ex1": 50},
+    [{"total": 3_000_000, "pagada": True}, {"total": 2_000_000, "pagada": False}])
+r = b["resumen"]
+assert r["valor_contrato_base"] == 1200*3500 + 300*22524 == 10957200
+assert r["valor_adicionales"] == 80*95000 == 7600000
+assert r["valor_total"] == 18557200
+assert r["valor_ejecutado"] == 4200000 + round(6757200*0.3) + 3800000 == 10027160
+assert r["saldo_por_ejecutar"] == 18557200 - 10027160
+assert r["avance_fisico_pct"] == 54.0
+assert r["facturado"] == 5000000 and r["pagado"] == 3000000
+assert r["avance_financiero_pct"] == 26.9
+assert b["filas"][2]["es_adicional"] is True
+assert b["filas"][1]["cantidad_ejecutada"] == 90.0
+
+# candado: sin items -> ceros sin dividir por cero
+b2 = balance_de_obra([], {}, [])
+assert b2["resumen"]["avance_fisico_pct"] == 0
+
+print("OK balance de obra: caso exacto de 3 items + division segura")
+
+
+# ═══ ADAPTADOR DE FUENTES DE PRECIOS ═══
+from app.services.fuentes_precios import fuente_curada, fuente_externa
+
+r = fuente_curada("cemento")
+assert any(i["nombre"].startswith("Cemento gris") and i["precio"] == 28500 for i in r), r
+assert all(i["fuente"] == "referencia" and i["fecha"] for i in r)
+assert fuente_curada("ceramica") and fuente_curada("CERÁMICA")   # sin tildes, case-insensitive
+assert fuente_curada("zzz-no-existe") == []
+assert fuente_externa("cemento") == []   # sin cache configurado: degradacion elegante
+
+print("OK fuentes de precios: curada busca + externa degrada sin romper")

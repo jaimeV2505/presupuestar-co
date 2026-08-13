@@ -1,0 +1,295 @@
+{
+ "version": "2026.1",
+ "region_referencia": "bogota",
+ "nota": "Precios de referencia del mercado — actualizacion curada mensual",
+ "insumos": [
+  {
+   "nombre": "Cemento gris uso general 50kg",
+   "unidad": "bulto",
+   "precio": 28500,
+   "categoria": "cementos"
+  },
+  {
+   "nombre": "Cemento blanco 40kg",
+   "unidad": "bulto",
+   "precio": 52000,
+   "categoria": "cementos"
+  },
+  {
+   "nombre": "Arena lavada de rio",
+   "unidad": "m3",
+   "precio": 65000,
+   "categoria": "agregados"
+  },
+  {
+   "nombre": "Arena de pena",
+   "unidad": "m3",
+   "precio": 55000,
+   "categoria": "agregados"
+  },
+  {
+   "nombre": "Triturado 3/4",
+   "unidad": "m3",
+   "precio": 88000,
+   "categoria": "agregados"
+  },
+  {
+   "nombre": "Recebo comun",
+   "unidad": "m3",
+   "precio": 38000,
+   "categoria": "agregados"
+  },
+  {
+   "nombre": "Gravilla",
+   "unidad": "m3",
+   "precio": 82000,
+   "categoria": "agregados"
+  },
+  {
+   "nombre": "Ladrillo tolete comun",
+   "unidad": "un",
+   "precio": 950,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Bloque No.4 arcilla",
+   "unidad": "un",
+   "precio": 2350,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Bloque No.5 arcilla",
+   "unidad": "un",
+   "precio": 2750,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Ladrillo prensado santafe",
+   "unidad": "un",
+   "precio": 1850,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Acero de refuerzo 60000 psi 3/8 pulg",
+   "unidad": "kg",
+   "precio": 4350,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Acero de refuerzo 60000 psi 1/2 pulg",
+   "unidad": "kg",
+   "precio": 4250,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Malla electrosoldada 15x15 6mm",
+   "unidad": "m2",
+   "precio": 18500,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Alambre negro No.18",
+   "unidad": "kg",
+   "precio": 6800,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Concreto premezclado 3000 psi",
+   "unidad": "m3",
+   "precio": 465000,
+   "categoria": "concretos"
+  },
+  {
+   "nombre": "Concreto premezclado 4000 psi",
+   "unidad": "m3",
+   "precio": 520000,
+   "categoria": "concretos"
+  },
+  {
+   "nombre": "Tubo PVC sanitaria 4 pulg x 6m",
+   "unidad": "un",
+   "precio": 68000,
+   "categoria": "hidrosanitario"
+  },
+  {
+   "nombre": "Tubo PVC sanitaria 2 pulg x 6m",
+   "unidad": "un",
+   "precio": 32000,
+   "categoria": "hidrosanitario"
+  },
+  {
+   "nombre": "Tubo PVC presion 1/2 pulg x 6m",
+   "unidad": "un",
+   "precio": 18500,
+   "categoria": "hidrosanitario"
+  },
+  {
+   "nombre": "Registro de bola 1/2 pulg",
+   "unidad": "un",
+   "precio": 22000,
+   "categoria": "hidrosanitario"
+  },
+  {
+   "nombre": "Cable THHN No.12 AWG",
+   "unidad": "m",
+   "precio": 2850,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Cable THHN No.10 AWG",
+   "unidad": "m",
+   "precio": 4200,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Tubo conduit PVC 1/2 pulg x 3m",
+   "unidad": "un",
+   "precio": 6500,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Toma doble con polo a tierra",
+   "unidad": "un",
+   "precio": 9800,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Interruptor sencillo",
+   "unidad": "un",
+   "precio": 8500,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Breaker enchufable 20A",
+   "unidad": "un",
+   "precio": 15500,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Pintura vinilo tipo 1 blanco",
+   "unidad": "galon",
+   "precio": 68000,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Pintura vinilo tipo 2",
+   "unidad": "galon",
+   "precio": 48000,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Esmalte sintetico",
+   "unidad": "galon",
+   "precio": 75000,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Estuco plastico",
+   "unidad": "galon",
+   "precio": 42000,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Ceramica piso trafico 3 45x45",
+   "unidad": "m2",
+   "precio": 32000,
+   "categoria": "acabados"
+  },
+  {
+   "nombre": "Porcelanato 60x60",
+   "unidad": "m2",
+   "precio": 65000,
+   "categoria": "acabados"
+  },
+  {
+   "nombre": "Pegante ceramica interior 25kg",
+   "unidad": "bulto",
+   "precio": 21500,
+   "categoria": "acabados"
+  },
+  {
+   "nombre": "Boquilla junta ceramica 2kg",
+   "unidad": "un",
+   "precio": 9500,
+   "categoria": "acabados"
+  },
+  {
+   "nombre": "Guarda escoba ceramica",
+   "unidad": "ml",
+   "precio": 8500,
+   "categoria": "acabados"
+  },
+  {
+   "nombre": "Drywall lamina 1/2 pulg 1.22x2.44",
+   "unidad": "un",
+   "precio": 38500,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Perfil paral 3-5/8 pulg x 2.44",
+   "unidad": "un",
+   "precio": 12500,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Perfil canal 3-5/8 pulg x 2.44",
+   "unidad": "un",
+   "precio": 11800,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Masilla drywall 28kg",
+   "unidad": "caneca",
+   "precio": 68000,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Teja fibrocemento No.6",
+   "unidad": "un",
+   "precio": 42000,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Teja trapezoidal cal.35 x 3.0m",
+   "unidad": "un",
+   "precio": 78000,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Amarre teja mas caballete",
+   "unidad": "un",
+   "precio": 1200,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Impermeabilizante manto 3mm",
+   "unidad": "rollo",
+   "precio": 185000,
+   "categoria": "impermeabilizacion"
+  },
+  {
+   "nombre": "Madera ordinaria burra 3m",
+   "unidad": "un",
+   "precio": 18000,
+   "categoria": "maderas"
+  },
+  {
+   "nombre": "Tabla chapa 30cm x 3m",
+   "unidad": "un",
+   "precio": 22000,
+   "categoria": "maderas"
+  },
+  {
+   "nombre": "Puntilla con cabeza 2 pulg",
+   "unidad": "lb",
+   "precio": 4800,
+   "categoria": "maderas"
+  },
+  {
+   "nombre": "Sika-1 impermeabilizante 20kg",
+   "unidad": "caneca",
+   "precio": 145000,
+   "categoria": "aditivos"
+  }
+ ]
+}

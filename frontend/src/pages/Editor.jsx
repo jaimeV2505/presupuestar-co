@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
          Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
-import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI } from '../services/api'
+import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI, insumosAPI } from '../services/api'
 import { comprimirImagen } from '../utils/imagen'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
@@ -35,6 +35,10 @@ export default function Editor() {
   const [showConstructor, setShowConstructor] = useState(false)
   const [construyendo, setConstruyendo] = useState({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5 })
   const [previewComp, setPreviewComp] = useState(null)
+  const [showBalance, setShowBalance] = useState(false)
+  const [balanceData, setBalanceData] = useState(null)
+  const [sugerencias, setSugerencias] = useState([])   // autocomplete de insumos
+  const [sugerenciaPara, setSugerenciaPara] = useState(-1)
 
   // Calculadora de cantidades + Preview
   const [calcAbierta, setCalcAbierta] = useState(null)  // idx del item con calc abierta
@@ -501,6 +505,28 @@ export default function Editor() {
                     title="Mis proveedores y sus precios">
               🏪 <span className="hidden sm:inline">Proveedores</span>
             </button>
+            {esPublico && (
+            <button onClick={async () => {
+                      try { setBalanceData(await proyectosAPI.balance(id)); setShowBalance(true) }
+                      catch (e) { toast.error(e.message) }
+                    }}
+                    className="flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition">
+              📊 <span className="hidden sm:inline">Balance</span>
+            </button>
+            )}
+            {esPublico && (
+            <button onClick={async () => {
+                      try {
+                        const d = await shareAPI.interventoria(id)
+                        const url = `${window.location.origin}${d.ruta_preview || d.url}`
+                        await navigator.clipboard.writeText(url)
+                        toast.success('Enlace de interventoría copiado 🏛️ — solo lectura para el supervisor')
+                      } catch (e) { toast.error(e.message) }
+                    }}
+                    className="flex items-center gap-1.5 bg-navy-600 hover:bg-navy-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
+              🏛️ <span className="hidden sm:inline">Interventoría</span>
+            </button>
+            )}
             {!esPublico && (
             <button onClick={compartir}
                     className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
@@ -893,8 +919,33 @@ export default function Editor() {
             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Insumos</p>
             {construyendo.insumos.map((ins, i) => (
               <div key={i} className="flex gap-1.5 mb-1.5">
-                <input className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="insumo" value={ins.nombre}
-                       onChange={e => setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x) }))} />
+                <div className="flex-1 relative">
+                  <input className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="insumo" value={ins.nombre}
+                         onChange={e => {
+                           const v = e.target.value
+                           setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, nombre: v } : x) }))
+                           if (v.trim().length >= 3) {
+                             setSugerenciaPara(i)
+                             insumosAPI.buscar(v.trim()).then(r => setSugerencias(r.resultados.slice(0, 5))).catch(() => setSugerencias([]))
+                           } else { setSugerencias([]); setSugerenciaPara(-1) }
+                         }} />
+                  {sugerenciaPara === i && sugerencias.length > 0 && (
+                    <div className="absolute z-10 left-0 right-0 top-full mt-0.5 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                      {sugerencias.map((s, k) => (
+                        <button key={k}
+                                onClick={() => {
+                                  setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, nombre: s.nombre, precio: s.precio } : x) }))
+                                  setSugerencias([]); setSugerenciaPara(-1)
+                                }}
+                                className="w-full flex items-center justify-between px-2 py-1.5 text-[10px] hover:bg-slate-50 text-left">
+                          <span className="text-slate-600 truncate">{s.fuente === 'mi_proveedor' ? '🏪 ' : '📖 '}{s.nombre}</span>
+                          <span className="font-bold text-slate-700 tabular-nums shrink-0 ml-2">{COP(s.precio)}
+                            <span className="font-normal text-slate-300 ml-1">{s.fuente === 'mi_proveedor' ? s.detalle : s.fecha}</span></span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <input type="number" className="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="cant" value={ins.cantidad}
                        onChange={e => setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, cantidad: e.target.value } : x) }))} />
                 <input type="number" className="w-24 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="precio" value={ins.precio}
@@ -941,6 +992,51 @@ export default function Editor() {
                     className="w-full py-3 rounded-xl bg-emerald-500 text-white text-sm font-bold disabled:opacity-40">
               Guardar en Mis APUs
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal BALANCE DE OBRA */}
+      {showBalance && balanceData && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 pt-[6vh]" onClick={() => setShowBalance(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-2xl max-h-[86vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-slate-800 mb-1">📊 Balance de obra</h3>
+            <p className="text-[11px] text-slate-400 mb-3">Oficial vs ejecutado — contrato + adicionales × avances × actas</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+              {[['Valor total', balanceData.resumen.valor_total, 'text-slate-800'],
+                ['Ejecutado', balanceData.resumen.valor_ejecutado, 'text-emerald-600'],
+                ['Por ejecutar', balanceData.resumen.saldo_por_ejecutar, 'text-amber-600'],
+                ['Facturado', balanceData.resumen.facturado, 'text-navy-600']].map(([t, v, cls]) => (
+                <div key={t} className="bg-slate-50 rounded-xl p-2.5">
+                  <p className="text-[9px] text-slate-400 uppercase font-bold">{t}</p>
+                  <p className={`text-sm font-black tabular-nums ${cls}`}>{COP(v)}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 mb-4 text-xs">
+              <span className="text-slate-500">Avance físico <strong className="text-emerald-600">{balanceData.resumen.avance_fisico_pct}%</strong></span>
+              <span className="text-slate-500">Avance financiero <strong className="text-navy-600">{balanceData.resumen.avance_financiero_pct}%</strong></span>
+              {balanceData.resumen.valor_adicionales > 0 && (
+                <span className="text-slate-500">Adicionales <strong className="text-amber-600">{COP(balanceData.resumen.valor_adicionales)}</strong></span>
+              )}
+            </div>
+            <div className="border border-slate-100 rounded-xl overflow-hidden">
+              {balanceData.filas.map(f => (
+                <div key={f.id} className={`flex items-center gap-2 px-3 py-2 text-xs border-b border-slate-50 ${f.es_adicional ? 'bg-amber-50/40' : ''}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-700 truncate">{f.es_adicional ? '➕ ' : ''}{f.descripcion}</p>
+                    <p className="text-[10px] text-slate-400">{f.cantidad_ejecutada}/{f.cantidad_contratada} {f.unidad}</p>
+                  </div>
+                  <div className="w-20 text-right shrink-0">
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-0.5">
+                      <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${f.pct}%` }} />
+                    </div>
+                    <span className="text-[10px] text-slate-500 tabular-nums">{f.pct}%</span>
+                  </div>
+                  <p className="w-24 text-right font-semibold text-slate-700 tabular-nums shrink-0">{COP(f.valor_ejecutado)}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
