@@ -229,6 +229,7 @@ class Otrosi(Base):
     estado = Column(String(15), default="propuesto")  # propuesto | aprobado | rechazado
     motivo = Column(String(300), default="")          # "El cliente pidio ademas..."
     nombre_firma = Column(String(120), default="")
+    ip_firma = Column(String(45), default="")   # evidencia forense de la firma del otrosi
     documento_firma = Column(String(30), default="")
     firma_imagen = Column(Text, default="")
     creado = Column(DateTime, default=utcnow)
