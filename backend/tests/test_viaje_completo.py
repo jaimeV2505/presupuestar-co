@@ -145,8 +145,10 @@ d = paso("proponer otrosi", c.post("/api/otrosies", json={
     "items": [{"id": "ex1", "descripcion": "Meson en granito", "unidad": "ml",
                "cantidad": 2, "precio_unitario": 400000}]}, headers=H))
 OID = d["id"]
-paso("el cliente FIRMA el otrosi", c.post(f"/api/share/publico/{TOKEN}/otrosi/{OID}/aprobar",
-     json={"nombre": "Dona Prueba", "documento": "51222333"}))
+paso("el cliente FIRMA el otrosi (imagen gigante se descarta sola)",
+     c.post(f"/api/share/publico/{TOKEN}/otrosi/{OID}/aprobar",
+            json={"nombre": "Dona Prueba", "documento": "51222333",
+                  "firma_imagen": "data:image/png;base64," + "A" * 700_000}))
 r = c.delete(f"/api/otrosies/{OID}", headers=H)
 paso("CANDADO: otrosi aprobado ineliminable -> 400", r, status=400)
 d = paso("avance al 100% (incluye item del otrosi)", c.post(f"/api/avances/proyectos/{PID}/avances", json={

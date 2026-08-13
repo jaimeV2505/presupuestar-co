@@ -10,6 +10,7 @@ El diferenciador: enlace publico del presupuesto para WhatsApp.
 import json
 import secrets
 import logging
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.db import get_db, Usuario, Proyecto, EventoShare, Avance, Encuesta
@@ -508,7 +509,8 @@ def contrato_pdf(token: str, db: Session = Depends(get_db)):
         buf.seek(0)
         return StreamingResponse(
             buf, media_type="application/pdf",
-            headers={"Content-Disposition":
+            headers={"Cache-Control": "public, max-age=86400",
+                                      "Content-Disposition":
                      f'attachment; filename="contrato_{p.numero or p.id}.pdf"'})
     except Exception as e:
         logger.error(f"PDF contrato: {e}", exc_info=True)
@@ -822,7 +824,8 @@ def acta_pdf(token: str, db: Session = Depends(get_db)):
         doc.build(story)
         buf.seek(0)
         return StreamingResponse(buf, media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="acta_entrega_{p.numero or p.id}.pdf"'})
+            headers={"Cache-Control": "public, max-age=86400",
+                                      "Content-Disposition": f'attachment; filename="acta_entrega_{p.numero or p.id}.pdf"'})
     except Exception as e:
         logger.error(f"Acta PDF: {e}", exc_info=True)
         raise HTTPException(500, "Error generando el acta")
@@ -971,7 +974,10 @@ def otrosi_aprobar(token: str, otrosi_id: int, req: OtrosiFirmaRequest,
     o.estado = "aprobado"
     o.nombre_firma = req.nombre.strip()[:120]
     o.documento_firma = (req.documento or "").strip()[:30]
-    o.firma_imagen = req.firma_imagen or ""
+    img = req.firma_imagen or ""
+    if img and (not img.startswith("data:image") or len(img) > 600_000):
+        img = ""   # imagen invalida o gigante: se descarta, la firma vale por nombre+cedula+hora
+    o.firma_imagen = img
     o.resuelto = datetime.now(timezone.utc)
 
     db.add(EventoShare(proyecto_id=p.id, tipo="otrosi_aprobado",
@@ -1020,6 +1026,7 @@ def otrosi_pdf(token: str, otrosi_id: int, db: Session = Depends(get_db)):
     if not o or o.estado != "aprobado":
         raise HTTPException(404, "El otrosi debe estar aprobado")
     user = db.query(Usuario).filter(Usuario.id == p.user_id).first()
+    from xml.sax.saxutils import escape as _esc   # reportlab Paragraph parsea markup: escapar TODO lo humano
     items = json.loads(o.items_json or "[]")
     tot = json.loads(o.totales_json or "{}")
     tot_orig = calcular_totales(json.loads(p.items_json or "[]"), json.loads(p.aiu_json or "{}"))
@@ -1043,15 +1050,15 @@ def otrosi_pdf(token: str, otrosi_id: int, db: Session = Depends(get_db)):
     story = [
         Paragraph(f"OTROSI N.{o.numero} AL CONTRATO DE EJECUCION DE OBRA CIVIL", tit),
         Paragraph(f"Referencia: {p.numero} — {p.nombre}", cu), Spacer(1, 8),
-        Paragraph(f"Entre <b>{p.cliente_nombre or o.nombre_firma}</b> (EL CONTRATANTE) y "
-                  f"<b>{user.nombre}{' — ' + user.empresa if user.empresa else ''}</b> (EL CONTRATISTA), "
+        Paragraph(f"Entre <b>{_esc(p.cliente_nombre or o.nombre_firma)}</b> (EL CONTRATANTE) y "
+                  f"<b>{_esc(user.nombre)}{' — ' + _esc(user.empresa) if user.empresa else ''}</b> (EL CONTRATISTA), "
                   f"quienes suscribieron el contrato de la referencia, se acuerda ADICIONAR las siguientes "
-                  f"actividades de obra{': ' + o.motivo if o.motivo else '.'}", cu),
+                  f"actividades de obra{': ' + _esc(o.motivo) if o.motivo else '.'}", cu),
         Spacer(1, 8),
     ]
     data = [["DESCRIPCION", "UND", "CANT", "V. UNIT", "SUBTOTAL"]]
     for it in items:
-        data.append([Paragraph(str(it.get("descripcion", ""))[:120], cu),
+        data.append([Paragraph(_esc(str(it.get("descripcion", ""))[:120]), cu),
                      it.get("unidad", ""), f'{it.get("cantidad", 0):g}',
                      fcop(it.get("precio_unitario", 0)),
                      fcop(float(it.get("cantidad", 0)) * float(it.get("precio_unitario", 0)))])
@@ -1121,7 +1128,8 @@ def otrosi_pdf(token: str, otrosi_id: int, db: Session = Depends(get_db)):
     buf.seek(0)
     from fastapi.responses import StreamingResponse
     return StreamingResponse(buf, media_type="application/pdf",
-                             headers={"Content-Disposition":
+                             headers={"Cache-Control": "public, max-age=86400",
+                                      "Content-Disposition":
                                       f'inline; filename="otrosi-{o.numero}-{p.numero}.pdf"'})
 
 
