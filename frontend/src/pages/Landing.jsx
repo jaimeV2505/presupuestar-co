@@ -113,7 +113,7 @@ const FASES = [
     ),
   },
   {
-    id: 'ejecuta', emoji: '🏗️', nombre: 'Ejecuta', titulo: 'Tu cliente sigue la obra en vivo — y tú, tu plata',
+    id: 'ejecuta', emoji: '🏗️', nombre: 'Ejecuta', titulo: 'Tu cliente sigue la obra en vivo — y tú, tu plata.',
     desc: 'Publicas avances con % por actividad y fotos: el cliente ve el valor ejecutado en tiempo real desde su enlace. Y registras cada gasto con foto del recibo: utilidad proyectada vs REAL, con semáforo.',
     mock: (
       <div className="space-y-2">
