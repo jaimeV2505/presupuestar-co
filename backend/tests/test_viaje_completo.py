@@ -113,6 +113,14 @@ r = c.get("/api/notificaciones", headers=H)
 notifs = r.json().get("notificaciones", [])
 assert any(n["tipo"] == "comentario" for n in notifs), "el contratista debia recibir la notificacion del comentario"
 print("  ✓ la campana del contratista sono: comentario notificado")
+d = paso("el CONTRATISTA responde en el hilo", c.post(f"/api/avances/{AV1}/responder",
+         json={"texto": "Gracias! Manana instalamos la griferia"}, headers=H))
+assert any(cm["autor"] == "contratista" for cm in d["comentarios"]), "la respuesta debe llevar autor contratista"
+r = c.get(f"/api/share/publico/{TOKEN}/avances")
+avz = next(a for a in r.json()["avances"] if a["id"] == AV1)
+assert any(cm["autor"] == "contratista" for cm in avz["comentarios"]), "el cliente debe VER la respuesta en su link"
+print("  ✓ conversacion de dos voces: el cliente ve la respuesta del contratista")
+PASOS.append("hilo de dos voces")
 
 print("═══ ACTO 3.2: EL PREVIEW DE WHATSAPP (OG) ═══")
 r = c.get(f"/api/s/{TOKEN}")

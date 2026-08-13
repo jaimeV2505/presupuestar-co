@@ -1151,6 +1151,7 @@ def _interacciones_de(avance_id: int, db) -> dict:
             reacciones[r.valor] = reacciones.get(r.valor, 0) + 1
         else:
             comentarios.append({"texto": r.valor, "nombre": r.nombre or "Cliente",
+                                "autor": getattr(r, "autor", "cliente") or "cliente",
                                 "fecha": r.creado.strftime("%d/%m %H:%M")})
     return {"reacciones": reacciones, "comentarios": comentarios}
 
@@ -1199,7 +1200,7 @@ def interactuar(token: str, avance_id: int, req: InteraccionRequest,
         raise HTTPException(429, "Limite diario de interacciones alcanzado — intenta mañana")
 
     db.add(InteraccionCliente(
-        proyecto_id=p.id, avance_id=a.id, tipo=req.tipo,
+        proyecto_id=p.id, avance_id=a.id, tipo=req.tipo, autor="cliente",
         valor=req.valor, nombre=(req.nombre or "").strip()[:120]))
     db.commit()
 

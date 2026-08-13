@@ -76,6 +76,7 @@ export const shareAPI = {
 }
 
 export const avancesAPI = {
+  responderComentario: (avanceId, texto) => api.post(`/avances/${avanceId}/responder`, { texto }).then(r => r.data),
   listar: (id) => api.get(`/avances/proyectos/${id}/avances`).then(r => r.data),
   crear: (id, data) => api.post(`/avances/proyectos/${id}/avances`, data).then(r => r.data),
   eliminar: (id, avanceId) => api.delete(`/avances/proyectos/${id}/avances/${avanceId}`).then(r => r.data),

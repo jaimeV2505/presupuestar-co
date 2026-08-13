@@ -52,6 +52,7 @@ export default function Editor() {
   const [cobrosData, setCobrosData] = useState(null)
   const [abonando, setAbonando] = useState(null)   // {cuenta, monto, nota}
   const [showPanel, setShowPanel] = useState(false) // panel lateral de herramientas
+  const [hiloTexto, setHiloTexto] = useState({})    // {avanceId: texto} respuesta al cliente
   const [liquidacion, setLiquidacion] = useState(null)  // preview antes de crear
   const [tipEditor, setTipEditor] = useState(!localStorage.getItem('tip_editor'))
   const [tipObra, setTipObra] = useState(false)
@@ -1419,6 +1420,45 @@ export default function Editor() {
                       {a.fotos.map((f, i) => (
                         <img key={i} src={f} alt="" className="w-14 h-14 rounded-lg object-cover" />
                       ))}
+                    </div>
+                  )}
+
+                  {/* ═══ EL HILO: el cliente comenta, tu respondes ═══ */}
+                  {((a.comentarios?.length || 0) > 0 || Object.keys(a.reacciones || {}).length > 0) && (
+                    <div className="mt-2 border-t border-slate-50 pt-2">
+                      {Object.keys(a.reacciones || {}).length > 0 && (
+                        <p className="text-[11px] mb-1.5">
+                          {Object.entries(a.reacciones).map(([e, n]) => `${e} ${n}`).join('  ')}
+                          <span className="text-slate-400 text-[9px] ml-1">de tu cliente</span>
+                        </p>
+                      )}
+                      {(a.comentarios || []).map((cm, i) => (
+                        <div key={i} className={`rounded-lg px-2.5 py-1.5 text-[11px] mb-1 ${cm.autor === 'contratista' ? 'bg-navy-50 text-slate-700 ml-4' : 'bg-amber-50 text-slate-600'}`}>
+                          <span className="font-bold text-[9px] opacity-70">{cm.autor === 'contratista' ? '👷 Tú' : `💬 ${cm.nombre}`} · {cm.fecha}</span>
+                          <p className="whitespace-pre-wrap">{cm.texto}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(a.comentarios?.length || 0) > 0 && (
+                    <div className="flex gap-1.5 mt-1.5">
+                      <input className="flex-1 text-[11px] border border-slate-200 rounded-lg px-2.5 py-1.5"
+                             placeholder="Responder a tu cliente..." maxLength={300}
+                             value={hiloTexto[a.id] || ''}
+                             onChange={e => setHiloTexto(h => ({ ...h, [a.id]: e.target.value }))} />
+                      <button onClick={async () => {
+                                const t = (hiloTexto[a.id] || '').trim()
+                                if (!t) return
+                                try {
+                                  const r = await avancesAPI.responderComentario(a.id, t)
+                                  setAvances(prev => prev.map(x => x.id === a.id ? { ...x, comentarios: r.comentarios } : x))
+                                  setHiloTexto(h => ({ ...h, [a.id]: '' }))
+                                  toast.success('Tu cliente lo verá en su enlace 💬')
+                                } catch (e) { toast.error(e.message) }
+                              }}
+                              className="text-[11px] font-bold text-white bg-navy-600 rounded-lg px-3">
+                        Responder
+                      </button>
                     </div>
                   )}
                 </div>

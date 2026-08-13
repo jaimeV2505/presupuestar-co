@@ -199,6 +199,7 @@ class InteraccionCliente(Base):
     avance_id = Column(Integer, ForeignKey("avances.id"), nullable=False, index=True)
     tipo = Column(String(12), default="reaccion")   # reaccion | comentario
     valor = Column(String(300), default="")          # emoji o texto
+    autor = Column(String(12), default="cliente")    # cliente | contratista (la conversacion es de dos)
     nombre = Column(String(120), default="")         # quien (nombre de la firma o "Cliente")
     creado = Column(DateTime, default=utcnow)
 
@@ -296,6 +297,7 @@ def init_db():
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_expira TIMESTAMP",
                     "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS retencion INTEGER DEFAULT 0",
                     "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS tipo VARCHAR(15) DEFAULT 'corte'",
+                    "ALTER TABLE interacciones_cliente ADD COLUMN IF NOT EXISTS autor VARCHAR(12) DEFAULT 'cliente'",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
@@ -324,6 +326,7 @@ def init_db():
                     ("usuarios", "reset_expira", "ALTER TABLE usuarios ADD COLUMN reset_expira TIMESTAMP"),
                     ("cuentas_cobro", "retencion", "ALTER TABLE cuentas_cobro ADD COLUMN retencion INTEGER DEFAULT 0"),
                     ("cuentas_cobro", "tipo", "ALTER TABLE cuentas_cobro ADD COLUMN tipo VARCHAR(15) DEFAULT 'corte'"),
+                    ("interacciones_cliente", "autor", "ALTER TABLE interacciones_cliente ADD COLUMN autor VARCHAR(12) DEFAULT 'cliente'"),
                 ]
                 for tabla, col, sql in migs:
                     cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]

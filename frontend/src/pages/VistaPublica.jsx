@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { CheckCircle2, ChevronDown, ChevronUp, Phone, Building2 } from 'lucide-react'
 import { shareAPI } from '../services/api'
 import InfoTip from '../components/InfoTip'
+import Lightbox from '../components/Lightbox'
 import { comprimirImagen } from '../utils/imagen'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
@@ -76,6 +77,9 @@ export default function VistaPublica() {
   const [otResuelto, setOtResuelto] = useState({})            // {id: 'aprobado'|'rechazado'} local
   const [comentando, setComentando] = useState({})            // {avanceId: texto}
   const [interLocal, setInterLocal] = useState({})            // {avanceId: {reacciones, comentarios}} optimista
+  const [galeria, setGaleria] = useState(null)                // {fotos, inicial}
+  const [verHistoria, setVerHistoria] = useState(false)
+  const [hintGuardar, setHintGuardar] = useState(() => !localStorage.getItem('obra_guardada_hint'))
 
   const interactuar = async (avanceId, tipo, valor) => {
     try {
@@ -610,7 +614,8 @@ export default function VistaPublica() {
                   {a.fotos?.length > 0 && (
                     <div className="grid grid-cols-3 gap-1.5 mt-2">
                       {a.fotos.map((f, i) => (
-                        <img key={i} src={f} alt="" className="rounded-lg object-cover aspect-square w-full" />
+                        <img key={i} src={f} alt="" onClick={() => setGaleria({ fotos: a.fotos, inicial: i })}
+                             className="rounded-lg object-cover aspect-square w-full cursor-pointer active:scale-95 transition" />
                       ))}
                     </div>
                   )}
@@ -631,9 +636,11 @@ export default function VistaPublica() {
                         {inter.comentarios.length > 0 && (
                           <div className="mt-2 space-y-1.5">
                             {inter.comentarios.map((cm, i) => (
-                              <div key={i} className="bg-slate-50 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-600">
-                                <span className="font-bold text-slate-500">{cm.nombre}</span>
-                                <span className="text-slate-300"> · {cm.fecha}</span>
+                              <div key={i} className={`rounded-lg px-2.5 py-1.5 text-[11px] ${cm.autor === 'contratista' ? 'bg-navy-600 text-white ml-5' : 'bg-slate-50 text-slate-600'}`}>
+                                <span className={`font-bold ${cm.autor === 'contratista' ? 'text-white/80' : 'text-slate-500'}`}>
+                                  {cm.autor === 'contratista' ? `👷 ${cm.nombre}` : cm.nombre}
+                                </span>
+                                <span className={cm.autor === 'contratista' ? 'text-white/50' : 'text-slate-300'}> · {cm.fecha}</span>
                                 <p className="whitespace-pre-wrap">{cm.texto}</p>
                               </div>
                             ))}
@@ -656,6 +663,87 @@ export default function VistaPublica() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ═══ 📂 MIS DOCUMENTOS: el expediente completo del cliente ═══ */}
+        {aceptado && !data.demo && (
+          <div className="bg-white rounded-xl p-4 mt-4">
+            <p className="text-sm font-semibold text-slate-700 mb-2">📂 Mis documentos</p>
+            <div className="space-y-1.5">
+              <a href={`/api/share/publico/${token}/contrato.pdf`} target="_blank" rel="noreferrer"
+                 className="flex items-center justify-between text-xs text-slate-600 border border-slate-100 rounded-lg px-3 py-2.5 hover:border-navy-300">
+                <span>📜 Contrato firmado</span><span className="text-navy-600 font-bold">PDF →</span>
+              </a>
+              {(data.otrosies || []).filter(o => (otResuelto[o.id] || o.estado) === 'aprobado').map(o => (
+                <a key={o.id} href={`/api/share/publico/${token}/otrosi/${o.id}.pdf`} target="_blank" rel="noreferrer"
+                   className="flex items-center justify-between text-xs text-slate-600 border border-slate-100 rounded-lg px-3 py-2.5 hover:border-navy-300">
+                  <span>➕ Otrosí N.{o.numero} firmado</span><span className="text-navy-600 font-bold">PDF →</span>
+                </a>
+              ))}
+              {(avances?.cuentas || []).map(c => (
+                <a key={c.id} href={`/api/cuentas/publico/${token}/${c.id}.pdf`} target="_blank" rel="noreferrer"
+                   className="flex items-center justify-between text-xs text-slate-600 border border-slate-100 rounded-lg px-3 py-2.5 hover:border-navy-300">
+                  <span>💵 {c.numero}{c.estado === 'pagada' ? ' · pagada ✓' : ''}</span><span className="text-navy-600 font-bold">PDF →</span>
+                </a>
+              ))}
+              {data.terminado && (
+                <a href={`/api/share/publico/${token}/acta.pdf`} target="_blank" rel="noreferrer"
+                   className="flex items-center justify-between text-xs text-slate-600 border border-emerald-200 bg-emerald-50/40 rounded-lg px-3 py-2.5">
+                  <span>🏁 Acta de Entrega firmada</span><span className="text-emerald-600 font-bold">PDF →</span>
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ 📖 LA HISTORIA DE TU OBRA (timeline) ═══ */}
+        {aceptado && !data.demo && avances && (
+          <div className="bg-white rounded-xl p-4 mt-3">
+            <button onClick={() => setVerHistoria(v => !v)} className="w-full flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-700">📖 La historia de tu obra</p>
+              <span className="text-slate-400 text-xs">{verHistoria ? '▲' : '▼'}</span>
+            </button>
+            {verHistoria && (() => {
+              const eventos = []
+              if (firmaInfo) eventos.push({ f: firmaInfo.fecha, icono: '📝', txt: `Firmaste el contrato` })
+              ;(avances.avances || []).slice().reverse().forEach(a =>
+                eventos.push({ f: a.fecha, icono: '🏗️', txt: `${a.titulo} — obra al ${a.porcentaje}%` }))
+              ;(avances.cuentas || []).filter(c => c.estado === 'pagada').forEach(c =>
+                eventos.push({ f: c.fecha_pago, icono: '💵', txt: `Pagaste ${c.numero}` }))
+              ;(data.otrosies || []).filter(o => o.estado === 'aprobado' && o.resuelto).forEach(o =>
+                eventos.push({ f: o.resuelto, icono: '➕', txt: `Aprobaste el Otrosí N.${o.numero}` }))
+              if (data.terminado) eventos.push({ f: '', icono: '🏁', txt: '¡Obra entregada a satisfacción!' })
+              return (
+                <div className="mt-3 space-y-0">
+                  {eventos.map((e, i) => (
+                    <div key={i} className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <span className="text-base">{e.icono}</span>
+                        {i < eventos.length - 1 && <span className="w-px flex-1 bg-slate-100 my-0.5" />}
+                      </div>
+                      <div className="pb-3">
+                        <p className="text-xs text-slate-600">{e.txt}</p>
+                        {e.f && <p className="text-[9px] text-slate-300">{e.f}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+          </div>
+        )}
+
+        {/* 💡 Guardar mi obra */}
+        {aceptado && !data.demo && hintGuardar && (
+          <div className="flex items-center justify-between gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 mt-3">
+            <p className="text-[11px] text-blue-700">
+              💡 <strong>Guarda tu obra:</strong> añade esta página a tu pantalla de inicio desde el menú del navegador, o
+              <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Enlace copiado 📋') }}
+                      className="font-bold underline ml-1">copia el enlace</button>
+            </p>
+            <button onClick={() => { localStorage.setItem('obra_guardada_hint', '1'); setHintGuardar(false) }}
+                    className="text-blue-300 text-xs shrink-0">✕</button>
           </div>
         )}
 
@@ -877,6 +965,9 @@ export default function VistaPublica() {
           </div>
         </div>
       )}
+      {/* Galeria a pantalla completa */}
+      {galeria && <Lightbox fotos={galeria.fotos} inicial={galeria.inicial} onCerrar={() => setGaleria(null)} />}
+
       {/* Modal: firma del OTROSI */}
       {otrosiFirmando && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"

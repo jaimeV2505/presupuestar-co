@@ -109,7 +109,7 @@ def listar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sessio
     total = round(sum((i.get("cantidad") or 0) * (i.get("precio_unitario") or 0) for i in items))
     return {
         "valor_total_directo": total,
-        "avances": [_avance_out(a) for a in avances],
+        "avances": [{**_avance_out(a), **_inter_de(a.id, db)} for a in avances],
     }
 
 
@@ -166,3 +166,38 @@ def eliminar(proyecto_id: int, avance_id: int,
     db.delete(a)
     db.commit()
     return {"ok": True}
+
+
+# ═══════════ LA CONVERSACION ES DE DOS: el contratista ve y responde ═══════════
+def _inter_de(avance_id: int, db):
+    from app.api.share import _interacciones_de
+    try:
+        return _interacciones_de(avance_id, db)
+    except Exception:
+        return {"reacciones": {}, "comentarios": []}
+
+
+class RespuestaComentario(BaseModel):
+    texto: str
+
+
+@router.post("/{avance_id}/responder")
+def responder_comentario(avance_id: int, req: RespuestaComentario,
+                         user: Usuario = Depends(usuario_actual),
+                         db: Session = Depends(get_db)):
+    """El contratista responde en el hilo del avance — el cliente lo ve en su link."""
+    from app.db import InteraccionCliente
+    a = (db.query(Avance).join(Proyecto, Proyecto.id == Avance.proyecto_id)
+         .filter(Avance.id == avance_id, Proyecto.user_id == user.id).first())
+    if not a:
+        raise HTTPException(404, "Avance no encontrado")
+    texto = (req.texto or "").strip()
+    if not texto:
+        raise HTTPException(400, "Escribe tu respuesta")
+    if len(texto) > 300:
+        raise HTTPException(400, "Maximo 300 caracteres")
+    db.add(InteraccionCliente(
+        proyecto_id=a.proyecto_id, avance_id=a.id, tipo="comentario",
+        autor="contratista", valor=texto, nombre=(user.nombre or "Contratista")[:120]))
+    db.commit()
+    return {"ok": True, **_inter_de(a.id, db)}
