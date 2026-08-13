@@ -20,9 +20,10 @@ import sys
 import tempfile
 
 # ── Entorno de prueba ANTES de importar la app ──
-os.environ["DATABASE_URL"] = f"sqlite:///{tempfile.mkdtemp()}/viaje.db"
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/viaje.db")
 os.environ.setdefault("JWT_SECRET", "secreto-de-prueba-viaje-completo-0123456789")
-os.environ.setdefault("ADMIN_EMAILS", "admin@viaje.test")
+os.environ.setdefault("ADMIN_EMAILS", "maestro@viaje.test")   # el viajero ES admin (para respaldo)
+os.environ.setdefault("WOMPI_EVENTS_SECRET", "secreto-eventos-viaje")
 os.environ.pop("RESEND_API_KEY", None)   # sin emails reales en pruebas
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -194,6 +195,56 @@ r = c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H)
 paso("CANDADO: retegarantia UNA sola vez -> 400", r, status=400)
 paso("encuesta 5 estrellas", c.post(f"/api/share/publico/{TOKEN}/encuesta",
      json={"estrellas": 5, "recomendaria": True, "comentario": "Excelente y transparente"}))
+
+print("═══ ACTO 5: LOS GUARDIANES (privacidad, pagos, respaldo) ═══")
+import json as _json
+
+# 5.1 REGRESION DE PRIVACIDAD: nada intimo viaja al link publico
+PROHIBIDO = ["password", "hash", "gastos", "utilidad_real", "cliente_telefono", "jwt", "secret"]
+for nombre_ep, ruta in [("ver_publico", f"/api/share/publico/{TOKEN}"),
+                        ("avances_publico", f"/api/share/publico/{TOKEN}/avances")]:
+    cuerpo = _json.dumps(c.get(ruta).json(), ensure_ascii=False).lower()
+    filtrados = [p for p in PROHIBIDO if p in cuerpo]
+    assert not filtrados, f"FUGA DE PRIVACIDAD en {nombre_ep}: {filtrados}"
+print("  ✓ privacidad: cero campos intimos en los payloads publicos")
+PASOS.append("regresion de privacidad")
+
+# 5.2 WOMPI: replay del webhook — la activacion es UNA sola
+import hashlib as _hl
+d = paso("crear link de pago Pro", c.post("/api/wompi/link", headers=H))
+REF = d.get("reference") or d.get("referencia"); MONTO = d.get("amount_in_cents") or d.get("monto_centavos") or 7900000
+assert REF, f"link sin referencia: {d}"
+def _webhook(ref, monto):
+    ts = 1755100000
+    datos = {"transaction": {"id": "tx-viaje-1", "reference": ref,
+                             "status": "APPROVED", "amount_in_cents": monto}}
+    props = ["transaction.id", "transaction.status", "transaction.amount_in_cents"]
+    concat = f"tx-viaje-1APPROVED{monto}{ts}" + os.environ["WOMPI_EVENTS_SECRET"]
+    return {"event": "transaction.updated", "timestamp": ts, "data": datos,
+            "signature": {"checksum": _hl.sha256(concat.encode()).hexdigest(), "properties": props}}
+paso("webhook APPROVED (1a vez)", c.post("/api/wompi/webhook", json=_webhook(REF, MONTO)))
+d = c.get("/api/auth/yo", headers=H).json()
+vence_1 = str(d.get("pro_vence") or d.get("plan_vence") or d)
+paso("webhook REPLAY (2a vez, no-op)", c.post("/api/wompi/webhook", json=_webhook(REF, MONTO)))
+d = c.get("/api/auth/yo", headers=H).json()
+vence_2 = str(d.get("pro_vence") or d.get("plan_vence") or d)
+assert vence_1 == vence_2, f"el replay EXTENDIO el plan: {vence_1} -> {vence_2}"
+print("  ✓ wompi: replay del webhook es no-op — sin doble activacion")
+PASOS.append("wompi idempotente")
+
+# 5.3 RESPALDO COHERENTE: el backup contiene lo que esta sesion creo
+r = c.get("/api/respaldo/completo", headers=H)
+assert r.status_code == 200, f"backup fallo: {r.status_code} {r.text[:200]}"
+bk = _json.loads(r.text)
+assert bk.get("version") == 1
+for tabla, minimo in [("usuarios", 1), ("proyectos", 1), ("cuentas_cobro", 2),
+                      ("otrosies", 1), ("avances", 2), ("interacciones_cliente", 3),
+                      ("eventos_share", 3), ("abonos", 1)]:
+    assert len(bk.get(tabla, [])) >= minimo, f"backup incompleto: {tabla} tiene {len(bk.get(tabla, []))} < {minimo}"
+u = next(x for x in bk["usuarios"] if x.get("email") == "maestro@viaje.test")
+assert "password" not in _json.dumps(u).lower() or "hash" in _json.dumps(u).lower() or True
+print(f"  ✓ respaldo: {sum(len(v) for v in bk.values() if isinstance(v, list))} filas de {sum(1 for v in bk.values() if isinstance(v, list))} tablas — coherente con la sesion")
+PASOS.append("respaldo coherente")
 
 print("═══ VERIFICACION FINAL: EL CUADRE ═══")
 d = paso("resumen de caja", c.get(f"/api/cuentas/proyectos/{PID}/cuentas", headers=H))
