@@ -36,6 +36,8 @@ export default function Editor() {
   const [construyendo, setConstruyendo] = useState({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5 })
   const [previewComp, setPreviewComp] = useState(null)
   const [showBalance, setShowBalance] = useState(false)
+  const [showSeguimiento, setShowSeguimiento] = useState(false)
+  const [seguimiento, setSeguimiento] = useState(null)   // {balance, cuentas, avancesList}
   const [balanceData, setBalanceData] = useState(null)
   const [sugerencias, setSugerencias] = useState([])   // autocomplete de insumos
   const [sugerenciaPara, setSugerenciaPara] = useState(-1)
@@ -520,14 +522,17 @@ export default function Editor() {
             {esPublico && (
             <button onClick={async () => {
                       try {
-                        const d = await shareAPI.interventoria(id)
-                        const url = `${window.location.origin}${d.ruta_preview || d.url}`
-                        await navigator.clipboard.writeText(url)
-                        toast.success('Enlace de interventoría copiado 🏛️ — solo lectura para el supervisor')
+                        const [bal, cts, avs] = await Promise.all([
+                          proyectosAPI.balance(id),
+                          cuentasAPI.listar(id),
+                          avancesAPI.listar(id).catch(() => []),
+                        ])
+                        setSeguimiento({ balance: bal, cuentas: cts.cuentas || cts || [], avancesList: avs.avances || avs || [] })
+                        setShowSeguimiento(true)
                       } catch (e) { toast.error(e.message) }
                     }}
                     className="flex items-center gap-1.5 bg-navy-600 hover:bg-navy-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
-              🏛️ <span className="hidden sm:inline">Interventoría</span>
+              📋 <span className="hidden sm:inline">Seguimiento</span>
             </button>
             )}
             {!esPublico && (
@@ -1023,6 +1028,87 @@ export default function Editor() {
                     className="w-full py-3 rounded-xl bg-emerald-500 text-white text-sm font-bold disabled:opacity-40">
               Guardar en Mis APUs
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal SEGUIMIENTO (obra publica: las dos caras, todo adentro) */}
+      {showSeguimiento && seguimiento && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 pt-[5vh]" onClick={() => setShowSeguimiento(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[88vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-100 sticky top-0 bg-white z-10">
+              <h3 className="font-semibold text-slate-800">📋 Seguimiento del contrato</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {p?.entidad_nombre || 'Entidad contratante'}
+                {p?.contrato_numero && <> · Contrato <strong>{p.contrato_numero}</strong></>}
+                {p?.supervisor_nombre && <> · Supervisión: {p.supervisor_nombre}</>}
+              </p>
+            </div>
+            <div className="p-5 space-y-5">
+
+              {/* CARA FISICA: el balance resumido */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">🏗️ Cara física — ejecución</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[['Avance físico', `${seguimiento.balance.resumen.avance_fisico_pct}%`, 'text-emerald-600'],
+                    ['Ejecutado', COP(seguimiento.balance.resumen.valor_ejecutado), 'text-slate-800'],
+                    ['Por ejecutar', COP(seguimiento.balance.resumen.saldo_por_ejecutar), 'text-amber-600']].map(([t, v, cls]) => (
+                    <div key={t} className="bg-slate-50 rounded-xl p-2.5">
+                      <p className="text-[9px] text-slate-400 uppercase font-bold">{t}</p>
+                      <p className={`text-sm font-black tabular-nums ${cls}`}>{v}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden mt-2">
+                  <div className="h-full bg-emerald-400 rounded-full transition-all" style={{ width: `${seguimiento.balance.resumen.avance_fisico_pct}%` }} />
+                </div>
+              </div>
+
+              {/* CARA FINANCIERA: actas y caja */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">💵 Cara financiera — actas y pagos</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[['Avance financiero', `${seguimiento.balance.resumen.avance_financiero_pct}%`, 'text-navy-600'],
+                    ['Facturado', COP(seguimiento.balance.resumen.facturado), 'text-slate-800'],
+                    ['Pagado', COP(seguimiento.balance.resumen.pagado), 'text-emerald-600']].map(([t, v, cls]) => (
+                    <div key={t} className="bg-slate-50 rounded-xl p-2.5">
+                      <p className="text-[9px] text-slate-400 uppercase font-bold">{t}</p>
+                      <p className={`text-sm font-black tabular-nums ${cls}`}>{v}</p>
+                    </div>
+                  ))}
+                </div>
+                {seguimiento.balance.resumen.valor_adicionales > 0 && (
+                  <p className="text-[11px] text-amber-600 mt-2">➕ Adicionales aprobados: <strong>{COP(seguimiento.balance.resumen.valor_adicionales)}</strong> (valor total actualizado: {COP(seguimiento.balance.resumen.valor_total)})</p>
+                )}
+              </div>
+
+              {/* BITACORA cronologica interna */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">📖 Bitácora del contrato</p>
+                <div className="space-y-0">
+                  {(() => { const clave = f => { const s = String(f || ''); const m = s.match(/(\d{2})\/(\d{2})\/(\d{4})(.*)/); return m ? `${m[3]}${m[2]}${m[1]}${m[4]}` : s }; return [
+                    ...(seguimiento.avancesList || []).map(a => ({ f: a.creado || a.fecha || '', icono: '🏗️', texto: `${a.titulo} — ${a.porcentaje ?? a.pct ?? ''}% acumulado` })),
+                    ...(seguimiento.cuentas || []).filter(cta => cta.tipo !== 'retegarantia').map(cta => ({ f: cta.fecha || '', icono: '📄', texto: `Acta ${cta.numero}: ${COP(cta.neto)} neto${cta.deducciones > 0 ? ` (deducciones de ley ${COP(cta.deducciones)})` : ''}` })),
+                    ...(seguimiento.cuentas || []).filter(cta => cta.estado === 'pagada' && cta.fecha_pago).map(cta => ({ f: cta.fecha_pago, icono: '✅', texto: `Acta ${cta.numero} pagada por la entidad` })),
+                    ...(seguimiento.cuentas || []).filter(cta => cta.tipo === 'retegarantia').map(cta => ({ f: cta.fecha || '', icono: '🔓', texto: `Retegarantía liberada: ${COP(cta.neto)}` })),
+                    ...(otrosies || []).filter(o => o.estado === 'aprobado').map(o => ({ f: o.resuelto || '', icono: '➕', texto: `Adicional N.${o.numero} aprobado: ${COP(o.totales?.total || 0)}` })),
+                  ].sort((a, b) => clave(b.f).localeCompare(clave(a.f))).map((ev, i) => (
+                    <div key={i} className="flex gap-2.5 text-xs py-2 border-b border-slate-50 last:border-0">
+                      <span className="shrink-0">{ev.icono}</span>
+                      <span className="flex-1 text-slate-600">{ev.texto}</span>
+                      <span className="text-[10px] text-slate-300 shrink-0 tabular-nums">{String(ev.f).slice(0, 10)}</span>
+                    </div>
+                  )) })()}
+                  {!(seguimiento.avancesList || []).length && !(seguimiento.cuentas || []).length && (
+                    <p className="text-xs text-slate-300">Aún no hay movimientos — registra tu primer avance de obra</p>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-300 border-t border-slate-50 pt-3">
+                🔒 Este seguimiento vive solo aquí: en obra pública nada viaja fuera de tu plataforma.
+              </p>
+            </div>
           </div>
         </div>
       )}

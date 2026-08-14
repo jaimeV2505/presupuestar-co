@@ -215,11 +215,6 @@ assert pagadas and all(x.get("fecha_pago") for x in pagadas), "cuenta pagada sin
 print("  ✓ fecha de pago presente + adicionales en el listado del dashboard")
 PASOS.append("fecha de pago y adicionales visibles")
 
-r = c.post(f"/api/share/proyectos/{PID}/interventoria", headers=H)
-assert r.status_code == 400, f"interventoria en proyecto PRIVADO debia dar 400: {r.status_code}"
-print("  ✓ candado simetrico: interventoria es solo para obra publica")
-PASOS.append("interventoria bloqueada en privado")
-
 print("═══ ACTO 5: LOS GUARDIANES (privacidad, pagos, respaldo) ═══")
 import json as _json
 

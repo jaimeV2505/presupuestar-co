@@ -23,22 +23,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/proyectos/{proyecto_id}/interventoria")
-def compartir_interventoria(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
-    """OBRA PUBLICA: enlace solo-lectura para el supervisor/interventor de la entidad.
-    Mismo motor del enlace de cliente — otro traje, otro publico."""
-    p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
-    if not p:
-        raise HTTPException(404, "Proyecto no encontrado")
-    if (p.sector or "privado") != "publico":
-        raise HTTPException(400, "El enlace de interventoria es para proyectos de obra publica")
-    if not p.share_token:
-        p.share_token = secrets.token_urlsafe(24)[:38]
-        db.commit()
-    return {"token": p.share_token, "ruta_preview": f"/api/s/{p.share_token}",
-            "url": f"/p/{p.share_token}", "modo": "interventoria"}
-
-
 @router.post("/proyectos/{proyecto_id}/compartir")
 def compartir(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     _p_chk = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
@@ -111,6 +95,9 @@ def eventos(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sessi
 
 @router.get("/publico/{token}")
 def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
+    _pk = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if _pk and (_pk.sector or "privado") == "publico":
+        raise HTTPException(404, "Los proyectos de obra publica no tienen enlace externo — todo el seguimiento vive en la plataforma")
     if token == "demo":
         return _demo_payload()
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()

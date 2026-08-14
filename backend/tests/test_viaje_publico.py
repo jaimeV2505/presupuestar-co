@@ -231,17 +231,20 @@ assert len(adicionales) == 1 and adicionales[0]["id"] == "ot1:ex1"
 print("  ✓ el balance cuadra a peso: base + adicional + avances + actas")
 PASOS.append("balance de obra exacto")
 
-print("═══ ACTO 3.9: LINK DE INTERVENTORIA ═══")
-d = paso("generar enlace de interventoria", c.post(f"/api/share/proyectos/{PID}/interventoria", headers=H))
-TOKEN_INT = d["token"]
-assert d["modo"] == "interventoria"
-d = paso("el interventor VE el panel", c.get(f"/api/share/publico/{TOKEN_INT}"))
-assert d["sector"] == "publico" and "Alcaldia" in d["entidad_nombre"] and d["contrato_numero"] == "OP-2026-0457"
-cuerpo = str(d).lower()
-for prohibido in ["password", "gastos", "utilidad_real", "jwt"]:
-    assert prohibido not in cuerpo, f"FUGA en panel interventoria: {prohibido}"
-print("  ✓ interventoria: entidad y contrato visibles, cero datos intimos")
-PASOS.append("panel de interventoria blindado")
+print("═══ ACTO 3.9: NADA VIAJA FUERA (la doctrina del publico) ═══")
+# 1) el enlace de cliente sigue bloqueado (ya probado en ACTO 2) y ademas:
+# 2) un token LEGADO (proyecto que fue privado, se compartio, y luego paso a publico) no sirve
+d2p = paso("proyecto privado auxiliar", c.post("/api/proyectos", json={
+    "nombre": "Legado privado", "cliente_nombre": "Cliente X", "region": "bogota"}, headers=H))
+PID2 = d2p["id"]
+d2p = paso("compartirlo (aun privado)", c.post(f"/api/share/proyectos/{PID2}/compartir", headers=H))
+TOKEN_LEGADO = d2p["token"]
+paso("cambiarlo a publico (antes de firma se puede)", c.put(f"/api/proyectos/{PID2}",
+     json={"sector": "publico", "entidad_nombre": "Entidad Y"}, headers=H))
+r = c.get(f"/api/share/publico/{TOKEN_LEGADO}")
+paso("CANDADO: el token legado YA NO sirve -> 404", r, status=404)
+print("  ✓ doctrina sellada: en obra publica, ni tokens viejos abren puertas")
+PASOS.append("tokens legados de publicos rechazados")
 
 print("═══ ACTO 4: LIQUIDACION DEL CONTRATO ═══")
 paso("terminar directo (publico: sin confirmacion de cliente)",

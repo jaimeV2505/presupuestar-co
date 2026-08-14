@@ -851,8 +851,8 @@ export default function VistaPublica() {
 
       {/* Modal de firma / mutual agreement */}
       {showFirma && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowFirma(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 pt-[4vh]" onClick={() => setShowFirma(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-100 rounded-2xl mb-2">
                 <CheckCircle2 className="w-6 h-6 text-emerald-600" />

@@ -82,7 +82,6 @@ export const proveedoresAPI = {
 }
 
 export const shareAPI = {
-  interventoria: (id) => api.post(`/share/proyectos/${id}/interventoria`).then(r => r.data),
   interactuar: (token, avanceId, data) => api.post(`/share/publico/${token}/avances/${avanceId}/interaccion`, data).then(r => r.data),
   otrosiAprobar: (token, id, firma) => api.post(`/share/publico/${token}/otrosi/${id}/aprobar`, firma).then(r => r.data),
   otrosiRechazar: (token, id, motivo) => api.post(`/share/publico/${token}/otrosi/${id}/rechazar`, { motivo }).then(r => r.data),
