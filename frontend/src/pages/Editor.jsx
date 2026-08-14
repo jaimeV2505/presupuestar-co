@@ -898,10 +898,16 @@ export default function Editor() {
                   </button>
                 ))}
                 {fuenteApu === 'mios' && (
+                  <>
                   <button onClick={() => { setShowConstructor(true); setPreviewComp(null); setConstruyendo({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5 }) }}
                           className="text-xs font-bold px-3 py-1.5 rounded-lg bg-navy-600 text-white ml-auto">
                     + Construir APU
                   </button>
+                  <button onClick={() => { insumosAPI.catalogo().then(setCatalogo).catch(() => {}); setShowCatalogo(true) }}
+                          className="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-500 text-white">
+                    📦 Catálogo
+                  </button>
+                  </>
                 )}
               </div>
               <div className="flex gap-1.5 mt-2 overflow-x-auto pb-1" style={{ display: fuenteApu === 'base' ? 'flex' : 'none' }}>
@@ -1204,6 +1210,7 @@ export default function Editor() {
                   <button key={k}
                           onClick={() => {
                             setConstruyendo(c => ({ ...c, insumos: [...c.insumos, { nombre: ins.nombre, cantidad: '', precio: ins.precio }] }))
+                            if (!showConstructor) { setPreviewComp(null); setShowConstructor(true) }
                             setShowCatalogo(false); setCatalogo(null)
                             toast.success(`${ins.nombre} al constructor — ajusta la cantidad 📦`, { duration: 1800 })
                           }}
