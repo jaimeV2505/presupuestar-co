@@ -493,9 +493,19 @@ export default function Editor() {
                 <Eye className="w-3 h-3" /> {eventos.total_vistas} vista{eventos.total_vistas !== 1 ? 's' : ''}
               </span>
             )}
-            {eventos?.aceptado && (
+            {p.estado === 'terminado' && (
+              <span className="flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-full font-medium">
+                🏁 Terminada
+              </span>
+            )}
+            {p.estado !== 'terminado' && eventos?.aceptado && (
               <span className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-full font-medium">
-                <CheckCircle2 className="w-3 h-3" /> Aceptado
+                <CheckCircle2 className="w-3 h-3" /> {esPublico ? '🏗️ En ejecución' : 'Aceptado'}
+              </span>
+            )}
+            {p.estado !== 'terminado' && !eventos?.aceptado && esPublico && p.estado === 'aceptado' && (
+              <span className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-full font-medium">
+                🏗️ En ejecución
               </span>
             )}
             {p.estado === 'entrega_solicitada' && (
