@@ -197,7 +197,7 @@ def marcar_pagada(cid: int, user: Usuario = Depends(usuario_actual), db: Session
     if saldo > 0:
         db.add(Abono(cuenta_id=c.id, monto=saldo, nota="Pago del saldo"))
     c.estado = "pagada"
-    c.pagada = datetime.now(timezone.utc)
+    c.pagado = datetime.now(timezone.utc)
     db.commit()
     return {"ok": True, "cuenta": _cc_out(c, db)}
 

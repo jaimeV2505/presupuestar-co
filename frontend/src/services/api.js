@@ -102,6 +102,8 @@ export const shareAPI = {
 }
 
 export const avancesAPI = {
+  interacciones: (pid) => api.get(`/avances/proyectos/${pid}/interacciones`).then(r => r.data),
+  responder: (avanceId, texto) => api.post(`/avances/${avanceId}/responder`, { texto }).then(r => r.data),
   responderComentario: (avanceId, texto) => api.post(`/avances/${avanceId}/responder`, { texto }).then(r => r.data),
   listar: (id) => api.get(`/avances/proyectos/${id}/avances`).then(r => r.data),
   crear: (id, data) => api.post(`/avances/proyectos/${id}/avances`, data).then(r => r.data),

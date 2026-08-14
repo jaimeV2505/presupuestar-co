@@ -182,14 +182,32 @@ def listar(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db
         .order_by(Proyecto.actualizado.desc())
         .limit(200).all()
     )
-    return [_proyecto_out(p) for p in proyectos]
+    # adicionales aprobados por proyecto (una sola query, sin N+1)
+    from app.db import Otrosi
+    ids = [p.id for p in proyectos]
+    adicionales = {}
+    if ids:
+        for o in db.query(Otrosi).filter(Otrosi.proyecto_id.in_(ids),
+                                         Otrosi.estado == "aprobado").all():
+            try:
+                t = json.loads(o.totales_json or "{}").get("total") or 0
+            except ValueError:
+                t = 0
+            adicionales[o.proyecto_id] = adicionales.get(o.proyecto_id, 0) + t
+    out = []
+    for p in proyectos:
+        d = _proyecto_out(p)
+        d["total_adicionales"] = adicionales.get(p.id, 0)
+        d["sector"] = p.sector or "privado"
+        out.append(d)
+    return out
 
 
-@router.post("")
 def _esta_firmado(p) -> bool:
     return p.estado not in ("borrador", "enviado", "visto", "rechazado")
 
 
+@router.post("")
 def crear(req: ProyectoCreate, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     _verificar_limite(user, db)
     if not req.nombre.strip():

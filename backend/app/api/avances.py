@@ -211,3 +211,34 @@ def _con_hilos(avances, proyecto_id, db):
     except Exception:
         lote = {}
     return [{**_avance_out(a), **(lote.get(a.id) or {"reacciones": {}, "comentarios": []})} for a in avances]
+
+
+@router.get("/proyectos/{proyecto_id}/interacciones")
+def interacciones_del_proyecto(proyecto_id: int, user: Usuario = Depends(usuario_actual),
+                               db: Session = Depends(get_db)):
+    """SEGUIMIENTO: todo lo que el cliente ha dicho, para el ing — agrupado por avance."""
+    p = db.query(Proyecto).filter(Proyecto.id == proyecto_id,
+                                  Proyecto.user_id == user.id).first()
+    if not p:
+        raise HTTPException(404, "Proyecto no encontrado")
+    from app.db import InteraccionCliente
+    avs = db.query(Avance).filter(Avance.proyecto_id == p.id).all()
+    titulos = {a.id: a.titulo for a in avs}
+    inters = (db.query(InteraccionCliente)
+              .filter(InteraccionCliente.proyecto_id == p.id)
+              .order_by(InteraccionCliente.creado.desc()).limit(300).all())
+    por_avance = {}
+    for i in inters:
+        g = por_avance.setdefault(i.avance_id, {
+            "avance_id": i.avance_id,
+            "titulo": titulos.get(i.avance_id, "Avance"),
+            "reacciones": {}, "comentarios": []})
+        if i.tipo == "reaccion":
+            g["reacciones"][i.valor] = g["reacciones"].get(i.valor, 0) + 1
+        else:
+            g["comentarios"].append({
+                "texto": i.valor, "autor": i.autor or "cliente",
+                "nombre": i.nombre or ("Tú" if i.autor == "contratista" else "Cliente"),
+                "fecha": i.creado.strftime("%d/%m/%Y %H:%M") if i.creado else ""})
+    total_comentarios = sum(len(g["comentarios"]) for g in por_avance.values())
+    return {"avances": list(por_avance.values()), "total_comentarios": total_comentarios}

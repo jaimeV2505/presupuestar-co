@@ -334,6 +334,9 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="font-bold text-slate-800">{COP(p.totales?.total)}</p>
+                      {p.total_adicionales > 0 && (
+                        <p className="text-[10px] font-bold text-amber-600">➕ {COP(p.total_adicionales)} en adicionales</p>
+                      )}
                       <div className="flex items-center gap-1 mt-1.5 justify-end">
                         <button onClick={(e) => duplicar(p.id, e)} className="p-1.5 hover:bg-slate-100 rounded-lg" title="Duplicar">
                           <Copy className="w-3.5 h-3.5 text-slate-400" />
@@ -513,7 +516,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-1.5">
               {[['privado', '🏠 Obra privada', 'Cliente final con enlace y firma'],
                 ['publico', '🏛️ Obra pública', 'Contrato estatal — control interno']].map(([v, t, s]) => (
-                <button key={v} onClick={() => setNuevo(n => ({ ...n, sector: v }))}
+                <button key={v} onClick={() => { setNuevo(n => ({ ...n, sector: v, ...(v === 'publico' ? { cliente_nombre: '', cliente_telefono: '' } : {}) })); if (v === 'publico') setPlantillaSel(null) }}
                         className={`rounded-xl border-2 p-2.5 text-left transition ${nuevo.sector === v ? 'border-navy-400 bg-navy-50' : 'border-slate-100'}`}>
                   <p className="text-xs font-bold text-slate-700">{t}</p>
                   <p className="text-[9px] text-slate-400 leading-tight mt-0.5">{s}</p>
@@ -538,7 +541,7 @@ export default function Dashboard() {
             )}
 
             {/* Plantillas */}
-            {plantillas.length > 0 && (
+            {nuevo.sector === 'privado' && plantillas.length > 0 && (
               <div>
                 <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1.5">Empieza con una plantilla</p>
                 <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto">
@@ -572,6 +575,7 @@ export default function Dashboard() {
 
             <input className="input" placeholder="Nombre del proyecto * (ej: Remodelación cocina Casa López)"
                    value={nuevo.nombre} onChange={e => setNuevo(n => ({ ...n, nombre: e.target.value }))} autoFocus />
+            {nuevo.sector === 'privado' && (<>
             <input className="input" placeholder="Nombre del cliente" list="lista-clientes"
                    value={nuevo.cliente_nombre}
                    onChange={e => {
@@ -585,6 +589,7 @@ export default function Dashboard() {
             </datalist>
             <input className="input" placeholder="WhatsApp del cliente (ej: 300 123 4567)"
                    value={nuevo.cliente_telefono} onChange={e => setNuevo(n => ({ ...n, cliente_telefono: e.target.value }))} />
+            </>)}
             <select className="input" value={nuevo.region} onChange={e => setNuevo(n => ({ ...n, region: e.target.value }))}>
               <option value="bogota">Bogotá D.C.</option>
               <option value="medellin">Medellín</option>

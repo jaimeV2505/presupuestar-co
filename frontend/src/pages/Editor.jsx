@@ -39,6 +39,8 @@ export default function Editor() {
   const [balanceData, setBalanceData] = useState(null)
   const [sugerencias, setSugerencias] = useState([])   // autocomplete de insumos
   const [sugerenciaPara, setSugerenciaPara] = useState(-1)
+  const [charla, setCharla] = useState(null)          // interacciones del cliente, por avance
+  const [respondiendo, setRespondiendo] = useState({})  // {avance_id: texto}
 
   // Calculadora de cantidades + Preview
   const [calcAbierta, setCalcAbierta] = useState(null)  // idx del item con calc abierta
@@ -228,10 +230,11 @@ export default function Editor() {
   const cargarProveedores = () => proveedoresAPI.listar().then(r => setProveedores(r.proveedores || [])).catch(() => {})
 
   const agregarItem = (apu) => {
+    const esMio = apu.id && !apu.categoria   // mis APUs traen id numerico y no categoria
     const nuevo = {
-      id: `${apu.codigo}-${Date.now()}`,
-      codigo: apu.codigo,
-      capitulo: apu.categoria,
+      id: `${apu.codigo || (esMio ? `mio${apu.id}` : 'apu')}-${Date.now()}`,
+      codigo: apu.codigo || (esMio ? `MIO-${apu.id}` : ''),
+      capitulo: apu.categoria || 'MIS ACTIVIDADES',
       descripcion: apu.descripcion,
       unidad: apu.unidad,
       cantidad: 1,
@@ -1106,7 +1109,7 @@ export default function Editor() {
                     <span className="text-slate-600 flex-1">{pc.insumo} <span className="text-slate-300">/{pc.unidad}</span></span>
                     <span className="font-semibold text-slate-700 tabular-nums">{COP(pc.precio)}</span>
                     <span className="text-[9px] text-slate-300 ml-2">{pc.capturado}</span>
-                    <button onClick={async () => { await proveedoresAPI.eliminarPrecio(pc.id); const r = await proveedoresAPI.precios(provSel.id); setProvSel(s => ({ ...s, precios: r.precios })) }}
+                    <button onClick={async () => { await proveedoresAPI.eliminarPrecio(pc.id); const r = await proveedoresAPI.precios(provSel.id); setProvSel(s => ({ ...s, precios: r.precios })); cargarProveedores() }}
                             className="text-slate-300 hover:text-red-400 ml-2">×</button>
                   </div>
                 ))}
@@ -1121,7 +1124,7 @@ export default function Editor() {
                             try {
                               await proveedoresAPI.agregarPrecio(provSel.id, { ...nuevoPrecio, precio: parseInt(nuevoPrecio.precio) || 0 })
                               const r = await proveedoresAPI.precios(provSel.id)
-                              setProvSel(s => ({ ...s, precios: r.precios })); setNuevoPrecio({ insumo: '', unidad: 'un', precio: '' })
+                              setProvSel(s => ({ ...s, precios: r.precios })); setNuevoPrecio({ insumo: '', unidad: 'un', precio: '' }); cargarProveedores()
                             } catch (e) { toast.error(e.message) }
                           }}
                           className="text-xs font-bold text-white bg-emerald-500 rounded-lg px-3">+</button>
@@ -1607,6 +1610,7 @@ export default function Editor() {
       )}
 
       {/* Modal AVANCES DE OBRA (contratista) */}
+      {showAvances && !charla && (() => { avancesAPI.interacciones(id).then(setCharla).catch(() => setCharla({ avances: [], total_comentarios: 0 })); return null })()}
       {showAvances && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 pt-[5vh] overflow-y-auto" onClick={() => setShowAvances(false)}>
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -1619,6 +1623,48 @@ export default function Editor() {
                 <X className="w-4 h-4 text-slate-400" />
               </button>
             </div>
+
+            {/* 💬 Lo que dice tu cliente (seguimiento de reacciones y comentarios) */}
+            {charla && charla.avances.length > 0 && (
+              <div className="p-4 border-b border-slate-100 bg-emerald-50/40">
+                <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">
+                  💬 Lo que dice tu {esPublico ? 'interventor' : 'cliente'}
+                  {charla.total_comentarios > 0 && <span className="ml-1.5 bg-emerald-500 text-white rounded-full px-1.5 py-0.5">{charla.total_comentarios}</span>}
+                </p>
+                {charla.avances.map(g => (
+                  <div key={g.avance_id} className="mb-2.5 last:mb-0">
+                    <p className="text-[11px] font-semibold text-slate-600">
+                      {g.titulo}
+                      {Object.entries(g.reacciones).map(([e2, n]) => <span key={e2} className="ml-1.5">{e2}{n > 1 ? `×${n}` : ''}</span>)}
+                    </p>
+                    {g.comentarios.map((cm, k) => (
+                      <div key={k} className={`mt-1 text-xs rounded-xl px-2.5 py-1.5 ${cm.autor === 'contratista' ? 'bg-navy-600 text-white ml-6' : 'bg-white ring-1 ring-slate-100 text-slate-600'}`}>
+                        <span className="font-semibold">{cm.autor === 'contratista' ? '👷 ' : '💬 '}{cm.nombre}:</span> {cm.texto}
+                        <span className={`block text-[9px] mt-0.5 ${cm.autor === 'contratista' ? 'text-white/50' : 'text-slate-300'}`}>{cm.fecha}</span>
+                      </div>
+                    ))}
+                    {g.comentarios.some(cm => cm.autor !== 'contratista') && (
+                      <div className="flex gap-1.5 mt-1.5">
+                        <input className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="Responder…"
+                               value={respondiendo[g.avance_id] || ''}
+                               onChange={e => setRespondiendo(r => ({ ...r, [g.avance_id]: e.target.value }))} />
+                        <button onClick={async () => {
+                                  const t = (respondiendo[g.avance_id] || '').trim()
+                                  if (!t) return
+                                  try {
+                                    await avancesAPI.responder(g.avance_id, t)
+                                    setRespondiendo(r => ({ ...r, [g.avance_id]: '' }))
+                                    avancesAPI.interacciones(id).then(setCharla).catch(() => {})
+                                    toast.success('Respuesta enviada — tu cliente la verá en su enlace 👷')
+                                  } catch (e) { toast.error(e.message) }
+                                }}
+                                className="text-xs font-bold text-white bg-navy-600 rounded-lg px-3">→</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Form nuevo avance */}
             <div className="p-4 bg-slate-50 space-y-3">

@@ -196,6 +196,25 @@ paso("CANDADO: retegarantia UNA sola vez -> 400", r, status=400)
 paso("encuesta 5 estrellas", c.post(f"/api/share/publico/{TOKEN}/encuesta",
      json={"estrellas": 5, "recomendaria": True, "comentario": "Excelente y transparente"}))
 
+d = paso("el ING ve la charla (seguimiento de interacciones)",
+         c.get(f"/api/avances/proyectos/{PID}/interacciones", headers=H))
+assert d["total_comentarios"] >= 2, d
+g = d["avances"][0]
+assert g["reacciones"] and any(cm["autor"] == "contratista" for av in d["avances"] for cm in av["comentarios"])
+print("  ✓ la charla del cliente ya no se pierde: reacciones + comentarios + respuestas visibles")
+PASOS.append("seguimiento de la charla")
+
+d = paso("listado del dashboard con adicionales", c.get("/api/proyectos", headers=H))
+proy = next(x for x in d if x["id"] == PID)
+assert proy["total_adicionales"] > 0, "el dashboard no refleja el adicional aprobado"
+assert proy["sector"] == "privado"
+
+d = c.get(f"/api/cuentas/proyectos/{PID}/cuentas", headers=H).json()
+pagadas = [x for x in (d.get("cuentas") or d) if x.get("estado") == "pagada"]
+assert pagadas and all(x.get("fecha_pago") for x in pagadas), "cuenta pagada sin fecha_pago (la a/o!)"
+print("  ✓ fecha de pago presente + adicionales en el listado del dashboard")
+PASOS.append("fecha de pago y adicionales visibles")
+
 r = c.post(f"/api/share/proyectos/{PID}/interventoria", headers=H)
 assert r.status_code == 400, f"interventoria en proyecto PRIVADO debia dar 400: {r.status_code}"
 print("  ✓ candado simetrico: interventoria es solo para obra publica")
