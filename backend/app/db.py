@@ -106,6 +106,7 @@ class EventoShare(Base):
     documento_firma = Column(String(30), default="")   # cedula/NIT del firmante
     user_agent = Column(String(300), default="")
     ip = Column(String(45), default="")          # evidencia forense de la firma
+    detalle = Column(Text, default="")           # texto del evento (pendientes reportados, motivo de rechazo...)
     creado = Column(DateTime, default=utcnow)
 
 
@@ -359,6 +360,7 @@ def init_db():
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS supervisor_nombre VARCHAR(120) DEFAULT ''",
                     "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS deducciones INTEGER DEFAULT 0",
                     "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS deducciones_json TEXT DEFAULT ''",
+                    "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS detalle TEXT DEFAULT ''",
                     "ALTER TABLE otrosies ADD COLUMN IF NOT EXISTS ip_firma VARCHAR(45) DEFAULT ''",
                 ]:
                     conn.execute(text(sql))
@@ -396,6 +398,7 @@ def init_db():
                     ("proyectos", "supervisor_nombre", "ALTER TABLE proyectos ADD COLUMN supervisor_nombre VARCHAR(120) DEFAULT ''"),
                     ("cuentas_cobro", "deducciones", "ALTER TABLE cuentas_cobro ADD COLUMN deducciones INTEGER DEFAULT 0"),
                     ("cuentas_cobro", "deducciones_json", "ALTER TABLE cuentas_cobro ADD COLUMN deducciones_json TEXT DEFAULT ''"),
+                    ("eventos_share", "detalle", "ALTER TABLE eventos_share ADD COLUMN detalle TEXT DEFAULT ''"),
                     ("otrosies", "ip_firma", "ALTER TABLE otrosies ADD COLUMN ip_firma VARCHAR(45) DEFAULT ''"),
                 ]
                 for tabla, col, sql in migs:

@@ -175,7 +175,18 @@ r = c.post(f"/api/cuentas/proyectos/{PID}/cuentas", json={"avance_id": AV2}, hea
 paso("CANDADO: anti-doble-cobro (nada nuevo que cobrar) -> 400", r, status=400)
 
 print("═══ ACTO 4: LA ENTREGA Y EL CIERRE ═══")
-paso("solicitar entrega", c.put(f"/api/proyectos/{PID}", json={"estado": "entrega_solicitada"}, headers=H))
+paso("solicitar entrega (1er intento)", c.put(f"/api/proyectos/{PID}", json={"estado": "entrega_solicitada"}, headers=H))
+d = paso("el cliente DEVUELVE con pendientes", c.post(f"/api/share/publico/{TOKEN}/reportar-pendientes",
+         json={"detalle": "Falta el remate de la dilatacion en el muro norte y retocar pintura del closet"}))
+d = paso("la obra volvio a ejecucion", c.get(f"/api/proyectos/{PID}", headers=H))
+assert d["estado"] == "aceptado"
+pnd = d.get("pendientes_reportados") or []
+assert pnd and "muro norte" in pnd[0]["detalle"] and pnd[0]["fecha"], pnd
+print("  ✓ los pendientes del cliente YA NO SE PIERDEN: visibles en el detalle con fecha")
+PASOS.append("pendientes reportados visibles al ing")
+
+paso("solicitar entrega (2do intento, pendientes resueltos)",
+     c.put(f"/api/proyectos/{PID}", json={"estado": "entrega_solicitada"}, headers=H))
 paso("el cliente confirma (acta bilateral)", c.post(f"/api/share/publico/{TOKEN}/confirmar-entrega",
      json={"nombre": "Dona Prueba", "documento": "51222333", "firma_imagen": ""}))
 r = c.get(f"/api/share/publico/{TOKEN}/acta.pdf")

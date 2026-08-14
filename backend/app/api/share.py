@@ -733,7 +733,7 @@ def confirmar_entrega(token: str, req: ConfirmarEntregaRequest, request: Request
 
 
 @router.post("/publico/{token}/reportar-pendientes")
-def reportar_pendientes(token: str, req: PendientesRequest, db: Session = Depends(get_db)):
+def reportar_pendientes(token: str, req: PendientesRequest, request: Request, db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
     if not p:
         raise HTTPException(404, "Enlace no valido")
@@ -743,6 +743,9 @@ def reportar_pendientes(token: str, req: PendientesRequest, db: Session = Depend
     if len(detalle) < 5:
         raise HTTPException(400, "Describe los pendientes")
     p.estado = "aceptado"  # vuelve a obra
+    db.add(EventoShare(proyecto_id=p.id, tipo="pendientes_reportados",
+                       detalle=detalle[:2000], ip=_ip_de(request),
+                       user_agent=(request.headers.get("user-agent") or "")[:300]))
     db.commit()
     notificar(db, p.user_id, "pendientes",
               f"⚠️ Pendientes reportados en {p.numero}",

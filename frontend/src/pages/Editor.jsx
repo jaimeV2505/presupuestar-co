@@ -562,6 +562,22 @@ export default function Editor() {
         </div>
       </header>
 
+      {/* ⚠️ PENDIENTES REPORTADOS POR EL CLIENTE (la entrega fue devuelta) */}
+      {!esPublico && (p?.pendientes_reportados || []).length > 0 && p?.estado === 'aceptado' && (
+        <div className="max-w-5xl mx-auto px-4 mt-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <p className="text-xs font-bold text-amber-700 mb-1.5">⚠️ Tu cliente devolvió la entrega con pendientes:</p>
+            {p.pendientes_reportados.map((pd, i) => (
+              <div key={i} className="text-sm text-slate-700 bg-white rounded-xl px-3 py-2 mb-1.5 ring-1 ring-amber-100">
+                “{pd.detalle}”
+                <span className="block text-[10px] text-slate-400 mt-0.5">{pd.fecha}</span>
+              </div>
+            ))}
+            <p className="text-[11px] text-amber-600">Resuélvelos, registra el avance y vuelve a solicitar la entrega 🤝</p>
+          </div>
+        </div>
+      )}
+
 
       {/* Drawer de herramientas — SOLO movil (en desktop la sidebar es fija) */}
       {showPanel && (

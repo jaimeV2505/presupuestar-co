@@ -47,7 +47,7 @@ def _generar_numero(user_id: int, db: Session) -> str:
     return f"COT-{year}-{total + 1:04d}"
 
 
-def _proyecto_out(p: Proyecto, incluir_items: bool = False) -> Dict:
+def _proyecto_out(p: Proyecto, incluir_items: bool = False, db=None) -> Dict:
     items = json.loads(p.items_json or "[]")
     aiu = json.loads(p.aiu_json or "{}")
     out = {
@@ -65,6 +65,13 @@ def _proyecto_out(p: Proyecto, incluir_items: bool = False) -> Dict:
         "contrato": json.loads(p.contrato_json or "{}"),
         "totales": calcular_totales(items, aiu),
         "share_token": p.share_token,
+        "pendientes_reportados": ([
+            {"detalle": e.detalle, "fecha": e.creado.strftime("%d/%m/%Y %H:%M") if e.creado else ""}
+            for e in db.query(EventoShare)
+                       .filter(EventoShare.proyecto_id == p.id,
+                               EventoShare.tipo == "pendientes_reportados")
+                       .order_by(EventoShare.creado.desc()).limit(10).all()
+        ] if db is not None else []),
         "sector": p.sector or "privado",
         "entidad_nombre": p.entidad_nombre or "",
         "contrato_numero": p.contrato_numero or "",
@@ -235,7 +242,7 @@ def crear(req: ProyectoCreate, user: Usuario = Depends(usuario_actual), db: Sess
     db.commit()
     db.refresh(p)
     logger.info(f"Proyecto creado: {p.id} por user {user.id}")
-    return _proyecto_out(p, incluir_items=True)
+    return _proyecto_out(p, incluir_items=True, db=db)
 
 
 @router.get("/plantillas")
@@ -306,7 +313,7 @@ def obtener(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sessi
     p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
     if not p:
         raise HTTPException(404, "Proyecto no encontrado")
-    return _proyecto_out(p, incluir_items=True)
+    return _proyecto_out(p, incluir_items=True, db=db)
 
 
 @router.put("/{proyecto_id}")
@@ -375,7 +382,7 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
 
     db.commit()
     db.refresh(p)
-    return _proyecto_out(p, incluir_items=True)
+    return _proyecto_out(p, incluir_items=True, db=db)
 
 
 @router.delete("/{proyecto_id}")
