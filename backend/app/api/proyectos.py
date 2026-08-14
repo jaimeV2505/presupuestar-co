@@ -69,7 +69,7 @@ def _proyecto_out(p: Proyecto, incluir_items: bool = False, db=None) -> Dict:
             {"detalle": e.detalle, "fecha": e.creado.strftime("%d/%m/%Y %H:%M") if e.creado else ""}
             for e in db.query(EventoShare)
                        .filter(EventoShare.proyecto_id == p.id,
-                               EventoShare.tipo == "pendientes_reportados")
+                               EventoShare.tipo == "pendientes")
                        .order_by(EventoShare.creado.desc()).limit(10).all()
         ] if db is not None else []),
         "sector": p.sector or "privado",

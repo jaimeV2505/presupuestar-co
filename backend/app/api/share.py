@@ -743,7 +743,7 @@ def reportar_pendientes(token: str, req: PendientesRequest, request: Request, db
     if len(detalle) < 5:
         raise HTTPException(400, "Describe los pendientes")
     p.estado = "aceptado"  # vuelve a obra
-    db.add(EventoShare(proyecto_id=p.id, tipo="pendientes_reportados",
+    db.add(EventoShare(proyecto_id=p.id, tipo="pendientes",
                        detalle=detalle[:2000], ip=_ip_de(request),
                        user_agent=(request.headers.get("user-agent") or "")[:300]))
     db.commit()
