@@ -176,15 +176,30 @@ r = c.post(f"/api/share/proyectos/{PID}/compartir", headers=H)
 paso("CANDADO ESTRELLA: obra publica NO comparte -> 400", r, status=400,
      ) if r.status_code == 400 else paso("candado publico", r, status=400)
 
-# En publico el contrato "se firma" marcando aceptado internamente via estado
-paso("marcar contrato en ejecucion", c.put(f"/api/proyectos/{PID}",
-     json={"estado": "aceptado"}, headers=H))
+# ADICIONAL ANTES DE CUALQUIER FIRMA: en publico se permite (no hay cliente que firme)
+d_pre = paso("adicional en borrador (publico lo permite)", c.post("/api/otrosies", json={
+    "proyecto_id": PID, "motivo": "Ajuste previo al inicio",
+    "items": [{"id": "pre1", "descripcion": "Señalizacion preventiva", "unidad": "un",
+               "cantidad": 10, "precio_unitario": 45000}]}, headers=H))
+paso("y se aprueba internamente", c.post(f"/api/otrosies/{d_pre['id']}/aprobar-interno", headers=H))
 
-print("═══ ACTO 3: EJECUCION — ACTAS PARCIALES ═══")
+print("═══ ACTO 3: EJECUCION — EL PRIMER AVANCE SELLA EL CONTRATO ═══")
+d = paso("proyecto sigue en borrador", c.get(f"/api/proyectos/{PID}", headers=H))
+assert d["estado"] == "borrador", d["estado"]
 d = paso("avance 50%", c.post(f"/api/avances/proyectos/{PID}/avances", json={
     "titulo": "Acta parcial No. 1", "items": [{"id": "it1", "pct": 100}, {"id": "it2", "pct": 30}],
 }, headers=H))
 AV1 = d["id"]
+d = paso("el primer avance sello el contrato (aceptado automatico)",
+         c.get(f"/api/proyectos/{PID}", headers=H))
+assert d["estado"] == "aceptado", f"el avance no sello: {d['estado']}"
+r = c.put(f"/api/proyectos/{PID}", json={"items": [
+    {"id": "hack", "descripcion": "cambiar presupuesto oficial", "unidad": "un",
+     "cantidad": 1, "precio_unitario": 1}]}, headers=H)
+paso("CANDADO: presupuesto oficial sellado (items -> 400)", r, status=400)
+print("  ✓ semantica publica: herramientas libres, el primer avance sella, cambios via adicionales")
+PASOS.append("primer avance sella el presupuesto oficial")
+
 d = paso("acta parcial (cuenta) liquidada con anticipo 30% y rete 10%",
          c.post(f"/api/cuentas/proyectos/{PID}/cuentas", json={"avance_id": AV1}, headers=H))
 CID = d.get("id") or d.get("cuenta", {}).get("id")
@@ -211,23 +226,25 @@ paso("aprobar INTERNAMENTE (sin cliente — es obra publica)",
 r = c.post(f"/api/otrosies/{OID}/aprobar-interno", headers=H)
 paso("CANDADO: doble aprobacion -> 400", r, status=400)
 
-paso("avance final con el adicional", c.post(f"/api/avances/proyectos/{PID}/avances", json={
+paso("avance final con AMBOS adicionales (N.1 previo + N.2 recebo)",
+     c.post(f"/api/avances/proyectos/{PID}/avances", json={
     "titulo": "Acta parcial No. 2 — final",
-    "items": [{"id": "it1", "pct": 100}, {"id": "it2", "pct": 100}, {"id": "ot1:ex1", "pct": 100}],
+    "items": [{"id": "it1", "pct": 100}, {"id": "it2", "pct": 100},
+              {"id": "ot1:pre1", "pct": 100}, {"id": "ot2:ex1", "pct": 100}],
 }, headers=H))
 
 print("═══ ACTO 3.75: BALANCE DE OBRA (oficial vs ejecutado) ═══")
 d = paso("balance del proyecto", c.get(f"/api/proyectos/{PID}/balance", headers=H))
 rs = d["resumen"]
 VALOR_BASE = 1200*3500 + 300*22524          # 10.957.200
-VALOR_ADIC = 80*95000                        # 7.600.000
+VALOR_ADIC = 80*95000 + 10*45000             # 7.600.000 + 450.000 (el previo)
 assert rs["valor_contrato_base"] == VALOR_BASE, rs
 assert rs["valor_adicionales"] == VALOR_ADIC, rs
 assert rs["valor_total"] == VALOR_BASE + VALOR_ADIC
-assert rs["avance_fisico_pct"] == 100.0      # avance final: todo al 100
+assert rs["avance_fisico_pct"] == 100.0
 assert rs["facturado"] > 0 and rs["pagado"] > 0
 adicionales = [f for f in d["filas"] if f["es_adicional"]]
-assert len(adicionales) == 1 and adicionales[0]["id"] == "ot1:ex1"
+assert {f["id"] for f in adicionales} == {"ot1:pre1", "ot2:ex1"}, adicionales
 print("  ✓ el balance cuadra a peso: base + adicional + avances + actas")
 PASOS.append("balance de obra exacto")
 

@@ -125,6 +125,11 @@ def crear(proyecto_id: int, req: AvanceCreate,
     if not items_presupuesto:
         raise HTTPException(400, "El presupuesto no tiene actividades — el avance se calcula sobre ellas")
 
+    # OBRA PUBLICA: el primer avance marca el contrato en ejecucion (presupuesto oficial sellado;
+    # de aqui en adelante, los cambios entran por adicionales/mayores cantidades)
+    if (p.sector or "privado") == "publico" and p.estado in ("borrador", "enviado", "visto", "rechazado"):
+        p.estado = "aceptado"
+
     fotos = [f for f in (req.fotos or []) if isinstance(f, str) and f.startswith("data:image")]
     if len(fotos) > MAX_FOTOS:
         raise HTTPException(400, f"Maximo {MAX_FOTOS} fotos por avance")

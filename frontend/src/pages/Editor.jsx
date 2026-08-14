@@ -345,17 +345,17 @@ export default function Editor() {
   // Contenido del panel de herramientas — compartido: sidebar fija (desktop) y drawer (movil)
   const panelHerramientas = (
     <div className="p-3 space-y-1">
-              {eventos?.total_vistas > 0 && (
+              {!esPublico && eventos?.total_vistas > 0 && (
                 <p className="text-[11px] text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-2">
                   👁 {eventos.total_vistas} vista{eventos.total_vistas !== 1 ? 's' : ''} del cliente
                   {eventos?.aceptado && ' · ✓ contrato firmado'}
                 </p>
               )}
 
-              {['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado) ? (
+              {(esPublico || ['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado)) ? (
                 <>
                   <p className="text-[9px] text-slate-400 uppercase font-bold px-1 pt-1">Ejecución</p>
-                  {p.estado === 'aceptado' && (
+                  {(p.estado === 'aceptado' || (esPublico && p.estado !== 'terminado')) && (
                     <button onClick={() => {
                               setShowPanel(false); setShowAvances(true)
                               avancesAPI.listar(id).then(res => {
@@ -392,20 +392,35 @@ export default function Editor() {
                     <span><span className="block text-sm font-semibold text-slate-700">Cobros</span>
                     <span className="block text-[10px] text-slate-400">Cuentas, abonos y retegarantía</span></span>
                   </button>
-                  {['aceptado', 'entrega_solicitada'].includes(p.estado) && (
+                  {(['aceptado', 'entrega_solicitada'].includes(p.estado) || (esPublico && p.estado !== 'terminado')) && (
                     <button onClick={() => { setShowPanel(false); setShowOtrosi(true) }}
                             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 text-left">
                       <span className="text-lg">➕</span>
                       <span className="flex-1"><span className="block text-sm font-semibold text-slate-700">Adicionales
                         {otrosies.filter(o => o.estado === 'aprobado').length > 0 &&
-                          <span className="ml-1.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{otrosies.filter(o => o.estado === 'aprobado').length} firmado{otrosies.filter(o => o.estado === 'aprobado').length !== 1 ? 's' : ''}</span>}
+                          <span className="ml-1.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{otrosies.filter(o => o.estado === 'aprobado').length} {esPublico ? 'aprobado' : 'firmado'}{otrosies.filter(o => o.estado === 'aprobado').length !== 1 ? 's' : ''}</span>}
                       </span>
                       <span className="block text-[10px] text-slate-400">Trabajo extra con otrosí firmado</span></span>
                     </button>
                   )}
 
                   <p className="text-[9px] text-slate-400 uppercase font-bold px-1 pt-2">Cierre</p>
-                  {p.estado === 'aceptado' && (
+                  {esPublico && p.estado !== 'terminado' && (
+                    <button onClick={async () => {
+                              if (!confirm('¿Terminar el contrato?\n\n• El proyecto pasa a TERMINADO\n• Podrás liberar la retegarantía acumulada\n• La bitácora del Seguimiento queda como historial')) return
+                              try {
+                                const d = await proyectosAPI.actualizar(id, { estado: 'terminado' })
+                                setP(d); setShowPanel(false)
+                                toast.success('Contrato terminado — ya puedes liberar la retegarantía 🔓')
+                              } catch (e2) { toast.error(e2.message) }
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-violet-50 text-left">
+                      <span className="text-lg">🏁</span>
+                      <span><span className="block text-sm font-semibold text-slate-700">Terminar y liquidar</span>
+                      <span className="block text-[10px] text-slate-400">Cierra el contrato y libera la retegarantía</span></span>
+                    </button>
+                  )}
+                  {!esPublico && p.estado === 'aceptado' && (
                     <button onClick={async () => {
                               if (!confirm('¿Solicitar la entrega de la obra?\n\n• Tu cliente verá: "El contratista reporta la obra terminada"\n• Al confirmar, firmará el Acta de Entrega\n• Si hay pendientes, te los reporta y la obra continúa')) return
                               try {

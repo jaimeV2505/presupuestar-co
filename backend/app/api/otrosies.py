@@ -65,7 +65,7 @@ def listar(proyecto_id: int, user: Usuario = Depends(usuario_actual),
 def crear(req: OtrosiRequest, user: Usuario = Depends(usuario_actual),
           db: Session = Depends(get_db)):
     p = _proyecto_de(req.proyecto_id, user, db)
-    if p.estado in ESTADOS_SIN_FIRMA:
+    if p.estado in ESTADOS_SIN_FIRMA and (p.sector or "privado") != "publico":
         raise HTTPException(400, "Los adicionales son para proyectos con contrato firmado — "
                                  "antes de la firma, edita el presupuesto directamente")
     if p.estado == "terminado":
