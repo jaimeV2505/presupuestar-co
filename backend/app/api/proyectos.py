@@ -383,7 +383,14 @@ def eliminar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sess
     p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
     if not p:
         raise HTTPException(404, "Proyecto no encontrado")
-    db.query(EventoShare).filter(EventoShare.proyecto_id == p.id).delete()
+    # CASCADA COMPLETA en orden de dependencias (Postgres exige el orden; sqlite lo agradece)
+    from app.db import (Abono, CuentaCobro, InteraccionCliente, Encuesta,
+                        Gasto, Otrosi, Avance, Notificacion)
+    ids_cuentas = [c_.id for c_ in db.query(CuentaCobro.id).filter(CuentaCobro.proyecto_id == p.id).all()]
+    if ids_cuentas:
+        db.query(Abono).filter(Abono.cuenta_id.in_(ids_cuentas)).delete(synchronize_session=False)
+    for Modelo in (InteraccionCliente, EventoShare, Encuesta, Gasto, Otrosi, Avance, CuentaCobro, Notificacion):
+        db.query(Modelo).filter(Modelo.proyecto_id == p.id).delete(synchronize_session=False)
     db.delete(p)
     db.commit()
     return {"ok": True}

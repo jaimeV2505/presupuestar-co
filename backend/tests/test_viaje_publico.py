@@ -278,6 +278,9 @@ d = paso("liberar retegarantia", c.post(f"/api/cuentas/proyectos/{PID}/retegaran
 r = c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H)
 paso("CANDADO: liberar dos veces -> 400", r, status=400)
 
+paso("borrar el proyecto auxiliar (cascada)", c.delete(f"/api/proyectos/{PID2}", headers=H))
+assert c.get(f"/api/proyectos/{PID2}", headers=H).status_code == 404
+
 print(f"\n{'='*52}")
 print(f"VIAJE PUBLICO: {len(PASOS)} pasos en verde ✅")
 print("El ingeniero administro su contrato estatal completo — sin salir de la plataforma.")

@@ -275,5 +275,14 @@ print(f"     netos pagados=${total_neto_pagado:,} · rete retenida=${total_rete:
 assert liberada == total_rete, "la liberacion debe igualar lo retenido"
 
 print(f"\n{'='*52}")
+print("═══ ACTO FINAL: EL BORRADO EN CASCADA (9 tablas hijas vivas) ═══")
+paso("eliminar el proyecto entero", c.delete(f"/api/proyectos/{PID}", headers=H))
+r = c.get(f"/api/proyectos/{PID}", headers=H)
+assert r.status_code == 404, "el proyecto sigue vivo tras eliminar"
+r = c.get(f"/api/share/publico/{TOKEN}")
+assert r.status_code in (404, 410), f"el enlace publico sobrevivio al borrado: {r.status_code}"
+print("  ✓ cascada completa: proyecto + avances + cuentas + abonos + otrosi + interacciones + eventos + encuesta + notificaciones")
+PASOS.append("borrado en cascada")
+
 print(f"VIAJE COMPLETO: {len(PASOS)} pasos en verde ✅")
 print("El robot probo lo que un humano probaria — sin humano.")
