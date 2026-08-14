@@ -103,6 +103,14 @@ assert "mi_proveedor" in fuentes and "referencia" in fuentes, fuentes
 mio = next(r for r in d["resultados"] if r["fuente"] == "mi_proveedor")
 assert mio["precio"] == 28500 and mio["detalle"] == "Ferreteria El Roble" and mio["fecha"]
 
+d = paso("catalogo curado: categorias", c.get("/api/insumos/catalogo", headers=H))
+assert d["total"] >= 200 and len(d["categorias"]) >= 15, d
+cat0 = d["categorias"][0]["nombre"]
+d = paso(f"catalogo: insumos de una categoria", c.get(f"/api/insumos/catalogo?categoria={cat0}", headers=H))
+assert d["insumos"] and all(i["precio"] > 0 for i in d["insumos"])
+print(f"  ✓ catalogo curado navegable: 200+ insumos de referencia adentro de la plataforma")
+PASOS.append("catalogo curado 200+")
+
 d = paso("comparador: mi precio vs referencia", c.get("/api/insumos/comparar?q=cemento", headers=H))
 assert d["mi_mejor"]["precio"] == 28500 and d["referencia"]["precio"] == 28500
 assert d["ahorro"] == 0   # mismo precio de referencia — el calculo cuadra

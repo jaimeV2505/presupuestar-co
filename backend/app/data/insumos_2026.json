@@ -1,7 +1,7 @@
 {
- "version": "2026.1",
+ "version": "2026.2",
  "region_referencia": "bogota",
- "nota": "Precios de referencia del mercado — actualizacion curada mensual",
+ "nota": "Precios estaticos de referencia del mercado (vitrina retail tipo Homecenter). Actualizacion curada — no es precio en vivo.",
  "insumos": [
   {
    "nombre": "Cemento gris uso general 50kg",
@@ -10,9 +10,45 @@
    "categoria": "cementos"
   },
   {
+   "nombre": "Cemento gris estructural 50kg",
+   "unidad": "bulto",
+   "precio": 31900,
+   "categoria": "cementos"
+  },
+  {
    "nombre": "Cemento blanco 40kg",
    "unidad": "bulto",
    "precio": 52000,
+   "categoria": "cementos"
+  },
+  {
+   "nombre": "Mortero listo pega 40kg",
+   "unidad": "bulto",
+   "precio": 18900,
+   "categoria": "cementos"
+  },
+  {
+   "nombre": "Mortero listo repello 40kg",
+   "unidad": "bulto",
+   "precio": 17500,
+   "categoria": "cementos"
+  },
+  {
+   "nombre": "Concreto seco 3000 psi 40kg",
+   "unidad": "bulto",
+   "precio": 21900,
+   "categoria": "cementos"
+  },
+  {
+   "nombre": "Cal hidratada 10kg",
+   "unidad": "bulto",
+   "precio": 9800,
+   "categoria": "cementos"
+  },
+  {
+   "nombre": "Yeso construccion 25kg",
+   "unidad": "bulto",
+   "precio": 24500,
    "categoria": "cementos"
   },
   {
@@ -28,15 +64,21 @@
    "categoria": "agregados"
   },
   {
+   "nombre": "Arena fina revoque",
+   "unidad": "m3",
+   "precio": 68000,
+   "categoria": "agregados"
+  },
+  {
    "nombre": "Triturado 3/4",
    "unidad": "m3",
    "precio": 88000,
    "categoria": "agregados"
   },
   {
-   "nombre": "Recebo comun",
+   "nombre": "Triturado 1/2",
    "unidad": "m3",
-   "precio": 38000,
+   "precio": 90000,
    "categoria": "agregados"
   },
   {
@@ -46,45 +88,57 @@
    "categoria": "agregados"
   },
   {
-   "nombre": "Ladrillo tolete comun",
-   "unidad": "un",
-   "precio": 950,
-   "categoria": "mamposteria"
+   "nombre": "Recebo comun",
+   "unidad": "m3",
+   "precio": 38000,
+   "categoria": "agregados"
   },
   {
-   "nombre": "Bloque No.4 arcilla",
-   "unidad": "un",
-   "precio": 2350,
-   "categoria": "mamposteria"
+   "nombre": "Base granular B-400",
+   "unidad": "m3",
+   "precio": 72000,
+   "categoria": "agregados"
   },
   {
-   "nombre": "Bloque No.5 arcilla",
+   "nombre": "Varilla corrugada 3/8 x 6m 60000psi",
    "unidad": "un",
-   "precio": 2750,
-   "categoria": "mamposteria"
-  },
-  {
-   "nombre": "Ladrillo prensado santafe",
-   "unidad": "un",
-   "precio": 1850,
-   "categoria": "mamposteria"
-  },
-  {
-   "nombre": "Acero de refuerzo 60000 psi 3/8 pulg",
-   "unidad": "kg",
-   "precio": 4350,
+   "precio": 15900,
    "categoria": "aceros"
   },
   {
-   "nombre": "Acero de refuerzo 60000 psi 1/2 pulg",
-   "unidad": "kg",
-   "precio": 4250,
+   "nombre": "Varilla corrugada 1/2 x 6m 60000psi",
+   "unidad": "un",
+   "precio": 27500,
    "categoria": "aceros"
   },
   {
-   "nombre": "Malla electrosoldada 15x15 6mm",
-   "unidad": "m2",
-   "precio": 18500,
+   "nombre": "Varilla corrugada 5/8 x 6m 60000psi",
+   "unidad": "un",
+   "precio": 42900,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Varilla corrugada 3/4 x 6m 60000psi",
+   "unidad": "un",
+   "precio": 61500,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Varilla lisa 1/4 x 6m",
+   "unidad": "un",
+   "precio": 6900,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Malla electrosoldada 15x15 6mm 6x2.35m",
+   "unidad": "un",
+   "precio": 259900,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Malla electrosoldada 15x15 4mm 6x2.35m",
+   "unidad": "un",
+   "precio": 129900,
    "categoria": "aceros"
   },
   {
@@ -94,9 +148,117 @@
    "categoria": "aceros"
   },
   {
+   "nombre": "Alambre galvanizado No.12",
+   "unidad": "kg",
+   "precio": 8500,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Grafil 4mm x 6m",
+   "unidad": "un",
+   "precio": 4200,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Angulo 1x1/8 x 6m",
+   "unidad": "un",
+   "precio": 32900,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Tubo cuadrado 1x1 cal.18 x 6m",
+   "unidad": "un",
+   "precio": 38900,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Perfil C 100x50 cal.14 x 6m",
+   "unidad": "un",
+   "precio": 89900,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Platina 1x1/8 x 6m",
+   "unidad": "un",
+   "precio": 26900,
+   "categoria": "aceros"
+  },
+  {
+   "nombre": "Ladrillo tolete comun",
+   "unidad": "un",
+   "precio": 950,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Ladrillo prensado santafe",
+   "unidad": "un",
+   "precio": 1850,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Bloque arcilla No.4 10x20x30",
+   "unidad": "un",
+   "precio": 2350,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Bloque arcilla No.5 12x20x30",
+   "unidad": "un",
+   "precio": 2750,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Bloque concreto 10x20x40",
+   "unidad": "un",
+   "precio": 2950,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Bloque concreto 15x20x40",
+   "unidad": "un",
+   "precio": 3850,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Ladrillo farol 10x20x30",
+   "unidad": "un",
+   "precio": 2100,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Adoquin concreto vehicular 6cm",
+   "unidad": "m2",
+   "precio": 42900,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Bordillo prefabricado 10x20x80",
+   "unidad": "un",
+   "precio": 18500,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Tapa concreto 60x60 con marco",
+   "unidad": "un",
+   "precio": 89900,
+   "categoria": "mamposteria"
+  },
+  {
+   "nombre": "Concreto premezclado 2500 psi",
+   "unidad": "m3",
+   "precio": 438000,
+   "categoria": "concretos"
+  },
+  {
    "nombre": "Concreto premezclado 3000 psi",
    "unidad": "m3",
    "precio": 465000,
+   "categoria": "concretos"
+  },
+  {
+   "nombre": "Concreto premezclado 3500 psi",
+   "unidad": "m3",
+   "precio": 492000,
    "categoria": "concretos"
   },
   {
@@ -106,28 +268,268 @@
    "categoria": "concretos"
   },
   {
-   "nombre": "Tubo PVC sanitaria 4 pulg x 6m",
-   "unidad": "un",
-   "precio": 68000,
-   "categoria": "hidrosanitario"
+   "nombre": "Bomba estacionaria concreto (servicio)",
+   "unidad": "m3",
+   "precio": 38000,
+   "categoria": "concretos"
   },
   {
-   "nombre": "Tubo PVC sanitaria 2 pulg x 6m",
+   "nombre": "Teja fibrocemento No.6 1.83m",
+   "unidad": "un",
+   "precio": 42000,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Teja fibrocemento No.8 2.44m",
+   "unidad": "un",
+   "precio": 56900,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Teja trapezoidal galvanizada cal.35 x 3m",
+   "unidad": "un",
+   "precio": 78000,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Teja sandwich termoacustica x 3m",
+   "unidad": "un",
+   "precio": 189900,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Teja PVC UV 10 x 3m",
+   "unidad": "un",
+   "precio": 94900,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Caballete fibrocemento",
+   "unidad": "un",
+   "precio": 28500,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Amarre teja gancho + capuchon",
+   "unidad": "un",
+   "precio": 1200,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Canal PVC aguas lluvias x 3m",
+   "unidad": "un",
+   "precio": 45900,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Bajante PVC 3 pulg x 3m",
+   "unidad": "un",
+   "precio": 32900,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Flanche galvanizado desarrollo 30cm x 2.44",
+   "unidad": "un",
+   "precio": 24900,
+   "categoria": "cubiertas"
+  },
+  {
+   "nombre": "Lamina drywall 1/2 1.22x2.44",
+   "unidad": "un",
+   "precio": 38500,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Lamina drywall RH humedad 1/2",
+   "unidad": "un",
+   "precio": 52900,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Lamina superboard 8mm 1.22x2.44",
+   "unidad": "un",
+   "precio": 79900,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Lamina superboard 10mm 1.22x2.44",
+   "unidad": "un",
+   "precio": 94900,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Paral 3-5/8 cal.26 x 2.44",
+   "unidad": "un",
+   "precio": 12500,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Canal 3-5/8 cal.26 x 2.44",
+   "unidad": "un",
+   "precio": 11800,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Omega cal.26 x 2.44",
+   "unidad": "un",
+   "precio": 9800,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Angulo esquinero drywall x 2.44",
+   "unidad": "un",
+   "precio": 5900,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Masilla drywall lista 28kg",
+   "unidad": "caneca",
+   "precio": 68000,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Cinta papel drywall x 75m",
+   "unidad": "rollo",
+   "precio": 8900,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Cinta malla fibra x 90m",
+   "unidad": "rollo",
+   "precio": 12900,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Tornillo drywall 6x1 punta fina x100",
+   "unidad": "paq",
+   "precio": 6500,
+   "categoria": "livianos"
+  },
+  {
+   "nombre": "Tubo PVC sanitaria 2 x 6m",
    "unidad": "un",
    "precio": 32000,
-   "categoria": "hidrosanitario"
+   "categoria": "pvc-sanitaria"
   },
   {
-   "nombre": "Tubo PVC presion 1/2 pulg x 6m",
+   "nombre": "Tubo PVC sanitaria 3 x 6m",
+   "unidad": "un",
+   "precio": 49900,
+   "categoria": "pvc-sanitaria"
+  },
+  {
+   "nombre": "Tubo PVC sanitaria 4 x 6m",
+   "unidad": "un",
+   "precio": 68000,
+   "categoria": "pvc-sanitaria"
+  },
+  {
+   "nombre": "Tubo PVC sanitaria 6 x 6m",
+   "unidad": "un",
+   "precio": 149900,
+   "categoria": "pvc-sanitaria"
+  },
+  {
+   "nombre": "Codo PVC sanitaria 4x90",
+   "unidad": "un",
+   "precio": 8900,
+   "categoria": "pvc-sanitaria"
+  },
+  {
+   "nombre": "Codo PVC sanitaria 2x90",
+   "unidad": "un",
+   "precio": 3400,
+   "categoria": "pvc-sanitaria"
+  },
+  {
+   "nombre": "Yee PVC sanitaria 4",
+   "unidad": "un",
+   "precio": 13900,
+   "categoria": "pvc-sanitaria"
+  },
+  {
+   "nombre": "Tee PVC sanitaria 4",
+   "unidad": "un",
+   "precio": 12500,
+   "categoria": "pvc-sanitaria"
+  },
+  {
+   "nombre": "Sifon 2 con registro",
+   "unidad": "un",
+   "precio": 15900,
+   "categoria": "pvc-sanitaria"
+  },
+  {
+   "nombre": "Soldadura PVC 1/4 galon",
+   "unidad": "un",
+   "precio": 32900,
+   "categoria": "pvc-sanitaria"
+  },
+  {
+   "nombre": "Limpiador PVC 760ml",
+   "unidad": "un",
+   "precio": 24900,
+   "categoria": "pvc-sanitaria"
+  },
+  {
+   "nombre": "Rejilla sosco 3x2 aluminio",
+   "unidad": "un",
+   "precio": 8900,
+   "categoria": "pvc-sanitaria"
+  },
+  {
+   "nombre": "Tubo PVC presion 1/2 x 6m RDE21",
    "unidad": "un",
    "precio": 18500,
-   "categoria": "hidrosanitario"
+   "categoria": "pvc-presion"
   },
   {
-   "nombre": "Registro de bola 1/2 pulg",
+   "nombre": "Tubo PVC presion 3/4 x 6m RDE21",
+   "unidad": "un",
+   "precio": 26900,
+   "categoria": "pvc-presion"
+  },
+  {
+   "nombre": "Tubo PVC presion 1 x 6m RDE21",
+   "unidad": "un",
+   "precio": 38900,
+   "categoria": "pvc-presion"
+  },
+  {
+   "nombre": "Codo PVC presion 1/2 x 90",
+   "unidad": "un",
+   "precio": 1200,
+   "categoria": "pvc-presion"
+  },
+  {
+   "nombre": "Tee PVC presion 1/2",
+   "unidad": "un",
+   "precio": 1500,
+   "categoria": "pvc-presion"
+  },
+  {
+   "nombre": "Adaptador macho PVC 1/2",
+   "unidad": "un",
+   "precio": 1100,
+   "categoria": "pvc-presion"
+  },
+  {
+   "nombre": "Registro de bola PVC 1/2",
    "unidad": "un",
    "precio": 22000,
-   "categoria": "hidrosanitario"
+   "categoria": "pvc-presion"
+  },
+  {
+   "nombre": "Cheque cortina 1/2 bronce",
+   "unidad": "un",
+   "precio": 34900,
+   "categoria": "pvc-presion"
+  },
+  {
+   "nombre": "Cable THHN No.14 AWG",
+   "unidad": "m",
+   "precio": 2100,
+   "categoria": "electricos"
   },
   {
    "nombre": "Cable THHN No.12 AWG",
@@ -142,13 +544,61 @@
    "categoria": "electricos"
   },
   {
-   "nombre": "Tubo conduit PVC 1/2 pulg x 3m",
+   "nombre": "Cable THHN No.8 AWG",
+   "unidad": "m",
+   "precio": 6900,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Cable encauchetado 3x12 x m",
+   "unidad": "m",
+   "precio": 8900,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Cable duplex 2x12 x m",
+   "unidad": "m",
+   "precio": 4500,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Tubo conduit PVC 1/2 x 3m",
    "unidad": "un",
    "precio": 6500,
    "categoria": "electricos"
   },
   {
-   "nombre": "Toma doble con polo a tierra",
+   "nombre": "Tubo conduit PVC 3/4 x 3m",
+   "unidad": "un",
+   "precio": 8900,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Tubo EMT 1/2 x 3m",
+   "unidad": "un",
+   "precio": 14900,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Curva conduit PVC 1/2",
+   "unidad": "un",
+   "precio": 1300,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Caja rectangular PVC 2x4",
+   "unidad": "un",
+   "precio": 1900,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Caja octagonal PVC",
+   "unidad": "un",
+   "precio": 2200,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Toma doble polo a tierra",
    "unidad": "un",
    "precio": 9800,
    "categoria": "electricos"
@@ -160,112 +610,412 @@
    "categoria": "electricos"
   },
   {
+   "nombre": "Interruptor doble",
+   "unidad": "un",
+   "precio": 13900,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Toma GFCI bano/cocina",
+   "unidad": "un",
+   "precio": 64900,
+   "categoria": "electricos"
+  },
+  {
    "nombre": "Breaker enchufable 20A",
    "unidad": "un",
    "precio": 15500,
    "categoria": "electricos"
   },
   {
-   "nombre": "Pintura vinilo tipo 1 blanco",
+   "nombre": "Tablero 8 circuitos con puerta",
+   "unidad": "un",
+   "precio": 94900,
+   "categoria": "electricos"
+  },
+  {
+   "nombre": "Bombillo LED 9W E27",
+   "unidad": "un",
+   "precio": 6900,
+   "categoria": "iluminacion"
+  },
+  {
+   "nombre": "Panel LED 18W 22cm sobreponer",
+   "unidad": "un",
+   "precio": 24900,
+   "categoria": "iluminacion"
+  },
+  {
+   "nombre": "Panel LED 60x60 40W",
+   "unidad": "un",
+   "precio": 79900,
+   "categoria": "iluminacion"
+  },
+  {
+   "nombre": "Reflector LED 50W exterior",
+   "unidad": "un",
+   "precio": 49900,
+   "categoria": "iluminacion"
+  },
+  {
+   "nombre": "Lampara hermetica LED 2x18 120cm",
+   "unidad": "un",
+   "precio": 69900,
+   "categoria": "iluminacion"
+  },
+  {
+   "nombre": "Sensor de movimiento techo",
+   "unidad": "un",
+   "precio": 32900,
+   "categoria": "iluminacion"
+  },
+  {
+   "nombre": "Pintura vinilo tipo 1 blanco galon",
    "unidad": "galon",
    "precio": 68000,
    "categoria": "pinturas"
   },
   {
-   "nombre": "Pintura vinilo tipo 2",
+   "nombre": "Pintura vinilo tipo 1 blanco caneca 5gl",
+   "unidad": "caneca",
+   "precio": 289900,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Pintura vinilo tipo 2 galon",
    "unidad": "galon",
    "precio": 48000,
    "categoria": "pinturas"
   },
   {
-   "nombre": "Esmalte sintetico",
+   "nombre": "Pintura vinilo tipo 3 caneca 5gl",
+   "unidad": "caneca",
+   "precio": 149900,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Esmalte sintetico galon",
    "unidad": "galon",
    "precio": 75000,
    "categoria": "pinturas"
   },
   {
-   "nombre": "Estuco plastico",
+   "nombre": "Pintura trafico amarilla galon",
+   "unidad": "galon",
+   "precio": 89900,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Estuco plastico galon",
    "unidad": "galon",
    "precio": 42000,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Estuco plastico caneca 5gl",
+   "unidad": "caneca",
+   "precio": 179900,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Anticorrosivo gris galon",
+   "unidad": "galon",
+   "precio": 52900,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Vinilo epoxico piso galon",
+   "unidad": "galon",
+   "precio": 129900,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Rodillo felpa 9 con mango",
+   "unidad": "un",
+   "precio": 12900,
+   "categoria": "pinturas"
+  },
+  {
+   "nombre": "Brocha 3 cerda natural",
+   "unidad": "un",
+   "precio": 9800,
    "categoria": "pinturas"
   },
   {
    "nombre": "Ceramica piso trafico 3 45x45",
    "unidad": "m2",
    "precio": 32000,
-   "categoria": "acabados"
+   "categoria": "pisos"
   },
   {
-   "nombre": "Porcelanato 60x60",
+   "nombre": "Ceramica piso trafico 4 51x51",
+   "unidad": "m2",
+   "precio": 39900,
+   "categoria": "pisos"
+  },
+  {
+   "nombre": "Porcelanato 60x60 rectificado",
    "unidad": "m2",
    "precio": 65000,
-   "categoria": "acabados"
+   "categoria": "pisos"
+  },
+  {
+   "nombre": "Porcelanato 80x80",
+   "unidad": "m2",
+   "precio": 89900,
+   "categoria": "pisos"
+  },
+  {
+   "nombre": "Piso laminado 8mm AC4",
+   "unidad": "m2",
+   "precio": 45900,
+   "categoria": "pisos"
+  },
+  {
+   "nombre": "Piso vinilico SPC 4mm click",
+   "unidad": "m2",
+   "precio": 69900,
+   "categoria": "pisos"
   },
   {
    "nombre": "Pegante ceramica interior 25kg",
    "unidad": "bulto",
    "precio": 21500,
-   "categoria": "acabados"
+   "categoria": "pisos"
   },
   {
-   "nombre": "Boquilla junta ceramica 2kg",
+   "nombre": "Pegante porcelanato 25kg",
+   "unidad": "bulto",
+   "precio": 34900,
+   "categoria": "pisos"
+  },
+  {
+   "nombre": "Boquilla junta fina 2kg",
    "unidad": "un",
    "precio": 9500,
-   "categoria": "acabados"
+   "categoria": "pisos"
   },
   {
-   "nombre": "Guarda escoba ceramica",
+   "nombre": "Guarda escoba ceramica x ml",
    "unidad": "ml",
    "precio": 8500,
-   "categoria": "acabados"
+   "categoria": "pisos"
   },
   {
-   "nombre": "Drywall lamina 1/2 pulg 1.22x2.44",
+   "nombre": "Guarda escoba MDF 8cm x 2.40",
    "unidad": "un",
-   "precio": 38500,
-   "categoria": "livianos"
+   "precio": 14900,
+   "categoria": "pisos"
   },
   {
-   "nombre": "Perfil paral 3-5/8 pulg x 2.44",
+   "nombre": "Nivelador piso autonivelante 25kg",
+   "unidad": "bulto",
+   "precio": 48900,
+   "categoria": "pisos"
+  },
+  {
+   "nombre": "Ceramica pared 30x60 blanca",
+   "unidad": "m2",
+   "precio": 36900,
+   "categoria": "enchapes"
+  },
+  {
+   "nombre": "Ceramica pared 25x40",
+   "unidad": "m2",
+   "precio": 28900,
+   "categoria": "enchapes"
+  },
+  {
+   "nombre": "Liston ceramico decorado",
    "unidad": "un",
-   "precio": 12500,
-   "categoria": "livianos"
+   "precio": 8900,
+   "categoria": "enchapes"
   },
   {
-   "nombre": "Perfil canal 3-5/8 pulg x 2.44",
+   "nombre": "Win perfil enchape aluminio x 2.44",
    "unidad": "un",
-   "precio": 11800,
-   "categoria": "livianos"
+   "precio": 9900,
+   "categoria": "enchapes"
   },
   {
-   "nombre": "Masilla drywall 28kg",
-   "unidad": "caneca",
-   "precio": 68000,
-   "categoria": "livianos"
-  },
-  {
-   "nombre": "Teja fibrocemento No.6",
+   "nombre": "Sika antihongos boquilla 500g",
    "unidad": "un",
-   "precio": 42000,
-   "categoria": "cubiertas"
+   "precio": 12900,
+   "categoria": "enchapes"
   },
   {
-   "nombre": "Teja trapezoidal cal.35 x 3.0m",
+   "nombre": "Espejo bano 60x80 biselado",
    "unidad": "un",
-   "precio": 78000,
-   "categoria": "cubiertas"
+   "precio": 89900,
+   "categoria": "enchapes"
   },
   {
-   "nombre": "Amarre teja mas caballete",
+   "nombre": "Gabinete bano con espejo",
    "unidad": "un",
-   "precio": 1200,
-   "categoria": "cubiertas"
+   "precio": 149900,
+   "categoria": "enchapes"
   },
   {
-   "nombre": "Impermeabilizante manto 3mm",
-   "unidad": "rollo",
-   "precio": 185000,
-   "categoria": "impermeabilizacion"
+   "nombre": "Division bano vidrio templado 8mm",
+   "unidad": "m2",
+   "precio": 289900,
+   "categoria": "enchapes"
+  },
+  {
+   "nombre": "Sanitario redondo blanco completo",
+   "unidad": "un",
+   "precio": 289900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Sanitario alongado dual flush",
+   "unidad": "un",
+   "precio": 449900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Lavamanos pedestal blanco",
+   "unidad": "un",
+   "precio": 129900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Lavamanos sobreponer vessel",
+   "unidad": "un",
+   "precio": 189900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Griferia lavamanos sencilla",
+   "unidad": "un",
+   "precio": 79900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Griferia lavamanos monocontrol",
+   "unidad": "un",
+   "precio": 149900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Ducha sencilla cromada",
+   "unidad": "un",
+   "precio": 64900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Griferia ducha monocontrol",
+   "unidad": "un",
+   "precio": 189900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Lavaplatos acero 60x50 + griferia",
+   "unidad": "un",
+   "precio": 249900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Lavadero prefabricado granito",
+   "unidad": "un",
+   "precio": 189900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Acople flexible 1/2 x 50cm",
+   "unidad": "un",
+   "precio": 8900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Griferia jardin 1/2 bronce",
+   "unidad": "un",
+   "precio": 18900,
+   "categoria": "sanitarios"
+  },
+  {
+   "nombre": "Puerta entamborada 70-90cm",
+   "unidad": "un",
+   "precio": 129900,
+   "categoria": "puertas-ventanas"
+  },
+  {
+   "nombre": "Puerta MDF ranurada 70-90cm",
+   "unidad": "un",
+   "precio": 219900,
+   "categoria": "puertas-ventanas"
+  },
+  {
+   "nombre": "Marco madera puerta 3x8",
+   "unidad": "un",
+   "precio": 89900,
+   "categoria": "puertas-ventanas"
+  },
+  {
+   "nombre": "Puerta metalica seguridad 90cm",
+   "unidad": "un",
+   "precio": 649900,
+   "categoria": "puertas-ventanas"
+  },
+  {
+   "nombre": "Ventana aluminio corrediza 100x100 con vidrio",
+   "unidad": "un",
+   "precio": 249900,
+   "categoria": "puertas-ventanas"
+  },
+  {
+   "nombre": "Ventana aluminio corrediza 150x100 con vidrio",
+   "unidad": "un",
+   "precio": 329900,
+   "categoria": "puertas-ventanas"
+  },
+  {
+   "nombre": "Vidrio crudo 4mm",
+   "unidad": "m2",
+   "precio": 49900,
+   "categoria": "puertas-ventanas"
+  },
+  {
+   "nombre": "Silicona estructural neutra 280ml",
+   "unidad": "un",
+   "precio": 18900,
+   "categoria": "puertas-ventanas"
+  },
+  {
+   "nombre": "Cerradura pomo alcoba",
+   "unidad": "un",
+   "precio": 34900,
+   "categoria": "cerrajeria"
+  },
+  {
+   "nombre": "Cerradura pomo bano",
+   "unidad": "un",
+   "precio": 29900,
+   "categoria": "cerrajeria"
+  },
+  {
+   "nombre": "Cerradura seguridad sobreponer",
+   "unidad": "un",
+   "precio": 89900,
+   "categoria": "cerrajeria"
+  },
+  {
+   "nombre": "Bisagra 3x3 par",
+   "unidad": "par",
+   "precio": 6900,
+   "categoria": "cerrajeria"
+  },
+  {
+   "nombre": "Candado 50mm",
+   "unidad": "un",
+   "precio": 24900,
+   "categoria": "cerrajeria"
+  },
+  {
+   "nombre": "Cierrapuertas hidraulico",
+   "unidad": "un",
+   "precio": 89900,
+   "categoria": "cerrajeria"
   },
   {
    "nombre": "Madera ordinaria burra 3m",
@@ -280,16 +1030,352 @@
    "categoria": "maderas"
   },
   {
-   "nombre": "Puntilla con cabeza 2 pulg",
+   "nombre": "Liston 4x4 x 3m",
+   "unidad": "un",
+   "precio": 16900,
+   "categoria": "maderas"
+  },
+  {
+   "nombre": "Repisa ordinaria 2x4 x 3m",
+   "unidad": "un",
+   "precio": 14500,
+   "categoria": "maderas"
+  },
+  {
+   "nombre": "Tabla formaleta 20cm x 3m",
+   "unidad": "un",
+   "precio": 19900,
+   "categoria": "maderas"
+  },
+  {
+   "nombre": "Triplex 4mm 1.22x2.44",
+   "unidad": "un",
+   "precio": 42900,
+   "categoria": "maderas"
+  },
+  {
+   "nombre": "Triplex 9mm 1.22x2.44",
+   "unidad": "un",
+   "precio": 79900,
+   "categoria": "maderas"
+  },
+  {
+   "nombre": "Triplex 15mm formaleta 1.22x2.44",
+   "unidad": "un",
+   "precio": 129900,
+   "categoria": "maderas"
+  },
+  {
+   "nombre": "MDF 12mm 1.83x2.44",
+   "unidad": "un",
+   "precio": 119900,
+   "categoria": "maderas"
+  },
+  {
+   "nombre": "Inmunizante madera galon",
+   "unidad": "galon",
+   "precio": 38900,
+   "categoria": "maderas"
+  },
+  {
+   "nombre": "Puntilla con cabeza 2 lb",
    "unidad": "lb",
    "precio": 4800,
-   "categoria": "maderas"
+   "categoria": "fijaciones"
+  },
+  {
+   "nombre": "Puntilla con cabeza 3 lb",
+   "unidad": "lb",
+   "precio": 4800,
+   "categoria": "fijaciones"
+  },
+  {
+   "nombre": "Puntilla acero 1-1/2 lb",
+   "unidad": "lb",
+   "precio": 8900,
+   "categoria": "fijaciones"
+  },
+  {
+   "nombre": "Chazo plastico 1/4 con tornillo x50",
+   "unidad": "paq",
+   "precio": 9800,
+   "categoria": "fijaciones"
+  },
+  {
+   "nombre": "Chazo expansivo 3/8 x un",
+   "unidad": "un",
+   "precio": 1900,
+   "categoria": "fijaciones"
+  },
+  {
+   "nombre": "Tornillo goloso 8x2 x100",
+   "unidad": "paq",
+   "precio": 8900,
+   "categoria": "fijaciones"
+  },
+  {
+   "nombre": "Varilla roscada 3/8 x 1m",
+   "unidad": "un",
+   "precio": 5900,
+   "categoria": "fijaciones"
+  },
+  {
+   "nombre": "Anclaje quimico epoxico 300ml",
+   "unidad": "un",
+   "precio": 49900,
+   "categoria": "fijaciones"
+  },
+  {
+   "nombre": "Grapa cable 1/2 x100",
+   "unidad": "paq",
+   "precio": 5900,
+   "categoria": "fijaciones"
+  },
+  {
+   "nombre": "Amarre plastico 30cm x100",
+   "unidad": "paq",
+   "precio": 12900,
+   "categoria": "fijaciones"
+  },
+  {
+   "nombre": "Manto asfaltico 3mm foil rollo 10m2",
+   "unidad": "rollo",
+   "precio": 185000,
+   "categoria": "impermeabilizacion"
+  },
+  {
+   "nombre": "Imprimante asfaltico galon",
+   "unidad": "galon",
+   "precio": 42900,
+   "categoria": "impermeabilizacion"
+  },
+  {
+   "nombre": "Impermeabilizante acrilico caneca 5gl",
+   "unidad": "caneca",
+   "precio": 219900,
+   "categoria": "impermeabilizacion"
+  },
+  {
+   "nombre": "Cinta sella filtraciones 10cm x 10m",
+   "unidad": "rollo",
+   "precio": 49900,
+   "categoria": "impermeabilizacion"
+  },
+  {
+   "nombre": "Polietileno negro cal.6 ancho 2m",
+   "unidad": "m",
+   "precio": 3900,
+   "categoria": "impermeabilizacion"
+  },
+  {
+   "nombre": "Geotextil NT 1600 ancho 3.5m",
+   "unidad": "m",
+   "precio": 8900,
+   "categoria": "impermeabilizacion"
+  },
+  {
+   "nombre": "Emulsion asfaltica caneca 5gl",
+   "unidad": "caneca",
+   "precio": 129900,
+   "categoria": "impermeabilizacion"
+  },
+  {
+   "nombre": "Pintura bituminosa galon",
+   "unidad": "galon",
+   "precio": 39900,
+   "categoria": "impermeabilizacion"
   },
   {
    "nombre": "Sika-1 impermeabilizante 20kg",
    "unidad": "caneca",
    "precio": 145000,
    "categoria": "aditivos"
+  },
+  {
+   "nombre": "Plastificante concreto litro",
+   "unidad": "litro",
+   "precio": 12900,
+   "categoria": "aditivos"
+  },
+  {
+   "nombre": "Acelerante fraguado litro",
+   "unidad": "litro",
+   "precio": 14900,
+   "categoria": "aditivos"
+  },
+  {
+   "nombre": "Curador concreto galon",
+   "unidad": "galon",
+   "precio": 32900,
+   "categoria": "aditivos"
+  },
+  {
+   "nombre": "Epoxico union concreto 1kg",
+   "unidad": "un",
+   "precio": 64900,
+   "categoria": "aditivos"
+  },
+  {
+   "nombre": "Desmoldante formaleta galon",
+   "unidad": "galon",
+   "precio": 29900,
+   "categoria": "aditivos"
+  },
+  {
+   "nombre": "Sellante poliuretano 300ml",
+   "unidad": "un",
+   "precio": 24900,
+   "categoria": "aditivos"
+  },
+  {
+   "nombre": "Limpiador acido ladrillos galon",
+   "unidad": "galon",
+   "precio": 22900,
+   "categoria": "aditivos"
+  },
+  {
+   "nombre": "Disco corte metal 4-1/2",
+   "unidad": "un",
+   "precio": 4900,
+   "categoria": "consumibles"
+  },
+  {
+   "nombre": "Disco diamantado 4-1/2 continuo",
+   "unidad": "un",
+   "precio": 19900,
+   "categoria": "consumibles"
+  },
+  {
+   "nombre": "Broca tungsteno 1/4",
+   "unidad": "un",
+   "precio": 6900,
+   "categoria": "consumibles"
+  },
+  {
+   "nombre": "Lija agua No.150 pliego",
+   "unidad": "un",
+   "precio": 1800,
+   "categoria": "consumibles"
+  },
+  {
+   "nombre": "Llana metalica 28cm",
+   "unidad": "un",
+   "precio": 18900,
+   "categoria": "consumibles"
+  },
+  {
+   "nombre": "Palustre 8 profesional",
+   "unidad": "un",
+   "precio": 16900,
+   "categoria": "consumibles"
+  },
+  {
+   "nombre": "Boquillera manguera niveladora 15m",
+   "unidad": "un",
+   "precio": 24900,
+   "categoria": "consumibles"
+  },
+  {
+   "nombre": "Balde caucho 12L",
+   "unidad": "un",
+   "precio": 9800,
+   "categoria": "consumibles"
+  },
+  {
+   "nombre": "Carretilla buggy llanta neumatica",
+   "unidad": "un",
+   "precio": 189900,
+   "categoria": "consumibles"
+  },
+  {
+   "nombre": "Manguera riego 1/2 x 20m",
+   "unidad": "un",
+   "precio": 42900,
+   "categoria": "consumibles"
+  },
+  {
+   "nombre": "Casco seguridad con rachet",
+   "unidad": "un",
+   "precio": 22900,
+   "categoria": "epp"
+  },
+  {
+   "nombre": "Guantes vaqueta par",
+   "unidad": "par",
+   "precio": 12900,
+   "categoria": "epp"
+  },
+  {
+   "nombre": "Botas caucho amarillas par",
+   "unidad": "par",
+   "precio": 34900,
+   "categoria": "epp"
+  },
+  {
+   "nombre": "Gafas seguridad claras",
+   "unidad": "un",
+   "precio": 8900,
+   "categoria": "epp"
+  },
+  {
+   "nombre": "Arnes cuerpo completo + eslinga",
+   "unidad": "un",
+   "precio": 189900,
+   "categoria": "epp"
+  },
+  {
+   "nombre": "Cinta senalizacion peligro x 500m",
+   "unidad": "rollo",
+   "precio": 39900,
+   "categoria": "epp"
+  },
+  {
+   "nombre": "Malla senalizacion naranja 1x50m",
+   "unidad": "rollo",
+   "precio": 89900,
+   "categoria": "epp"
+  },
+  {
+   "nombre": "Extintor multiproposito 10lb",
+   "unidad": "un",
+   "precio": 79900,
+   "categoria": "epp"
+  },
+  {
+   "nombre": "Tanque agua 500L con tapa",
+   "unidad": "un",
+   "precio": 289900,
+   "categoria": "tanques-bombas"
+  },
+  {
+   "nombre": "Tanque agua 1000L con tapa",
+   "unidad": "un",
+   "precio": 449900,
+   "categoria": "tanques-bombas"
+  },
+  {
+   "nombre": "Motobomba periferica 1/2 HP",
+   "unidad": "un",
+   "precio": 149900,
+   "categoria": "tanques-bombas"
+  },
+  {
+   "nombre": "Presurizador 120W automatico",
+   "unidad": "un",
+   "precio": 389900,
+   "categoria": "tanques-bombas"
+  },
+  {
+   "nombre": "Flotador mecanico tanque 1/2",
+   "unidad": "un",
+   "precio": 18900,
+   "categoria": "tanques-bombas"
+  },
+  {
+   "nombre": "Tanque septico 1000L",
+   "unidad": "un",
+   "precio": 689900,
+   "categoria": "tanques-bombas"
   }
  ]
 }

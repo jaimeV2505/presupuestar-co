@@ -43,6 +43,8 @@ export default function Editor() {
   const [sugerenciaPara, setSugerenciaPara] = useState(-1)
   const [charla, setCharla] = useState(null)          // interacciones del cliente, por avance
   const [respondiendo, setRespondiendo] = useState({})  // {avance_id: texto}
+  const [catalogo, setCatalogo] = useState(null)        // {categorias} | {insumos}
+  const [showCatalogo, setShowCatalogo] = useState(false)
 
   // Calculadora de cantidades + Preview
   const [calcAbierta, setCalcAbierta] = useState(null)  // idx del item con calc abierta
@@ -1005,8 +1007,12 @@ export default function Editor() {
                         className="text-slate-300 hover:text-red-400 px-1">×</button>
               </div>
             ))}
-            <button onClick={() => setConstruyendo(c => ({ ...c, insumos: [...c.insumos, { nombre: '', cantidad: '', precio: '' }] }))}
-                    className="text-xs font-medium text-navy-600 mb-3">+ agregar insumo</button>
+            <div className="flex gap-3 mb-3">
+              <button onClick={() => setConstruyendo(c => ({ ...c, insumos: [...c.insumos, { nombre: '', cantidad: '', precio: '' }] }))}
+                      className="text-xs font-medium text-navy-600">+ agregar insumo</button>
+              <button onClick={() => { insumosAPI.catalogo().then(setCatalogo).catch(() => {}); setShowCatalogo(true) }}
+                      className="text-xs font-medium text-emerald-600">📦 Catálogo de referencia (229 insumos)</button>
+            </div>
 
             <button onClick={async () => {
                       try {
@@ -1169,6 +1175,46 @@ export default function Editor() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal CATALOGO DE INSUMOS (referencia curada, dentro del constructor) */}
+      {showCatalogo && (
+        <div className="fixed inset-0 bg-black/40 z-[70] flex items-start justify-center p-4 pt-[8vh]" onClick={() => { setShowCatalogo(false); setCatalogo(null) }}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-md max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-slate-800 mb-1">📦 Catálogo de referencia</h3>
+            <p className="text-[10px] text-slate-400 mb-3">Precios de vitrina del mercado (v{catalogo?.version || '2026'}) — referencia, no precio en vivo. Toca uno para llevarlo al constructor.</p>
+            {catalogo?.categorias && (
+              <div className="grid grid-cols-2 gap-1.5">
+                {catalogo.categorias.map(ct => (
+                  <button key={ct.nombre} onClick={() => insumosAPI.catalogo(ct.nombre).then(setCatalogo).catch(() => {})}
+                          className="rounded-xl border border-slate-100 hover:border-emerald-300 p-2.5 text-left transition">
+                    <p className="text-xs font-semibold text-slate-700 capitalize">{ct.nombre.replace('-', ' ')}</p>
+                    <p className="text-[9px] text-slate-400">{ct.n} insumos</p>
+                  </button>
+                ))}
+              </div>
+            )}
+            {catalogo?.insumos && (
+              <>
+                <button onClick={() => insumosAPI.catalogo().then(setCatalogo).catch(() => {})}
+                        className="text-xs text-slate-400 mb-2">← categorías</button>
+                {catalogo.insumos.map((ins, k) => (
+                  <button key={k}
+                          onClick={() => {
+                            setConstruyendo(c => ({ ...c, insumos: [...c.insumos, { nombre: ins.nombre, cantidad: '', precio: ins.precio }] }))
+                            setShowCatalogo(false); setCatalogo(null)
+                            toast.success(`${ins.nombre} al constructor — ajusta la cantidad 📦`, { duration: 1800 })
+                          }}
+                          className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-emerald-50 text-left border-b border-slate-50">
+                    <span className="text-xs text-slate-600 flex-1 pr-2">{ins.nombre}</span>
+                    <span className="text-xs font-bold text-slate-700 tabular-nums shrink-0">{COP(ins.precio)}
+                      <span className="font-normal text-slate-300 text-[10px]"> /{ins.unidad}</span></span>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
       )}

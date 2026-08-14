@@ -49,3 +49,19 @@ def comparar(q: str = Query(..., min_length=2), user: Usuario = Depends(usuario_
     ref = min(refs, key=lambda r: r["precio"]) if refs else None
     ahorro = (ref["precio"] - mejor_mio["precio"]) if (mejor_mio and ref) else None
     return {"q": data["q"], "mi_mejor": mejor_mio, "referencia": ref, "ahorro": ahorro}
+
+
+@router.get("/catalogo")
+def catalogo(categoria: str = "", user: Usuario = Depends(usuario_actual)):
+    """El catalogo curado navegable: categorias con conteo, o los insumos de una categoria."""
+    from app.services.fuentes_precios import _cargar_curada
+    data = _cargar_curada()
+    if not categoria:
+        cats = {}
+        for i in data["insumos"]:
+            cats[i["categoria"]] = cats.get(i["categoria"], 0) + 1
+        return {"version": data["version"], "nota": data.get("nota", ""),
+                "total": len(data["insumos"]),
+                "categorias": [{"nombre": k, "n": v} for k, v in sorted(cats.items())]}
+    items = [i for i in data["insumos"] if i["categoria"] == categoria.strip()[:40]][:60]
+    return {"categoria": categoria, "insumos": items, "version": data["version"]}

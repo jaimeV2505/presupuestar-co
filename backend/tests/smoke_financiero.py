@@ -169,6 +169,19 @@ print("OK balance de obra: caso exacto de 3 items + division segura")
 # ═══ ADAPTADOR DE FUENTES DE PRECIOS ═══
 from app.services.fuentes_precios import fuente_curada, fuente_externa
 
+# candado de calidad: la base curada es un ACTIVO — 200+ insumos, sin duplicados, precios sanos
+import json as _j, os as _o
+_base = _j.load(open(_o.path.join(_o.path.dirname(__file__), "..", "app", "data", "insumos_2026.json"), encoding="utf-8"))
+_ins = _base["insumos"]
+assert len(_ins) >= 200, f"la base curada bajo de 200: {len(_ins)}"
+_noms = [i["nombre"] for i in _ins]
+assert len(_noms) == len(set(_noms)), "insumos duplicados en la base"
+for i in _ins:
+    assert i["nombre"] and i["unidad"] and i["categoria"], i
+    assert 500 <= i["precio"] <= 5_000_000, f"precio sospechoso: {i}"
+assert len({i["categoria"] for i in _ins}) >= 15
+assert _base["version"] >= "2026.2"
+
 r = fuente_curada("cemento")
 assert any(i["nombre"].startswith("Cemento gris") and i["precio"] == 28500 for i in r), r
 assert all(i["fuente"] == "referencia" and i["fecha"] for i in r)

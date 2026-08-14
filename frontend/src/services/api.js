@@ -58,6 +58,7 @@ export const proyectosAPI = {
 }
 
 export const insumosAPI = {
+  catalogo: (categoria) => api.get('/insumos/catalogo', { params: categoria ? { categoria } : {} }).then(r => r.data),
   buscar: (q) => api.get('/insumos/buscar', { params: { q } }).then(r => r.data),
   comparar: (q) => api.get('/insumos/comparar', { params: { q } }).then(r => r.data),
 }
