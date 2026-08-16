@@ -247,6 +247,29 @@ export default function Editor() {
   const esPublico = p?.sector === 'publico'
   const soloLectura = p?.estado === 'terminado'   // 🔒 terminado: solo vista, duplicar para reutilizar
 
+  // ── F1: visibilidad del ANÁLISIS del ítem (desglose de Mis APUs) ────────
+  const [desgloses, setDesgloses] = useState({ porId: {}, porCodigo: {} })
+  const [analisisAbierto, setAnalisisAbierto] = useState(null)  // _idx del item expandido
+  useEffect(() => {
+    apusAPI.listar({}).then(r => {
+      const porId = {}, porCodigo = {}
+      for (const a of (r.items || [])) {
+        if (a.desglose?.insumos?.length) {
+          porId[a.id] = a.desglose
+          if (a.codigo) porCodigo[a.codigo] = a.desglose
+        }
+      }
+      setDesgloses({ porId, porCodigo })
+    }).catch(() => {})
+  }, [id])
+  const desgloseDe = (it) => {
+    if (it.apu_id && desgloses.porId[it.apu_id]) return desgloses.porId[it.apu_id]
+    const cod = (it.codigo || '').trim()
+    if (cod.startsWith('MIO-') && desgloses.porId[parseInt(cod.slice(4))]) return desgloses.porId[parseInt(cod.slice(4))]
+    return desgloses.porCodigo[cod] || null
+  }
+  const nAnalizados = items.filter(it => desgloseDe(it)).length
+
   useEffect(() => {
     if (!showBuscador || fuenteApu !== 'mios') return
     apusAPI.listar({ q: q || undefined, sector: esPublico ? 'publico' : 'privado' })
@@ -503,6 +526,10 @@ export default function Editor() {
                       style={{ width: 'calc(100% - 8px)' }}>
                 📑 APUs detallados (anexo de propuesta)
               </button>
+              <p className="text-[9px] text-slate-400 px-1 mt-1 text-center">
+                {nAnalizados} de {items.length} ítems con análisis completo
+                {nAnalizados < items.length && ' — constrúyelos por insumos 🧱 para una propuesta 100% sustentada'}
+              </p>
             </div>
   )
 
@@ -731,6 +758,13 @@ export default function Editor() {
                             calc: {it.calc.n || 1} × {it.calc.largo || '?'}{tipoCalc(it.unidad) !== 'lineal' ? ` × ${it.calc.ancho || '?'}` : ''}{tipoCalc(it.unidad) === 'volumen' ? ` × ${it.calc.alto || '?'}` : ''}m
                           </span>
                         )}
+                        {desgloseDe(it) && (
+                          <button onClick={() => setAnalisisAbierto(analisisAbierto === it._idx ? null : it._idx)}
+                                  className={`text-[10px] font-bold rounded-full px-2 py-0.5 transition ${analisisAbierto === it._idx ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-600 hover:bg-violet-100'}`}
+                                  title="Este ítem entra ESPECIFICADO al anexo de APUs">
+                            🔬 Análisis {analisisAbierto === it._idx ? '▲' : '▼'}
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -764,6 +798,46 @@ export default function Editor() {
                   </div>
 
                   {/* Calculadora de cantidades */}
+                  {analisisAbierto === it._idx && desgloseDe(it) && (() => {
+                    const d = desgloseDe(it)
+                    return (
+                      <div className="px-3 pb-3 bg-violet-50/60">
+                        <div className="pt-2 text-[10px]">
+                          <p className="font-bold text-violet-700 mb-1">Así se compone este precio (igual que en el anexo de propuesta):</p>
+                          <div className="bg-white rounded-lg border border-violet-100 overflow-hidden">
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 bg-violet-600 text-white font-bold">
+                              <span className="col-span-5">1. MATERIALES</span><span>Und</span><span className="text-right">Cant.</span><span className="text-right">Desp.%</span><span className="col-span-2 text-right">Vr. unit.</span><span className="col-span-2 text-right">Parcial</span>
+                            </div>
+                            {d.insumos.map((ins, k) => (
+                              <div key={k} className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-600">
+                                <span className="col-span-5 truncate" title={ins.nombre}>{ins.nombre}</span>
+                                <span>{ins.unidad}</span>
+                                <span className="text-right">{ins.cantidad}</span>
+                                <span className="text-right">{ins.desperdicio_pct || 0}</span>
+                                <span className="col-span-2 text-right">{COP(ins.precio)}</span>
+                                <span className="col-span-2 text-right">{COP(ins.parcial)}</span>
+                              </div>
+                            ))}
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-100 bg-violet-50 font-semibold text-slate-700">
+                              <span className="col-span-10">Subtotal materiales</span><span className="col-span-2 text-right">{COP(d.materiales)}</span>
+                            </div>
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700">
+                              <span className="col-span-10">2. Mano de obra (por {it.unidad})</span><span className="col-span-2 text-right">{COP(d.mano_obra)}</span>
+                            </div>
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700">
+                              <span className="col-span-10">3. Herramienta menor ({d.herramienta_pct || 0}% de MO)</span><span className="col-span-2 text-right">{COP(d.herramienta)}</span>
+                            </div>
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-200 bg-violet-100 font-black text-violet-800">
+                              <span className="col-span-10">PRECIO UNITARIO ANALIZADO</span><span className="col-span-2 text-right">{COP(d.precio_unitario)}</span>
+                            </div>
+                          </div>
+                          {Math.round(d.precio_unitario) !== Math.round(parseFloat(it.precio_unitario) || 0) && (
+                            <p className="text-amber-600 mt-1">⚠️ El precio pactado ({COP(it.precio_unitario)}) difiere del analizado — el anexo lo anota como ajuste comercial.</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })()}
                   {calcAbierta === it._idx && tipoCalc(it.unidad) && (
                     <div className="px-3 pb-3 bg-blue-50/50">
                       <div className="flex items-end gap-2 flex-wrap pt-2">

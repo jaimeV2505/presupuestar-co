@@ -304,17 +304,29 @@ def exportar_apus_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual
         es_publico = (p.sector or "privado") == "publico"
         region = FACTORES_REGION.get(p.region or "bogota", FACTORES_REGION["bogota"])
 
-        # Desgloses del usuario, indexados (una sola query)
-        ids = [it["apu_id"] for it in items if it.get("apu_id")]
-        desgloses = {}
-        if ids:
-            for a in db.query(ApuUsuario).filter(ApuUsuario.id.in_(ids),
-                                                 ApuUsuario.user_id == user.id).all():
-                if a.desglose_json:
-                    try:
-                        desgloses[a.id] = json.loads(a.desglose_json)
-                    except Exception:
-                        pass
+        # Desgloses del usuario (una sola query): resolvemos por apu_id, por
+        # codigo legado "MIO-{id}" y por codigo exacto — asi los items viejos
+        # (agregados antes del enlace apu_id) tambien entran ESPECIFICADOS.
+        por_id, por_codigo = {}, {}
+        for a in db.query(ApuUsuario).filter(ApuUsuario.user_id == user.id,
+                                             ApuUsuario.desglose_json != "").all():
+            try:
+                dj = json.loads(a.desglose_json)
+            except Exception:
+                continue
+            if not dj or not dj.get("insumos"):
+                continue
+            por_id[a.id] = dj
+            if (a.codigo or "").strip():
+                por_codigo[a.codigo.strip()] = dj
+
+        def _desglose_de(it):
+            if it.get("apu_id") and it["apu_id"] in por_id:
+                return por_id[it["apu_id"]]
+            cod = (it.get("codigo") or "").strip()
+            if cod.startswith("MIO-") and cod[4:].isdigit() and int(cod[4:]) in por_id:
+                return por_id[int(cod[4:])]
+            return por_codigo.get(cod)
 
         buf = io.BytesIO()
         doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=1.4*cm, bottomMargin=1.4*cm,
@@ -375,7 +387,7 @@ def exportar_apus_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual
                     f"{round((pl-pu)*100/pl, 1)}% ya reflejado en el unitario.", st_nota))
             story.append(Spacer(1, 3))
 
-            d = desgloses.get(it.get("apu_id"))
+            d = _desglose_de(it)
             if d and d.get("insumos"):
                 filas = [["1. MATERIALES", "Und", "Cant.", "Desp.%", "Vr. unit.", "Parcial"]]
                 for ins in d["insumos"][:40]:
