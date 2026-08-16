@@ -254,6 +254,22 @@ r = c.post("/api/exportar/explosion-excel", json={"proyecto_id": PID}, headers=H
 paso("lista de materiales en Excel (para la ferreteria)", r)
 assert r.content[:2] == b"PK", "el Excel de materiales no es un xlsx"
 PASOS.append("explosion de insumos exacta + cruce con proveedor + Excel")
+
+# EL FORMATO DEL OFICIO: el Excel principal trae las 3 hojas del formato real
+r = c.post("/api/exportar/excel", json={"proyecto_id": PID}, headers=H)
+paso("Excel del presupuesto en formato del oficio (3 hojas)", r)
+from openpyxl import load_workbook as _lwb
+import io as _io
+_wb = _lwb(_io.BytesIO(r.content))
+assert _wb.sheetnames == ["Presupuesto", "Memoria de cantidades", "Materiales"], _wb.sheetnames
+_txt = " ".join(str(cel.value) for fila in _wb["Presupuesto"].iter_rows() for cel in fila if cel.value)
+assert "VALOR TOTAL OBRA" in _txt and "ELABORÓ" in _txt, "faltan las filas de cierre del oficio"
+assert "1.1" in _txt, "falta la numeracion jerarquica de items"
+_mat = " ".join(str(cel.value) for fila in _wb["Materiales"].iter_rows() for cel in fila if cel.value)
+assert "Cemento gris" in _mat and "TOTAL MATERIALES" in _mat, "la hoja Materiales no trae la explosion viva"
+_mem = " ".join(str(cel.value) for fila in _wb["Memoria de cantidades"].iter_rows() for cel in fila if cel.value)
+assert "MEMORIA DE CANTIDADES" in _mem and "Panete" in _mem, "la memoria no lista las actividades"
+PASOS.append("Excel formato del oficio: 3 hojas, numeracion 1.1, VALOR TOTAL OBRA, ELABORO, memoria y materiales vivos")
 r = c.put(f"/api/proyectos/{PID}", json={"estado": "borrador"}, headers=H)
 paso("CANDADO: degradar el estado tras el sello -> 400", r, status=400)
 r = c.put(f"/api/proyectos/{PID}", json={"estado": "entrega_solicitada"}, headers=H)

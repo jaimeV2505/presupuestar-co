@@ -67,19 +67,22 @@ def exportar_excel(req: ExportRequest, user: Usuario = Depends(usuario_actual), 
         _incid = {c["capitulo"]: c["pct"] for c in tot.get("capitulos", [])}
         cap_actual = None
         n = 0
+        num_cap = 0          # numeracion jerarquica del oficio: 1, 1.1, 1.2, 2, 2.1...
         for it in items:
             cap = it.get("capitulo", "OTROS")
             if cap != cap_actual:
                 cap_actual = cap
+                num_cap += 1
+                n = 0
                 pct_cap = _incid.get(cap)
                 c = ws.cell(row=fila, column=1,
-                            value=f"{cap}  ·  incidencia {pct_cap}%" if pct_cap is not None else cap)
+                            value=f"{num_cap}  {cap}" + (f"  ·  incidencia {pct_cap}%" if pct_cap is not None else ""))
                 ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=7)
                 c.fill = gris; c.font = bold
                 fila += 1
             n += 1
             total_item = round(it["cantidad"] * it["precio_unitario"])
-            vals = [n, cap, it["descripcion"], it["unidad"], it["cantidad"], it["precio_unitario"], total_item]
+            vals = [f"{num_cap}.{n}", cap, it["descripcion"], it["unidad"], it["cantidad"], it["precio_unitario"], total_item]
             for col, v in enumerate(vals, 1):
                 c = ws.cell(row=fila, column=col, value=v)
                 c.border = thin
@@ -108,6 +111,11 @@ def exportar_excel(req: ExportRequest, user: Usuario = Depends(usuario_actual), 
             _linea(f"Utilidad {tot['utilidad_pct']}%", tot["utilidad_valor"])
         _linea("IVA", tot["iva"])
         _linea("TOTAL", tot["total"], es_total=True)
+        c1 = ws.cell(row=fila, column=6, value="VALOR TOTAL OBRA")
+        c2 = ws.cell(row=fila, column=7, value=tot["total"])
+        c2.number_format = '"$"#,##0'
+        c1.font = c2.font = Font(bold=True, size=12, color="1C3A5E")
+        fila += 1
 
         ws.cell(row=fila + 1, column=1, value=tot["regimen_iva"]).font = Font(size=9, italic=True, color="64748B")
         fila += 2
@@ -127,9 +135,101 @@ def exportar_excel(req: ExportRequest, user: Usuario = Depends(usuario_actual), 
             c = ws.cell(row=fila + 1, column=1, value="Hecho con PresupuestarCO — presupuestos profesionales en minutos · presupuestar.co")
             c.font = Font(size=8, italic=True, color="94A3B8")
 
+        # ELABORO: la firma del formato del oficio
+        fila += 2
+        ws.cell(row=fila, column=1, value="ELABORÓ:").font = bold
+        ws.cell(row=fila, column=2, value=user.nombre or "")
+        ws.cell(row=fila + 1, column=2, value=user.empresa or "").font = Font(size=9, color="64748B")
+        ws.cell(row=fila + 2, column=2, value="_______________________  (firma)").font = Font(size=9, color="94A3B8")
+        fila += 3
+
         # Anchos
-        for col, w in zip("ABCDEFG", [6, 22, 55, 8, 10, 14, 16]):
+        for col, w in zip("ABCDEFG", [8, 22, 55, 8, 10, 14, 16]):
             ws.column_dimensions[col].width = w
+
+        # ══ HOJA 2: MEMORIA DE CANTIDADES — cada cantidad, justificada ══════
+        # El formato del oficio: ACTIVIDAD | UND | CANT | LARGO | ANCHO | ALTO | TOTAL.
+        # Sale de it["calc"] (la calculadora 📐) — SIEMPRE del dato vivo.
+        ws2 = wb.create_sheet("Memoria de cantidades")
+        ws2["A1"] = "MEMORIA DE CANTIDADES"
+        ws2["A1"].font = Font(bold=True, size=13, color="1C3A5E")
+        ws2["A2"] = f"{p.nombre} — justificación de cada cantidad del presupuesto"
+        ws2["A2"].font = Font(size=9, color="64748B")
+        f2 = 4
+        heads2 = ["Actividad", "Und", "# Elem.", "Largo (m)", "Ancho (m)", "Alto (m)", "Cantidad total"]
+        for col, h in enumerate(heads2, 1):
+            c = ws2.cell(row=f2, column=col, value=h)
+            c.fill = azul; c.font = blanco_bold
+        f2 += 1
+        cap_actual2 = None
+        con_memoria = 0
+        for it in items:
+            cap = it.get("capitulo", "OTROS")
+            if cap != cap_actual2:
+                cap_actual2 = cap
+                c = ws2.cell(row=f2, column=1, value=cap)
+                ws2.merge_cells(start_row=f2, start_column=1, end_row=f2, end_column=7)
+                c.fill = gris; c.font = bold
+                f2 += 1
+            calc = it.get("calc") or {}
+            tiene = bool(calc.get("largo") or calc.get("n"))
+            if tiene:
+                con_memoria += 1
+            vals2 = [it["descripcion"][:90], it.get("unidad", ""),
+                     calc.get("n") or (1 if tiene else ""),
+                     calc.get("largo") or "", calc.get("ancho") or "", calc.get("alto") or "",
+                     it["cantidad"]]
+            for col, v in enumerate(vals2, 1):
+                c = ws2.cell(row=f2, column=col, value=v)
+                c.border = thin
+            if not tiene:
+                ws2.cell(row=f2, column=3, value="—").font = Font(color="94A3B8")
+                ws2.cell(row=f2 + 0, column=4, value="cantidad directa").font = Font(size=8, italic=True, color="94A3B8")
+            f2 += 1
+        ws2.cell(row=f2 + 1, column=1,
+                 value=f"{con_memoria} de {len(items)} cantidades con memoria dimensional (calculadora 📐). "
+                       f"Las demás son cantidades directas del presupuestador.").font = Font(size=8, italic=True, color="64748B")
+        for col, w in zip("ABCDEFG", [55, 8, 9, 10, 10, 10, 14]):
+            ws2.column_dimensions[col].width = w
+
+        # ══ HOJA 3: MATERIALES — la explosion de insumos, en el mismo libro ══
+        ws3 = wb.create_sheet("Materiales")
+        ws3["A1"] = "CANTIDAD DE MATERIALES"
+        ws3["A1"].font = Font(bold=True, size=13, color="1C3A5E")
+        from app.services.explosion_service import explosion_de_insumos
+        rexp = explosion_de_insumos(items, _resolutor_de_desgloses(user, db),
+                                    _precios_negociados(user, db))
+        ws3["A2"] = (f"{rexp['items_explotados']} actividades explotadas · desperdicio incluido · "
+                     f"precios: tus proveedores primero, luego el APU")
+        ws3["A2"].font = Font(size=9, color="64748B")
+        f3 = 4
+        for col, h in enumerate(["Material", "Und", "Cantidad", "Precio", "Fuente", "Valor total"], 1):
+            c = ws3.cell(row=f3, column=col, value=h)
+            c.fill = azul; c.font = blanco_bold
+        f3 += 1
+        for i3 in rexp["insumos"]:
+            vals3 = [i3["nombre"], i3["unidad"], i3["cantidad"], i3["precio"] or "",
+                     (f"🏪 {i3['proveedor']} ({i3['fecha_precio']})" if i3["fuente_precio"] == "mi_proveedor"
+                      else ("precio del APU" if i3["fuente_precio"] == "apu" else "")),
+                     i3["subtotal"] or ""]
+            for col, v in enumerate(vals3, 1):
+                c = ws3.cell(row=f3, column=col, value=v)
+                c.border = thin
+                if col in (4, 6) and v != "":
+                    c.number_format = '"$"#,##0'
+            f3 += 1
+        c1 = ws3.cell(row=f3, column=5, value="TOTAL MATERIALES")
+        c2 = ws3.cell(row=f3, column=6, value=rexp["total_estimado"])
+        c2.number_format = '"$"#,##0'
+        c1.font = c2.font = bold
+        c1.fill = c2.fill = gris
+        if rexp["items_sin_desglose"]:
+            ws3.cell(row=f3 + 2, column=1,
+                     value=f"{rexp['items_sin_desglose']} actividad(es) sin desglose no entran "
+                           f"(construyelas por insumos 🧱): " + "; ".join(rexp["sin_desglose"][:6])).font = \
+                Font(size=8, italic=True, color="B45309")
+        for col, w in zip("ABCDEF", [45, 8, 12, 13, 30, 15]):
+            ws3.column_dimensions[col].width = w
 
         buf = io.BytesIO()
         wb.save(buf)
