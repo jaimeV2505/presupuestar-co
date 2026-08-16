@@ -14,19 +14,36 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.db import (get_db, Usuario, Cliente, Proyecto, EventoShare, Avance,
-                    Gasto, CuentaCobro, Encuesta, Notificacion, PagoWompi)
+                    Gasto, CuentaCobro, Encuesta, Notificacion, PagoWompi,
+                    Otrosi, Abono, InteraccionCliente, ApuUsuario, Proveedor,
+                    PrecioProveedor, TicketSoporte, MensajeSoporte, SolicitudPro)
 from app.api.pagos import admin_actual, _admins
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# TODO lo que vale la pena renacer, en orden de restore (padres antes que hijos).
+# Excluido A PROPOSITO: IntentoAcceso (ruido de rate-limit, sin valor de restore).
 MODELOS = [Usuario, Cliente, Proyecto, EventoShare, Avance, Gasto,
-           CuentaCobro, Encuesta, Notificacion, PagoWompi]
+           CuentaCobro, Abono, Otrosi, InteraccionCliente,
+           ApuUsuario, Proveedor, PrecioProveedor,
+           Encuesta, Notificacion, PagoWompi,
+           TicketSoporte, MensajeSoporte, SolicitudPro]
 
 
 def _serializar(obj):
+    # SEGURIDAD DEL RESPALDO: las credenciales JAMAS viajan en el backup.
+    # Un backup se comparte, se sube a Drive, se pega en herramientas —
+    # los hashes de clave y tokens de recuperacion no tienen por que ir.
+    # Al restaurar, cada usuario recupera su clave con "olvide mi clave".
+    SENSIBLES = {"password_hash": "[protegido — restaurar via 'olvide mi clave']",
+                 "reset_token_hash": None, "reset_expira": None}
     out = {}
     for col in obj.__table__.columns:
+        if obj.__table__.name == "usuarios" and col.name in SENSIBLES:
+            if SENSIBLES[col.name] is not None:
+                out[col.name] = SENSIBLES[col.name]
+            continue
         v = getattr(obj, col.name)
         if isinstance(v, (datetime, date)):
             v = v.isoformat()

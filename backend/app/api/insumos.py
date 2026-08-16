@@ -12,9 +12,8 @@ from app.services.fuentes_precios import fuente_curada, fuente_externa
 router = APIRouter()
 
 
-@router.get("/buscar")
-def buscar(q: str = Query(..., min_length=2), user: Usuario = Depends(usuario_actual),
-           db: Session = Depends(get_db)):
+def _buscar_nucleo(q: str, user: Usuario, db: Session):
+    """Buscador multi-fuente: MIS proveedores > referencia curada > externas."""
     q = q.strip()[:80]
     if len(q) < 2:
         raise HTTPException(400, "Escribe al menos 2 letras")
@@ -38,11 +37,18 @@ def buscar(q: str = Query(..., min_length=2), user: Usuario = Depends(usuario_ac
     return {"q": q, "resultados": resultados[:24]}
 
 
+@router.get("/buscar")
+def buscar(q: str = Query(..., min_length=2), user: Usuario = Depends(usuario_actual),
+           db: Session = Depends(get_db)):
+    """El buscador (handler delgado — la logica vive en el nucleo compartido)."""
+    return _buscar_nucleo(q, user, db)
+
+
 @router.get("/comparar")
 def comparar(q: str = Query(..., min_length=2), user: Usuario = Depends(usuario_actual),
              db: Session = Depends(get_db)):
     """El comparador: mi mejor precio vs la referencia — cuanto me ahorro."""
-    data = buscar(q, user, db)
+    data = _buscar_nucleo(q, user, db)
     mios = [r for r in data["resultados"] if r["fuente"] == "mi_proveedor"]
     refs = [r for r in data["resultados"] if r["fuente"] == "referencia"]
     mejor_mio = min(mios, key=lambda r: r["precio"]) if mios else None

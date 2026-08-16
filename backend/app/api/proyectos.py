@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
-from app.db import get_db, Usuario, Proyecto, EventoShare
+from app.db import get_db, Usuario, Proyecto, EventoShare, Otrosi
 from app.api.auth import usuario_actual
 from app.services.calculo_presupuesto import calcular_totales, validar_items
 
@@ -134,19 +134,32 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
     n_enviados = 0
     n_ganados = 0
 
+    # Los adicionales APROBADOS son valor real del contrato — los KPIs los suman
+    _ads = {}
+    _ids = [p.id for p in proyectos]
+    if _ids:
+        for o in db.query(Otrosi).filter(Otrosi.proyecto_id.in_(_ids),
+                                         Otrosi.estado == "aprobado").all():
+            try:
+                _t = json.loads(o.totales_json or "{}").get("total") or 0
+            except ValueError:
+                _t = 0
+            _ads[o.proyecto_id] = _ads.get(o.proyecto_id, 0) + _t
+
     for p in proyectos:
         items = json.loads(p.items_json or "[]")
         aiu = json.loads(p.aiu_json or "{}")
         t = calcular_totales(items, aiu)
+        valor_real = t["total"] + _ads.get(p.id, 0)   # base + adicionales aprobados
         total_cotizado += t["total"]
         if p.estado in ENVIADOS:
             n_enviados += 1
         if p.estado in GANADOS:
             n_ganados += 1
-            total_ganado += t["total"]
+            total_ganado += valor_real
             utilidad_proyectada += t["utilidad_valor"]
         if p.estado in ("aceptado", "entrega_solicitada"):
-            en_ejecucion_valor += t["total"]
+            en_ejecucion_valor += valor_real
             en_ejecucion_n += 1
 
     from app.db import CuentaCobro, Gasto
@@ -307,6 +320,8 @@ def crear_desde_plantilla(req: DesdePlantillaRequest,
     db.add(p)
     from app.api.clientes import vincular_cliente
     vincular_cliente(p, user.id, db)
+    if user.plan == "gratis":
+        user.presupuestos_mes += 1   # las plantillas TAMBIEN cuentan (bypass cerrado)
     db.commit()
     db.refresh(p)
     logger.info(f"Proyecto desde plantilla '{req.plantilla_id}': {len(items)} items para {user.email}")
@@ -450,8 +465,13 @@ def terminar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sess
     return _proyecto_out(p, incluir_items=False, db=db)
 
 
+class DuplicarRequest(BaseModel):
+    nombre: str = ""   # opcional: nombre propio para la copia (flexibilidad, cero confusion)
+
+
 @router.post("/{proyecto_id}/duplicar")
-def duplicar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+def duplicar(proyecto_id: int, req: DuplicarRequest = None,
+             user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     _verificar_limite(user, db)
     p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
     if not p:
@@ -459,7 +479,7 @@ def duplicar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sess
     nuevo = Proyecto(
         user_id=user.id,
         numero=_generar_numero(user.id, db),
-        nombre=f"{p.nombre} (copia)",
+        nombre=((req.nombre if req else "").strip()[:200] or f"{p.nombre} (copia)"),
         sector=p.sector or "privado",
         entidad_nombre=p.entidad_nombre or "",
         contrato_numero=p.contrato_numero or "",

@@ -249,3 +249,64 @@ rneg = calcular_totales([{"cantidad": 1, "precio_unitario": 100, "precio_lista":
 assert rneg["descuento_valor"] == 0, rneg
 
 print("OK incidencia por capitulo + descuento de negociacion: exactos a peso")
+
+# ═══ FAMILIA 7: EXPLOSION DE INSUMOS — la lista de compras exacta (F2) ═══
+from app.services.explosion_service import explosion_de_insumos
+
+_D_PANETE = {"insumos": [
+    {"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.35, "precio": 28500, "desperdicio_pct": 5},
+    {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}],
+    "mano_obra": 9000, "herramienta_pct": 5}
+_D_ALISTADO = {"insumos": [
+    {"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.20, "precio": 28500},
+    {"nombre": "Gravilla", "unidad": "m3", "cantidad": 0.05, "precio": 70000, "desperdicio_pct": 10}],
+    "mano_obra": 7000, "herramienta_pct": 5}
+_MAPA = {"MI-PAN": _D_PANETE, "MI-ALI": _D_ALISTADO}
+
+ITEMS_EXP = [
+    {"codigo": "MI-PAN", "descripcion": "Panete 1:4", "cantidad": 300},
+    {"codigo": "MI-ALI", "descripcion": "Alistado piso", "cantidad": 50},
+    {"codigo": "1.01", "descripcion": "Acarreo (base 2026, sin desglose)", "cantidad": 10},
+]
+r = explosion_de_insumos(ITEMS_EXP, lambda it: _MAPA.get(it.get("codigo")),
+                         {"cemento gris": {"precio": 27900, "proveedor": "El Roble", "fecha": "01/08/2026"}})
+ins = {i["nombre"]: i for i in r["insumos"]}
+# Cemento: panete 300×0.35×1.05 = 110.25 + alistado 50×0.20 = 10.00 -> 120.25 bultos
+assert ins["Cemento gris"]["cantidad"] == 120.25, ins["Cemento gris"]
+assert ins["Cemento gris"]["en_items"] == 2, "el cemento debia consolidar 2 actividades"
+# Arena: 300×0.04 = 12.0 m3 · Gravilla: 50×0.05×1.10 = 2.75 m3
+assert ins["Arena lavada"]["cantidad"] == 12.0 and ins["Gravilla"]["cantidad"] == 2.75, ins
+# Cruce con MI proveedor: cemento a 27.900 (negociado) -> 120.25×27900 = 3.354.975
+assert ins["Cemento gris"]["precio"] == 27900 and ins["Cemento gris"]["fuente_precio"] == "mi_proveedor"
+assert ins["Cemento gris"]["subtotal"] == 3_354_975, ins["Cemento gris"]["subtotal"]
+# Sin negociado: cae al precio del APU (arena 65.000 -> 780.000)
+assert ins["Arena lavada"]["precio"] == 65000 and ins["Arena lavada"]["fuente_precio"] == "apu"
+assert ins["Arena lavada"]["subtotal"] == 780_000
+# Total estimado = 3.354.975 + 780.000 + gravilla 2.75×70000=192.500 -> 4.327.475
+assert r["total_estimado"] == 3_354_975 + 780_000 + 192_500, r["total_estimado"]
+# El parte honesto: 2 explotados, 1 sin desglose (el de la base)
+assert r["items_explotados"] == 2 and r["items_sin_desglose"] == 1
+assert "Acarreo" in r["sin_desglose"][0]
+# Ordenado por subtotal desc: cemento primero
+assert r["insumos"][0]["nombre"] == "Cemento gris"
+# Vacio no revienta
+r0 = explosion_de_insumos([], lambda it: None)
+assert r0["n_insumos"] == 0 and r0["total_estimado"] == 0
+
+print("OK explosion de insumos: 120.25 bultos exactos, cruce con proveedor y parte honesto")
+
+# ═══ FAMILIA 8: TRANSPORTE — el 4to componente del APU oficial ═══
+from app.services.apu_propio_service import componer_precio as _cp
+# el panete canonico + $1.500 de acarreo por m2 -> 22.524 + 1.500 = 24.024
+_r = _cp([{"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.35, "precio": 28500, "desperdicio_pct": 5},
+          {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}],
+         mano_obra=9000, herramienta_pct=5, transporte=1500)
+assert _r["transporte"] == 1500 and _r["precio_unitario"] == 24024, _r
+# sin transporte: identico al historico (retro-compatibilidad a peso)
+_r0 = _cp([{"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.35, "precio": 28500, "desperdicio_pct": 5},
+           {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}], 9000, 5)
+assert _r0["precio_unitario"] == 22524 and _r0["transporte"] == 0
+# negativo se aplana a 0 (no hay fletes que devuelven plata)
+assert _cp([], 1000, 0, transporte=-500)["precio_unitario"] == 1000
+
+print("OK transporte en el APU: 24.024 exacto + retro-compatible a peso")

@@ -17,7 +17,7 @@ export default function InfoTip({ texto }) {
       {abierto && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setAbierto(false)} />
-          <span className="absolute z-50 left-1/2 -translate-x-1/2 bottom-6 w-56 bg-slate-800 text-white text-[11px] leading-relaxed rounded-xl p-3 shadow-xl">
+          <span className="absolute z-50 left-1/2 -translate-x-1/2 bottom-6 w-56 bg-slate-800 text-white text-[11px] leading-relaxed rounded-xl p-3 shadow-xl normal-case font-normal tracking-normal text-left">
             {texto}
             <span className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 bg-slate-800 rotate-45" />
           </span>

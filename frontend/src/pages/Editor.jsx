@@ -34,7 +34,7 @@ export default function Editor() {
   const [nuevoProv, setNuevoProv] = useState({ nombre: '', telefono: '' })
   const [nuevoPrecio, setNuevoPrecio] = useState({ insumo: '', unidad: 'un', precio: '' })
   const [showConstructor, setShowConstructor] = useState(false)
-  const [construyendo, setConstruyendo] = useState({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5 })
+  const [construyendo, setConstruyendo] = useState({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5, transporte: '' })
   const [previewComp, setPreviewComp] = useState(null)
   const [showBalance, setShowBalance] = useState(false)
   const [showSeguimiento, setShowSeguimiento] = useState(false)
@@ -211,6 +211,14 @@ export default function Editor() {
       return
     }
     setContrato(nuevo)
+    // Deducciones >50%: se ve en pantalla (chip rojo) pero NO viaja al servidor
+    const totalDed = (nuevo.deducciones || []).reduce((s, x) => s + (parseFloat(x.pct) || 0), 0)
+    if (totalDed > 50) {
+      clearTimeout(timerContrato.current)
+      toast.error('Las deducciones suman más del 50% del corte — ajusta antes de guardar', { id: 'ded50' })
+      return
+    }
+    toast.dismiss('ded50')
     clearTimeout(timerContrato.current)
     timerContrato.current = setTimeout(() => {
       proyectosAPI.actualizar(id, { contrato: nuevo }).catch(e => toast.error(e.message))
@@ -247,6 +255,82 @@ export default function Editor() {
   const esPublico = p?.sector === 'publico'
   const soloLectura = p?.estado === 'terminado'   // 🔒 terminado: solo vista, duplicar para reutilizar
 
+  // ── F1: visibilidad del ANÁLISIS del ítem (desglose de Mis APUs) ────────
+  const [desgloses, setDesgloses] = useState({ porId: {}, porCodigo: {} })
+  const [analisisAbierto, setAnalisisAbierto] = useState(null)  // _idx del item expandido
+  const [showExplosion, setShowExplosion] = useState(false)     // F2: lista de materiales
+  const [rindeIdx, setRindeIdx] = useState(-1)                  // R2: calculadora de rendimiento
+  const [explosionData, setExplosionData] = useState(null)
+  useEffect(() => {
+    apusAPI.listar({}).then(r => {
+      const porId = {}, porCodigo = {}, codigoAId = {}
+      for (const a of (r.items || [])) {
+        if (a.desglose?.insumos?.length) {
+          porId[a.id] = a.desglose
+          if (a.codigo) { porCodigo[a.codigo] = a.desglose; codigoAId[a.codigo] = a.id }
+        }
+      }
+      setDesgloses({ porId, porCodigo, codigoAId })
+    }).catch(() => {})
+  }, [id])
+  const desgloseDe = (it) => {
+    if (it.apu_id && desgloses.porId[it.apu_id]) return desgloses.porId[it.apu_id]
+    const cod = (it.codigo || '').trim()
+    if (cod.startsWith('MIO-') && desgloses.porId[parseInt(cod.slice(4))]) return desgloses.porId[parseInt(cod.slice(4))]
+    return desgloses.porCodigo[cod] || null
+  }
+  const apuIdDe = (it) => {
+    if (it.apu_id && desgloses.porId[it.apu_id]) return it.apu_id
+    const cod = (it.codigo || '').trim()
+    if (cod.startsWith('MIO-') && desgloses.porId[parseInt(cod.slice(4))]) return parseInt(cod.slice(4))
+    return desgloses.codigoAId?.[cod] || null
+  }
+  const [anEdit, setAnEdit] = useState(null)          // copia editable del desglose abierto
+  const [anGuardando, setAnGuardando] = useState(false)
+  const abrirAnalisis = (it) => {
+    if (analisisAbierto === it._idx) { setAnalisisAbierto(null); setAnEdit(null); return }
+    const d = desgloseDe(it)
+    setAnalisisAbierto(it._idx)
+    setAnEdit(d ? JSON.parse(JSON.stringify({ ...d, transporte: d.transporte || 0 })) : null)
+  }
+  const recalcularAnalisis = async (it, aplicarAlItem) => {
+    const apuId = apuIdDe(it)
+    if (!apuId || !anEdit) return
+    // Pre-validación didáctica: el 400 del servidor jamás debe sorprender
+    const herr = parseFloat(anEdit.herramienta_pct) || 0
+    if (herr > 30) { toast.error('La herramienta es un % de la MO (máx 30). ¿Era un flete en pesos? Va en Transporte 🚚'); return }
+    const despMalo = (anEdit.insumos || []).find(x => (parseFloat(x.desperdicio_pct) || 0) > 50)
+    if (despMalo) { toast.error(`Desperdicio de "${despMalo.nombre}" fuera de rango (máx 50%)`); return }
+    setAnGuardando(true)
+    try {
+      const r = await apusAPI.guardarDesglose(apuId, {
+        insumos: anEdit.insumos.map(x => ({ nombre: x.nombre, unidad: x.unidad,
+          cantidad: parseFloat(x.cantidad) || 0, precio: parseFloat(x.precio) || 0,
+          desperdicio_pct: parseFloat(x.desperdicio_pct) || 0 })),
+        mano_obra: Math.round(parseFloat(anEdit.mano_obra) || 0),
+        herramienta_pct: parseFloat(anEdit.herramienta_pct) || 0,
+        transporte: Math.round(parseFloat(anEdit.transporte) || 0),
+      })
+      // el servidor es la fuente de verdad: refrescamos mapa y copia editable
+      setDesgloses(prev => {
+        const porId = { ...prev.porId, [apuId]: r.desglose }
+        const porCodigo = { ...prev.porCodigo }
+        if (r.codigo) porCodigo[r.codigo] = r.desglose
+        return { ...prev, porId, porCodigo }
+      })
+      setAnEdit(JSON.parse(JSON.stringify({ ...r.desglose, transporte: r.desglose.transporte || 0 })))
+      if (aplicarAlItem) {
+        setItemsYGuardar(prev => prev.map(x => x._idx === it._idx
+          ? { ...x, precio_unitario: r.precio, precio_lista: null, precio_editado: false } : x))
+        toast.success(`APU recalculado y aplicado: ${COP(r.precio)} — totales, anexo y lista de materiales al día ✨`)
+      } else {
+        toast.success(`APU recalculado: ${COP(r.precio)} (guardado en Mis APUs)`)
+      }
+    } catch (e2) { toast.error(e2.response?.data?.detail || e2.message) }
+    setAnGuardando(false)
+  }
+  const nAnalizados = items.filter(it => desgloseDe(it)).length
+
   useEffect(() => {
     if (!showBuscador || fuenteApu !== 'mios') return
     apusAPI.listar({ q: q || undefined, sector: esPublico ? 'publico' : 'privado' })
@@ -277,7 +361,7 @@ export default function Editor() {
       ...(esMio ? { apu_id: apu.id } : {}),   // F1: enlaza el desglose para el anexo de APUs
     }
     setItemsYGuardar(prev => [...prev, nuevo])
-    toast.success('Agregado', { duration: 1200 })
+    toast.success(`«${(apu.descripcion || '').slice(0, 32)}» → al presupuesto ✓ (cierra el buscador y lo ves en la tabla, capítulo ${nuevo.capitulo})`, { duration: 2600 })
   }
 
   // Detectar que formula aplica segun la unidad del item
@@ -503,6 +587,23 @@ export default function Editor() {
                       style={{ width: 'calc(100% - 8px)' }}>
                 📑 APUs detallados (anexo de propuesta)
               </button>
+              <p className="text-[9px] text-slate-400 px-1 mt-1 text-center">
+                {nAnalizados} de {items.length} ítems con análisis completo
+                {nAnalizados < items.length && ' — constrúyelos por insumos 🧱 para una propuesta 100% sustentada'}
+              </p>
+              <button onClick={async () => {
+                        setShowPanel(false)
+                        try {
+                          toast.loading('Consolidando insumos...', { id: 'exp2' })
+                          const d = await exportarAPI.explosion({ proyecto_id: parseInt(id) })
+                          toast.dismiss('exp2')
+                          setExplosionData(d); setShowExplosion(true)
+                        } catch (e2) { toast.error(e2.response?.data?.detail || e2.message, { id: 'exp2' }) }
+                      }}
+                      className="w-full mt-1.5 mx-1 flex items-center justify-center gap-1.5 border border-amber-200 rounded-xl py-2 text-xs font-bold text-amber-700 hover:bg-amber-50"
+                      style={{ width: 'calc(100% - 8px)' }}>
+                🧱 Lista de materiales (explosión de insumos)
+              </button>
             </div>
   )
 
@@ -662,9 +763,12 @@ export default function Editor() {
               Para una obra nueva con este mismo presupuesto, duplícalo.
             </p>
             <button onClick={async () => {
+                      const nombre = window.prompt('Nombre para la copia (100% independiente del original):',
+                                                   `${p.nombre} (copia)`)
+                      if (nombre === null) return
                       try {
-                        const copia = await proyectosAPI.duplicar(id)
-                        toast.success('Copia creada — lista para editar')
+                        const copia = await proyectosAPI.duplicar(id, { nombre: nombre.trim() })
+                        toast.success(`Copia creada: "${copia.nombre}" — lista para editar`)
                         nav(`/editor/${copia.id}`); window.location.reload()
                       } catch (e2) { toast.error(e2.response?.data?.detail || e2.message) }
                     }}
@@ -731,6 +835,13 @@ export default function Editor() {
                             calc: {it.calc.n || 1} × {it.calc.largo || '?'}{tipoCalc(it.unidad) !== 'lineal' ? ` × ${it.calc.ancho || '?'}` : ''}{tipoCalc(it.unidad) === 'volumen' ? ` × ${it.calc.alto || '?'}` : ''}m
                           </span>
                         )}
+                        {desgloseDe(it) && (
+                          <button onClick={() => abrirAnalisis(it)}
+                                  className={`text-[10px] font-bold rounded-full px-2 py-0.5 transition ${analisisAbierto === it._idx ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-600 hover:bg-violet-100'}`}
+                                  title="Este ítem entra ESPECIFICADO al anexo de APUs">
+                            🔬 Análisis {analisisAbierto === it._idx ? '▲' : '▼'}
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -764,6 +875,87 @@ export default function Editor() {
                   </div>
 
                   {/* Calculadora de cantidades */}
+                  {analisisAbierto === it._idx && anEdit && (() => {
+                    const _in = "w-full text-right text-[10px] border border-violet-200 rounded px-1 py-0.5 bg-white outline-none focus:border-violet-400"
+                    const _upd = (k, i2, campo, v) => setAnEdit(prev => {
+                      const n = { ...prev }
+                      // Campos de % se defienden solos (misma medicina que deducciones)
+                      let vv = v
+                      if (campo === 'herramienta_pct') vv = Math.max(0, Math.min(30, parseFloat(v) || 0))
+                      if (campo === 'desperdicio_pct') vv = Math.max(0, Math.min(50, parseFloat(v) || 0))
+                      if (k === 'insumo') { n.insumos = prev.insumos.map((x, j) => j === i2 ? { ...x, [campo]: vv } : x) }
+                      else n[campo] = vv
+                      return n
+                    })
+                    const _num2 = (v) => parseFloat(v) || 0
+                    const _prevMat = anEdit.insumos.reduce((s, x) => s + _num2(x.cantidad) * _num2(x.precio) * (1 + _num2(x.desperdicio_pct) / 100), 0)
+                    const _prevTot = Math.round(_prevMat + _num2(anEdit.mano_obra) + _num2(anEdit.mano_obra) * _num2(anEdit.herramienta_pct) / 100 + _num2(anEdit.transporte))
+                    return (
+                      <div className="px-3 pb-3 bg-violet-50/60">
+                        <div className="pt-2 text-[10px]">
+                          <p className="font-bold text-violet-700 mb-1">🔬 Juega con el análisis — el servidor recalcula y todo se actualiza (ítem, totales, anexo y lista de materiales):</p>
+                          <div className="bg-white rounded-lg border border-violet-100 overflow-hidden">
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 bg-violet-600 text-white font-bold">
+                              <span className="col-span-5">1. MATERIALES</span><span>Und</span><span className="text-right">Cant.</span><span className="text-right">Desp.%</span><span className="col-span-2 text-right">Vr. unit.</span><span className="col-span-2 text-right">Parcial</span>
+                            </div>
+                            {anEdit.insumos.map((ins, k) => (
+                              <div key={k} className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-600 items-center">
+                                <span className="col-span-5 truncate" title={ins.nombre}>{ins.nombre}</span>
+                                <span>{ins.unidad}</span>
+                                <input type="number" step="any" min="0" value={ins.cantidad} onChange={e => _upd('insumo', k, 'cantidad', e.target.value)} className={_in} />
+                                <input type="number" step="any" min="0" max="50" value={ins.desperdicio_pct || 0} onChange={e => _upd('insumo', k, 'desperdicio_pct', e.target.value)} className={_in} />
+                                <input type="number" step="any" min="0" value={ins.precio} onChange={e => _upd('insumo', k, 'precio', e.target.value)} className={`${_in} col-span-2`} />
+                                <span className="col-span-2 text-right">{COP(_num2(ins.cantidad) * _num2(ins.precio) * (1 + _num2(ins.desperdicio_pct) / 100))}</span>
+                              </div>
+                            ))}
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700 items-center">
+                              <span className="col-span-8">2. Mano de obra (por {it.unidad})</span>
+                              <input type="number" step="any" min="0" value={anEdit.mano_obra} onChange={e => _upd(null, null, 'mano_obra', e.target.value)} className={`${_in} col-span-2`} />
+                              <span className="col-span-2 text-right">{COP(_num2(anEdit.mano_obra))}</span>
+                            </div>
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700 items-center">
+                              <span className="col-span-8">3. Herramienta menor — <strong>% de la MO</strong> (0-30)</span>
+                              <div className="col-span-2 flex items-center gap-0.5">
+                                <input type="number" step="any" min="0" max="30" value={anEdit.herramienta_pct} onChange={e => _upd(null, null, 'herramienta_pct', e.target.value)} className={_in} />
+                                <span className="text-violet-500 font-bold">%</span>
+                              </div>
+                              <span className="col-span-2 text-right">{COP(_num2(anEdit.mano_obra) * _num2(anEdit.herramienta_pct) / 100)}</span>
+                            </div>
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700 items-center">
+                              <span className="col-span-8">4. Transporte (por {it.unidad}) 🚚</span>
+                              <input type="number" step="any" min="0" value={anEdit.transporte || 0} onChange={e => _upd(null, null, 'transporte', e.target.value)} className={`${_in} col-span-2`} />
+                              <span className="col-span-2 text-right">{COP(_num2(anEdit.transporte))}</span>
+                            </div>
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-200 bg-violet-100 font-black text-violet-800">
+                              <span className="col-span-10">PRECIO UNITARIO ANALIZADO (previo)</span><span className="col-span-2 text-right">{COP(_prevTot)}</span>
+                            </div>
+                          </div>
+                          <p className="text-slate-400 mt-1">💡 Herramienta es un <strong>porcentaje</strong> de la mano de obra (práctica estándar 3-10%). Si lo tuyo es un flete en <strong>pesos</strong>, ese va en la fila 4 · Transporte 🚚.</p>
+                          <div className="flex gap-2 mt-2 items-center">
+                            <button disabled={anGuardando} onClick={() => recalcularAnalisis(it, false)}
+                                    className="flex-1 py-1.5 rounded-lg border border-violet-300 text-violet-700 font-bold hover:bg-violet-100 disabled:opacity-50">
+                              💾 Recalcular y guardar el APU
+                            </button>
+                            <InfoTip texto="Guarda la receta en tu BIBLIOTECA (Mis APUs) con el precio recalculado por el servidor. Este presupuesto NO cambia — útil si ya enviaste la cotización y solo quieres afinar tu recetario para futuras obras." />
+                            {!soloLectura && !['aceptado', 'entrega_solicitada'].includes(p.estado) && (
+                              <>
+                              <button disabled={anGuardando} onClick={() => recalcularAnalisis(it, true)}
+                                      className="flex-1 py-1.5 rounded-lg bg-violet-600 text-white font-bold hover:bg-violet-700 disabled:opacity-50">
+                                ⚡ Recalcular y APLICAR al ítem
+                              </button>
+                              <InfoTip texto="Hace lo mismo que guardar Y ADEMÁS pone el precio analizado en ESTE ítem. En cadena se actualizan: el total del presupuesto, el AIU, la incidencia por capítulos, el anexo de APUs y la lista de materiales. Un solo dato madre — nada se digita dos veces. (Si el ítem tenía descuento de lista, se retira.)" />
+                              </>
+                            )}
+                          </div>
+                          {Math.round(_prevTot) !== Math.round(_num2(it.precio_unitario)) && (
+                            <p className="text-amber-600 mt-1">⚠️ El ítem está a {COP(it.precio_unitario)} — "aplicar" lo actualiza al analizado{it.precio_lista ? ' (y retira su descuento de lista)' : ''}.
+                              <InfoTip texto="La receta dice un precio y el presupuesto tiene otro — pasa cuando editas el análisis sin aplicar, o cuando ajustaste el precio a mano. No es error: puedes dejarlo así (el anexo lo anota como 'ajuste comercial del proponente') o pulsar ⚡ para sincronizarlos." />
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })()}
                   {calcAbierta === it._idx && tipoCalc(it.unidad) && (
                     <div className="px-3 pb-3 bg-blue-50/50">
                       <div className="flex items-end gap-2 flex-wrap pt-2">
@@ -909,19 +1101,56 @@ export default function Editor() {
             </div>
             {esPublico && (
               <div className="mt-3 border-t border-slate-100 pt-3">
-                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1.5">
-                  Deducciones de ley por acta 🏛️ <span className="normal-case">(la entidad las retiene de cada pago)</span>
-                </p>
-                {(contrato.deducciones || []).map((dd, i) => (
-                  <div key={i} className="flex gap-1.5 mb-1.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] text-slate-400 uppercase font-semibold">
+                    Deducciones de ley por acta 🏛️ <span className="normal-case">(la entidad las retiene de cada pago)</span>
+                    <InfoTip texto="Aquí NO se descuenta nada todavía — solo configuras las reglas del contrato. Se aplican DESPUÉS, cada vez que generes un acta parcial: neto = corte − amortización del anticipo − retegarantía − ESTAS deducciones. Cada % se calcula sobre el valor del corte, línea por línea con redondeo a peso (igual que liquida la entidad). Así sabes desde HOY cuánta plata de verdad entra a tu caja en cada pago — sin sorpresas el día del giro." />
+                  </p>
+                  {(contrato.deducciones || []).length > 0 && (() => {
+                    const totalDed = (contrato.deducciones || []).reduce((s, x) => s + (parseFloat(x.pct) || 0), 0)
+                    return (
+                      <span className={`text-[10px] font-black rounded-full px-2 py-0.5 ${totalDed > 50 ? 'bg-red-100 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        Total {Math.round(totalDed * 10) / 10}% {totalDed > 50 ? '— máx 50%, NO se guarda' : 'de cada corte'}
+                        <InfoTip texto={`De cada $1.000.000 que factures en un acta, la entidad te retendrá ~$${Math.round((contrato.deducciones || []).reduce((s, x) => s + (parseFloat(x.pct) || 0), 0) * 10000).toLocaleString('es-CO')} por estas deducciones (además del anticipo amortizado y la retegarantía). El NETO REAL lo ves calculado a peso en cada cuenta de cobro.`} />
+                      </span>
+                    )
+                  })()}
+                </div>
+                {(contrato.deducciones || []).map((dd, i) => {
+                  // 🕵️ Vigía semántico: el nombre y el número no pueden contradecirse
+                  const nom = (dd.nombre || '').toLowerCase()
+                  const pct = parseFloat(dd.pct) || 0
+                  let alerta = null
+                  if ((nom.includes('1106') || nom.includes('5%')) && pct !== 5)
+                    alerta = { msg: `La contribución de la Ley 1106 es 5% FIJO — tienes ${pct}%`, fix: 5 }
+                  else if (nom.includes('retefuente') && pct > 4)
+                    alerta = { msg: `La retefuente de construcción real es ≈2% — ${pct}% no existe ni para honorarios`, fix: 2 }
+                  else if (nom.includes('estampilla') && pct > 10)
+                    alerta = { msg: `Las estampillas territoriales suelen sumar 2-8% — verifica tu contrato`, fix: null }
+                  else if (!alerta && pct > 15)
+                    alerta = { msg: `${pct}% es inusualmente alto para una deducción — verifica el contrato con la entidad`, fix: null }
+                  return (
+                  <div key={i} className="mb-1.5">
+                  <div className="flex gap-1.5">
                     <input className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5" value={dd.nombre}
                            onChange={e => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x) })} />
-                    <input type="number" min="0" max="25" className="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1.5" value={dd.pct}
+                    <input type="number" min="0" max="25" className={`w-16 text-xs border rounded-lg px-2 py-1.5 ${alerta ? 'border-amber-400 bg-amber-50' : 'border-slate-200'}`} value={dd.pct}
                            onChange={e => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.map((x, j) => j === i ? { ...x, pct: Math.max(0, Math.min(25, parseFloat(e.target.value) || 0)) } : x) })} />
                     <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.filter((_, j) => j !== i) })}
                             className="text-slate-300 hover:text-red-400 px-1">×</button>
                   </div>
-                ))}
+                  {alerta && (
+                    <p className="text-[10px] text-amber-700 mt-0.5 flex items-center gap-1.5">
+                      ⚠️ {alerta.msg}
+                      {alerta.fix !== null && (
+                        <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.map((x, j) => j === i ? { ...x, pct: alerta.fix } : x) })}
+                                className="font-black text-emerald-700 underline">corregir a {alerta.fix}%</button>
+                      )}
+                    </p>
+                  )}
+                  </div>
+                  )
+                })}
                 {(contrato.deducciones || []).length === 0 && (
                   <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: [
                             { nombre: 'Contribución obra pública 5% (Ley 1106/2006)', pct: 5 },
@@ -933,12 +1162,20 @@ export default function Editor() {
                   <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: [...contrato.deducciones, { nombre: '', pct: 0 }] })}
                           className="text-xs font-medium text-navy-600">+ agregar deducción</button>
                 )}
+                {(contrato.deducciones || []).length > 0 && (
+                  <p className="text-[10px] text-slate-400 mt-1.5">
+                    📖 Referencia real: Ley 1106 = <strong>5% fijo</strong> · estampillas territoriales = 2-8% según
+                    departamento/municipio (revisa tu contrato) · retefuente construcción ≈ <strong>2%</strong>.
+                    Cada línea máx 25%, total máx 50% — como liquida la entidad, con redondeo por línea.
+                  </p>
+                )}
               </div>
             )}
             {totales && contrato.anticipo_pct > 0 && (
               <p className="text-[11px] text-slate-500 mt-2.5 bg-slate-50 rounded-lg p-2">
                 Forma de pago: anticipo {contrato.anticipo_pct}% = <strong>{COP(totales.total * contrato.anticipo_pct / 100)}</strong>
                 {' · '}saldo {100 - contrato.anticipo_pct}% = <strong>{COP(totales.total * (100 - contrato.anticipo_pct) / 100)}</strong>
+                <InfoTip texto={`El anticipo te lo pagan al arrancar — pero no es tuyo todavía: se AMORTIZA en cada acta (a cada corte se le descuenta el ${contrato.anticipo_pct}% hasta devolverlo completo, con tope: jamás amortizas más de lo que te dieron). Junto con la retegarantía y las deducciones, así se calcula el NETO que de verdad recibes en cada pago.`} />
               </p>
             )}
           </div>
@@ -968,6 +1205,76 @@ export default function Editor() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── F2: Lista de materiales (explosión de insumos) ── */}
+      {showExplosion && explosionData && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowExplosion(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-5 max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between">
+              <h3 className="font-black text-slate-800">🧱 Lista de materiales de la obra
+                <InfoTip texto="El presupuesto habla en actividades; la ferretería vende insumos. Aquí están TODOS los materiales de la obra consolidados (con desperdicio incluido) y cruzados con tus precios negociados. Es tu lista de compras — y tu control de materiales." />
+              </h3>
+              <button onClick={() => setShowExplosion(false)} className="text-slate-400">✕</button>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">
+              {explosionData.items_explotados} actividades explotadas · {explosionData.n_insumos} insumos ·{' '}
+              {explosionData.con_precio_negociado > 0 && <span className="text-emerald-600 font-semibold">{explosionData.con_precio_negociado} con precio de TU proveedor · </span>}
+              desperdicio ya incluido
+            </p>
+            {explosionData.n_insumos === 0 ? (
+              <div className="mt-4 bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs text-amber-800">
+                Ninguna actividad tiene desglose todavía. Construye tus APUs por insumos (🧱 el constructor)
+                y esta lista se arma sola — cemento, arena y todo lo demás, sumado y con desperdicio.
+              </div>
+            ) : (
+              <div className="mt-3 overflow-y-auto flex-1 border border-slate-100 rounded-xl">
+                <div className="grid grid-cols-12 gap-1 px-3 py-2 bg-navy-700 text-white text-[10px] font-bold sticky top-0">
+                  <span className="col-span-4">Insumo</span><span>Und</span><span className="text-right col-span-2">Cantidad</span><span className="text-right col-span-2">Precio</span><span className="text-right col-span-3">Subtotal</span>
+                </div>
+                {explosionData.insumos.map((i, k) => (
+                  <div key={k} className="grid grid-cols-12 gap-1 px-3 py-2 border-t border-slate-50 text-[11px] text-slate-700 items-center">
+                    <span className="col-span-4">
+                      <span className="block truncate font-medium" title={i.nombre}>{i.nombre}</span>
+                      {i.fuente_precio === 'mi_proveedor' && (
+                        <span className="text-[9px] text-emerald-600">🏪 {i.proveedor} · {i.fecha_precio}</span>
+                      )}
+                      {i.en_items > 1 && <span className="text-[9px] text-slate-400"> · en {i.en_items} actividades</span>}
+                    </span>
+                    <span className="text-slate-400">{i.unidad}</span>
+                    <span className="text-right col-span-2 font-semibold">{i.cantidad}</span>
+                    <span className="text-right col-span-2">{i.precio ? COP(i.precio) : '—'}</span>
+                    <span className="text-right col-span-3 font-semibold">{i.subtotal ? COP(i.subtotal) : '—'}</span>
+                  </div>
+                ))}
+                <div className="grid grid-cols-12 gap-1 px-3 py-2 border-t border-slate-200 bg-slate-50 text-xs font-black text-slate-800">
+                  <span className="col-span-9">TOTAL MATERIALES ESTIMADO</span>
+                  <span className="text-right col-span-3">{COP(explosionData.total_estimado)}</span>
+                </div>
+              </div>
+            )}
+            {explosionData.items_sin_desglose > 0 && (
+              <p className="text-[10px] text-amber-700 mt-2">
+                ⚠️ {explosionData.items_sin_desglose} actividad(es) sin desglose no entran a la lista:{' '}
+                {explosionData.sin_desglose.slice(0, 3).join('; ')}{explosionData.sin_desglose.length > 3 ? '…' : ''}
+              </p>
+            )}
+            {explosionData.n_insumos > 0 && (
+              <button onClick={async () => {
+                        try {
+                          const res = await exportarAPI.explosionExcel({ proyecto_id: parseInt(id) })
+                          const url = URL.createObjectURL(res.data)
+                          const a = document.createElement('a')
+                          a.href = url; a.download = `${p.nombre.replace(/[^a-z0-9]/gi, '_')}_materiales.xlsx`
+                          a.click(); URL.revokeObjectURL(url)
+                        } catch (e2) { toast.error(e2.response?.data?.detail || e2.message) }
+                      }}
+                      className="mt-3 w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700">
+                📥 Descargar Excel — para llevar a la ferretería
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -1074,7 +1381,7 @@ export default function Editor() {
                 ))}
                 {fuenteApu === 'mios' && (
                   <>
-                  <button onClick={() => { setShowConstructor(true); setPreviewComp(null); setConstruyendo({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5 }) }}
+                  <button onClick={() => { setShowConstructor(true); setPreviewComp(null); setConstruyendo({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5, transporte: '' }) }}
                           className="text-xs font-bold px-3 py-1.5 rounded-lg bg-navy-600 text-white ml-auto">
                     + Construir APU
                   </button>
@@ -1139,20 +1446,63 @@ export default function Editor() {
         <div className="fixed inset-0 bg-black/40 z-[60] flex items-start justify-center p-4 pt-[6vh]" onClick={() => setShowConstructor(false)}>
           <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[86vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-slate-800 mb-1">🧱 Construir mi APU</h3>
-            <p className="text-[11px] text-slate-400 mb-3">Insumos + mano de obra + herramienta → tu precio unitario compuesto</p>
+            <p className="text-[11px] text-slate-400 mb-2">Insumos + mano de obra + herramienta + transporte 🚚 → tu precio unitario compuesto (los 4 componentes del APU oficial)</p>
+            {desgloses.porCodigo['REC-PANETE'] ? (
+              <button onClick={() => { setShowConstructor(false); setQ(''); setFuenteApu('mios'); setShowBuscador(true) }}
+                      className="w-full mb-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100">
+                🍳 Recetario cargado ✓ — ver mis 16 recetas en ⭐ Mis APUs
+              </button>
+            ) : (
+            <button onClick={async () => {
+                      try {
+                        toast.loading('Sembrando recetas...', { id: 'rec' })
+                        const r = await apusAPI.recetario()
+                        if (r.creados > 0) toast.success(`🍳 ${r.creados} recetas listas — aquí están, en ⭐ Mis APUs`, { id: 'rec', duration: 5000 })
+                        else toast.success('Tu recetario ya estaba cargado — aquí está, en ⭐ Mis APUs ✓', { id: 'rec' })
+                        // Llevar al usuario DIRECTO a verlas: cerrar constructor, abrir buscador en Mis APUs
+                        setShowConstructor(false)
+                        setQ('')
+                        setFuenteApu('mios')
+                        setShowBuscador(true)
+                        apusAPI.listar({}).then(r2 => {
+                          const porId = {}, porCodigo = {}, codigoAId = {}
+                          for (const a of (r2.items || [])) if (a.desglose?.insumos?.length) { porId[a.id] = a.desglose; if (a.codigo) { porCodigo[a.codigo] = a.desglose; codigoAId[a.codigo] = a.id } }
+                          setDesgloses({ porId, porCodigo, codigoAId })
+                        }).catch(() => {})
+                      } catch (e2) { toast.error(e2.response?.data?.detail || e2.message, { id: 'rec' }) }
+                    }}
+                    className="w-full mb-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100">
+              🍳 Cargar recetario de arranque — 16 recetas típicas con su análisis, listas para ajustar a TUS precios
+            </button>
+            )}
             <input className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 mb-2" placeholder="Descripción (ej: Pañete 1:4 muros interiores)"
                    value={construyendo.descripcion} onChange={e => setConstruyendo(c => ({ ...c, descripcion: e.target.value }))} />
-            <div className="flex gap-2 mb-3">
-              <input className="w-24 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="unidad"
+            <div className="flex flex-wrap gap-2 mb-2">
+              <input className="w-20 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="unidad"
                      value={construyendo.unidad} onChange={e => setConstruyendo(c => ({ ...c, unidad: e.target.value }))} />
-              <input type="number" className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="Mano de obra por unidad ($)"
-                     value={construyendo.mano_obra} onChange={e => setConstruyendo(c => ({ ...c, mano_obra: e.target.value }))} />
-              <input type="number" className="w-24 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="herr %"
-                     value={construyendo.herramienta_pct} onChange={e => setConstruyendo(c => ({ ...c, herramienta_pct: e.target.value }))} />
+              <div className="flex-1 min-w-[180px] flex items-center gap-1">
+                <input type="number" className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="Mano de obra por unidad ($)"
+                       value={construyendo.mano_obra} onChange={e => setConstruyendo(c => ({ ...c, mano_obra: e.target.value }))} />
+                <InfoTip texto="Lo que le pagas a la cuadrilla por hacer 1 unidad (1 m², 1 m³...). Va en PESOS. Tip: jornal con prestaciones ÷ rendimiento del día = MO por unidad." />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex items-center gap-1">
+                <input type="number" min="0" max="30" className="w-20 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="herr %"
+                       value={construyendo.herramienta_pct} onChange={e => setConstruyendo(c => ({ ...c, herramienta_pct: Math.max(0, Math.min(30, parseFloat(e.target.value) || 0)) }))} />
+                <span className="text-xs font-bold text-slate-400">%</span>
+                <InfoTip texto="Herramienta menor: desgaste de palas, baldes, taladro. Es un PORCENTAJE de la mano de obra (práctica estándar 3-10%, máx 30). NO va en pesos — si lo tuyo es un flete, ese es el campo de transporte 🚚." />
+              </div>
+              <div className="flex-1 min-w-[160px] flex items-center gap-1">
+                <input type="number" min="0" className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="🚚 Transporte por unidad ($)"
+                       value={construyendo.transporte} onChange={e => setConstruyendo(c => ({ ...c, transporte: e.target.value }))} />
+                <InfoTip texto="Flete o acarreo por unidad del APU — el 4to componente del formato oficial que exigen las entidades. Va en PESOS por unidad. Si no aplica, déjalo en 0 y no cambia nada." />
+              </div>
             </div>
             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Insumos</p>
             {construyendo.insumos.map((ins, i) => (
-              <div key={i} className="flex gap-1.5 mb-1.5">
+              <div key={i}>
+              <div className="flex gap-1.5 mb-1.5">
                 <div className="flex-1 relative">
                   <input className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="insumo" value={ins.nombre}
                          onChange={e => {
@@ -1182,10 +1532,29 @@ export default function Editor() {
                 </div>
                 <input type="number" className="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="cant" value={ins.cantidad}
                        onChange={e => setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, cantidad: e.target.value } : x) }))} />
+                <button onClick={() => setRindeIdx(rindeIdx === i ? -1 : i)}
+                        className={`text-[9px] font-bold rounded-lg px-1.5 transition ${rindeIdx === i ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                        title="¿No sabes la cantidad? Dime cuánto te RINDE y yo hago la división">
+                  ⇄rinde
+                </button>
                 <input type="number" className="w-24 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="precio" value={ins.precio}
                        onChange={e => setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, precio: e.target.value } : x) }))} />
                 <button onClick={() => setConstruyendo(c => ({ ...c, insumos: c.insumos.filter((_, j) => j !== i) }))}
                         className="text-slate-300 hover:text-red-400 px-1">×</button>
+              </div>
+              {rindeIdx === i && (
+                <div className="flex items-center gap-1.5 mb-1.5 ml-2 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1.5 text-[11px] text-blue-700">
+                  <span>1 {ins.unidad || 'un'} me rinde</span>
+                  <input type="number" step="any" min="0.01" autoFocus placeholder="3"
+                         className="w-16 text-xs border border-blue-200 rounded-lg px-2 py-1 bg-white text-center"
+                         onChange={e => {
+                           const r = parseFloat(e.target.value)
+                           if (r > 0) setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, cantidad: +(1 / r).toFixed(4) } : x) }))
+                         }} />
+                  <span>{construyendo.unidad || 'un'} → cantidad = <strong>{ins.cantidad || '?'}</strong> por {construyendo.unidad || 'un'}</span>
+                  <button onClick={() => setRindeIdx(-1)} className="ml-auto font-bold text-blue-400">✓ listo</button>
+                </div>
+              )}
               </div>
             ))}
             <div className="flex gap-3 mb-3">
@@ -1201,6 +1570,7 @@ export default function Editor() {
                           insumos: construyendo.insumos.map(i => ({ nombre: i.nombre, cantidad: parseFloat(i.cantidad) || 0, precio: parseFloat(i.precio) || 0 })),
                           mano_obra: parseInt(construyendo.mano_obra) || 0,
                           herramienta_pct: parseFloat(construyendo.herramienta_pct) || 0,
+                          transporte: Math.round(parseFloat(construyendo.transporte) || 0),
                         })
                         setPreviewComp(r)
                       } catch (e) { toast.error(e.message) }
@@ -1222,6 +1592,7 @@ export default function Editor() {
                           insumos: construyendo.insumos.map(i => ({ nombre: i.nombre, cantidad: parseFloat(i.cantidad) || 0, precio: parseFloat(i.precio) || 0 })),
                           mano_obra: parseInt(construyendo.mano_obra) || 0,
                           herramienta_pct: parseFloat(construyendo.herramienta_pct) || 0,
+                          transporte: Math.round(parseFloat(construyendo.transporte) || 0),
                         })
                         toast.success('APU compuesto guardado en Mis APUs 🧱')
                         setShowConstructor(false); setFuenteApu('mios'); setQ('')

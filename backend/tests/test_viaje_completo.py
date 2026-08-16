@@ -63,6 +63,23 @@ d = paso("crear proyecto", c.post("/api/proyectos", json={
     "nombre": "Remodelacion bano viaje", "cliente_nombre": "Dona Prueba",
     "cliente_telefono": "3000000000", "region": "bogota"}, headers=H))
 PID = d["id"]
+
+print("═══ ACTO 1.5: EL PLAN GRATIS SE DEFIENDE (limite 3/mes) ═══")
+d2 = paso("presupuesto gratis #2", c.post("/api/proyectos", json={
+    "nombre": "Dummy dos", "cliente_nombre": "X", "region": "bogota"}, headers=H))
+d3 = paso("presupuesto gratis #3 (tope alcanzado)", c.post("/api/proyectos", json={
+    "nombre": "Dummy tres", "cliente_nombre": "X", "region": "bogota"}, headers=H))
+r = c.post("/api/proyectos", json={"nombre": "El cuarto", "cliente_nombre": "X", "region": "bogota"}, headers=H)
+paso("CANDADO: 4to presupuesto en gratis -> 402", r, status=402)
+r = c.post("/api/proyectos/desde-plantilla", json={"plantilla_id": "bano"}, headers=H)
+paso("CANDADO: la PLANTILLA tambien cuenta -> 402 (bypass cerrado)", r, status=402)
+r = c.post(f"/api/proyectos/{PID}/duplicar", json={}, headers=H)
+paso("CANDADO: duplicar tambien respeta el limite -> 402", r, status=402)
+paso("borrar dummy #2", c.delete(f"/api/proyectos/{d2['id']}", headers=H))
+paso("borrar dummy #3", c.delete(f"/api/proyectos/{d3['id']}", headers=H))
+r = c.post("/api/proyectos", json={"nombre": "Tras borrar", "cliente_nombre": "X", "region": "bogota"}, headers=H)
+paso("CANDADO: borrar NO reembolsa el contador -> 402 (exploit crear-borrar muerto)", r, status=402)
+PASOS.append("plan gratis blindado: 3/mes en crear+plantilla+duplicar, sin reembolso")
 ITEMS = [
     {"id": "it1", "descripcion": "Demolicion enchape", "unidad": "m2", "cantidad": 10, "precio_unitario": 30000},
     {"id": "it2", "descripcion": "Enchape piso y pared", "unidad": "m2", "cantidad": 20, "precio_unitario": 85000},
@@ -300,7 +317,22 @@ for tabla, minimo in [("usuarios", 1), ("proyectos", 1), ("cuentas_cobro", 2),
                       ("otrosies", 1), ("avances", 2), ("interacciones_cliente", 3),
                       ("eventos_share", 3), ("abonos", 1)]:
     assert len(bk.get(tabla, [])) >= minimo, f"backup incompleto: {tabla} tiene {len(bk.get(tabla, []))} < {minimo}"
+# 5.3c EL RESPALDO ES TOTAL: las 19 tablas restaurables viajan (la biblioteca,
+# los proveedores y el soporte incluidos) — GROOT jamas renace mutilado
+for tabla in ["apus_usuario", "proveedores", "precios_proveedor",
+              "tickets_soporte", "mensajes_soporte", "solicitudes_pro",
+              "gastos", "encuestas", "notificaciones", "pagos_wompi"]:
+    assert tabla in bk, f"backup mutilado: falta la tabla {tabla}"
+assert "intentos_acceso" not in bk, "el ruido de rate-limit NO debe viajar en el backup"
 u = next(x for x in bk["usuarios"] if x.get("email") == "maestro@viaje.test")
+# 5.3b EL RESPALDO NO TRANSPORTA CREDENCIALES (un backup se comparte — los hashes no)
+assert u.get("password_hash") == "[protegido — restaurar via 'olvide mi clave']", \
+    f"el backup filtro el password_hash!: {str(u.get('password_hash'))[:40]}"
+assert "reset_token_hash" not in u and "reset_expira" not in u, "tokens de reset en el backup!"
+assert "$2b$" not in r.text, "hay un hash bcrypt crudo en alguna parte del backup!"
+_p_bk = next(x for x in bk["proyectos"] if x.get("id") == PID)
+assert _p_bk.get("share_token"), "el share_token SI debe viajar (los links del cliente sobreviven al restore)"
+PASOS.append("respaldo sin credenciales (hashes protegidos, tokens de reset fuera, links intactos)")
 assert "password" not in _json.dumps(u).lower() or "hash" in _json.dumps(u).lower() or True
 print(f"  ✓ respaldo: {sum(len(v) for v in bk.values() if isinstance(v, list))} filas de {sum(1 for v in bk.values() if isinstance(v, list))} tablas — coherente con la sesion")
 PASOS.append("respaldo coherente")
