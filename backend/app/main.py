@@ -133,7 +133,7 @@ def preview_social(token: str):
     db = SessionLocal()
     try:
         p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-        if not p:
+        if not p or (p.sector or "privado") == "publico":
             return HTMLResponse("<h1>Este enlace no existe o fue retirado</h1>", status_code=404)
         u = db.query(Usuario).filter(Usuario.id == p.user_id).first()
         try:
@@ -190,7 +190,7 @@ def preview_foto(token: str):
     db = SessionLocal()
     try:
         p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-        if not p:
+        if not p or (p.sector or "privado") == "publico":
             return _Resp(status_code=404)
         ult = (db.query(Avance).filter(Avance.proyecto_id == p.id)
                .order_by(Avance.creado.desc()).first())

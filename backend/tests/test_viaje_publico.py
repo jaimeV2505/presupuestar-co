@@ -205,6 +205,10 @@ r = c.put(f"/api/proyectos/{PID}", json={"items": [
     {"id": "hack", "descripcion": "cambiar presupuesto oficial", "unidad": "un",
      "cantidad": 1, "precio_unitario": 1}]}, headers=H)
 paso("CANDADO: presupuesto oficial sellado (items -> 400)", r, status=400)
+r = c.put(f"/api/proyectos/{PID}", json={"estado": "borrador"}, headers=H)
+paso("CANDADO: degradar el estado tras el sello -> 400", r, status=400)
+r = c.put(f"/api/proyectos/{PID}", json={"estado": "entrega_solicitada"}, headers=H)
+paso("CANDADO: estados del enlace de cliente en publico -> 400", r, status=400)
 print("  ✓ semantica publica: herramientas libres, el primer avance sella, cambios via adicionales")
 PASOS.append("primer avance sella el presupuesto oficial")
 
@@ -268,12 +272,32 @@ paso("cambiarlo a publico (antes de firma se puede)", c.put(f"/api/proyectos/{PI
      json={"sector": "publico", "entidad_nombre": "Entidad Y"}, headers=H))
 r = c.get(f"/api/share/publico/{TOKEN_LEGADO}")
 paso("CANDADO: el token legado YA NO sirve -> 404", r, status=404)
-print("  ✓ doctrina sellada: en obra publica, ni tokens viejos abren puertas")
-PASOS.append("tokens legados de publicos rechazados")
+# La doctrina cubre TODAS las puertas, no solo la ventana (los 8 POST del token)
+r = c.post(f"/api/share/publico/{TOKEN_LEGADO}/aceptar",
+           json={"nombre": "Intruso Externo", "documento": "0", "firma_imagen": ""})
+paso("CANDADO: FIRMAR con token legado -> 404 (nadie sella desde afuera)", r, status=404)
+r = c.post(f"/api/share/publico/{TOKEN_LEGADO}/reportar-pendientes",
+           json={"detalle": "intento de intrusion por token viejo"})
+paso("CANDADO: reportar pendientes con token legado -> 404", r, status=404)
+d = paso("el detalle del proyecto convertido ya NO expone token", c.get(f"/api/proyectos/{PID2}", headers=H))
+assert not d.get("share_token"), "al convertir a publico, share_token debia quedar limpio"
+print("  ✓ doctrina sellada: en obra publica, ni tokens viejos abren puertas — GET ni POST")
+PASOS.append("tokens legados de publicos rechazados (GET + POST + token limpio)")
 
 print("═══ ACTO 4: LIQUIDACION DEL CONTRATO ═══")
-paso("terminar directo (publico: sin confirmacion de cliente)",
-     c.put(f"/api/proyectos/{PID}", json={"estado": "terminado"}, headers=H))
+# Duplicar un contrato publico conserva sector, entidad y condiciones (bug R3 cazado)
+d = paso("duplicar el contrato publico", c.post(f"/api/proyectos/{PID}/duplicar", headers=H))
+assert d.get("sector") == "publico", "la copia perdio el sector publico"
+assert d.get("contrato_numero") == "OP-2026-0457", "la copia perdio el numero de contrato"
+PID_COPIA = d["id"]
+paso("borrar la copia (limpieza)", c.delete(f"/api/proyectos/{PID_COPIA}", headers=H))
+
+paso("terminar y liquidar (endpoint dedicado, un clic)",
+     c.post(f"/api/proyectos/{PID}/terminar", headers=H))
+r = c.post(f"/api/proyectos/{PID}/terminar", headers=H)
+paso("CANDADO: terminar dos veces -> 400", r, status=400)
+r = c.put(f"/api/proyectos/{PID}", json={"estado": "aceptado"}, headers=H)
+paso("CANDADO: reabrir un contrato terminado -> 400", r, status=400)
 d = paso("liberar retegarantia", c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H))
 r = c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H)
 paso("CANDADO: liberar dos veces -> 400", r, status=400)

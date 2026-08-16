@@ -221,6 +221,11 @@ def crear(req: ProyectoCreate, user: Usuario = Depends(usuario_actual), db: Sess
         raise HTTPException(400, "El proyecto necesita un nombre")
     if req.sector not in ("privado", "publico"):
         raise HTTPException(400, "Sector no valido")
+    if req.sector == "publico":
+        if not (req.entidad_nombre or "").strip():
+            raise HTTPException(400, "Un contrato de obra publica necesita la entidad contratante")
+        if not (req.contrato_numero or "").strip():
+            raise HTTPException(400, "Un contrato de obra publica necesita el numero de contrato")
     p = Proyecto(
         user_id=user.id,
         numero=_generar_numero(user.id, db),
@@ -328,6 +333,9 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
         if req.sector not in ("privado", "publico"):
             raise HTTPException(400, "Sector no valido")
         p.sector = req.sector
+        if req.sector == "publico":
+            # Doctrina «nada viaja fuera»: al convertir a publico, el enlace legado muere de raiz
+            p.share_token = None
     if req.entidad_nombre is not None:
         p.entidad_nombre = req.entidad_nombre.strip()[:200]
     if req.contrato_numero is not None:
@@ -342,11 +350,26 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
     if req.cliente_telefono is not None: p.cliente_telefono = req.cliente_telefono.strip()[:30]
     if req.direccion is not None: p.direccion = req.direccion.strip()[:250]
     if req.region is not None: p.region = req.region
-    if req.estado in ("borrador", "enviado", "visto", "aceptado", "rechazado", "entrega_solicitada", "terminado"): p.estado = req.estado
+    # ── Maquina de estados: el sello no se degrada ─────────────────────────
+    # Doctrina: firmado/sellado = irreversible. Los cambios post-sello van por
+    # adicionales, jamas por "devolver el estado y editar". Guardian del bypass
+    # aceptado -> borrador -> editar items -> aceptado.
+    _ORDEN = {"borrador": 0, "enviado": 1, "visto": 1, "rechazado": 1,
+              "aceptado": 2, "entrega_solicitada": 3, "terminado": 4}
+    _SOLO_PRIVADO = ("enviado", "visto", "rechazado", "entrega_solicitada")
+    if req.estado in _ORDEN and req.estado != p.estado:
+        if p.estado == "terminado":
+            raise HTTPException(400, "La obra ya fue entregada y liquidada — el estado es final")
+        if (p.sector or "privado") == "publico" and req.estado in _SOLO_PRIVADO:
+            raise HTTPException(400, "Ese estado pertenece al enlace de cliente — no existe en obra publica")
+        if _ORDEN.get(p.estado, 0) >= _ORDEN["aceptado"] and _ORDEN[req.estado] < _ORDEN[p.estado]:
+            raise HTTPException(400, "El presupuesto esta sellado — no se retrocede el estado; "
+                                     "los cambios entran por adicionales")
+        p.estado = req.estado
     if req.notas is not None: p.notas = req.notas[:2000]
 
     if req.items is not None:
-        if p.estado == "aceptado":
+        if p.estado in ("aceptado", "entrega_solicitada", "terminado"):
             raise HTTPException(400, "Este presupuesto ya fue firmado — para cambios, duplica el proyecto")
         items_validos = validar_items(req.items)
         p.items_json = json.dumps(items_validos, ensure_ascii=False)
@@ -403,6 +426,27 @@ def eliminar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sess
     return {"ok": True}
 
 
+@router.post("/{proyecto_id}/terminar")
+def terminar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    """OBRA PUBLICA — Terminar y liquidar en un clic: estado terminado.
+    (La retegarantia se libera aparte con POST /cuentas/proyectos/{id}/retegarantia.)
+    En privado el cierre lo da el ACTA BILATERAL del cliente, no este boton."""
+    p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
+    if not p:
+        raise HTTPException(404, "Proyecto no encontrado")
+    if (p.sector or "privado") != "publico":
+        raise HTTPException(400, "En obra privada la entrega la confirma el cliente (acta bilateral)")
+    if p.estado == "terminado":
+        raise HTTPException(400, "Este contrato ya fue terminado y liquidado")
+    if p.estado != "aceptado":
+        raise HTTPException(400, "El contrato aun no esta en ejecucion — el primer avance sella el presupuesto oficial")
+    p.estado = "terminado"
+    db.commit()
+    db.refresh(p)
+    logger.info(f"Contrato publico terminado: {p.numero} por {user.email}")
+    return _proyecto_out(p, incluir_items=False, db=db)
+
+
 @router.post("/{proyecto_id}/duplicar")
 def duplicar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     _verificar_limite(user, db)
@@ -413,12 +457,17 @@ def duplicar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sess
         user_id=user.id,
         numero=_generar_numero(user.id, db),
         nombre=f"{p.nombre} (copia)",
+        sector=p.sector or "privado",
+        entidad_nombre=p.entidad_nombre or "",
+        contrato_numero=p.contrato_numero or "",
+        supervisor_nombre=p.supervisor_nombre or "",
         cliente_nombre=p.cliente_nombre,
         cliente_telefono=p.cliente_telefono,
         direccion=p.direccion,
         region=p.region,
         items_json=p.items_json,
         aiu_json=p.aiu_json,
+        contrato_json=p.contrato_json,   # anticipo, rete, plazo y deducciones viajan con la copia
         notas=p.notas,
     )
     db.add(nuevo)

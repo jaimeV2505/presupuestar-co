@@ -74,6 +74,8 @@ export default function Dashboard() {
 
   const crear = async () => {
     if (!nuevo.nombre.trim()) { toast.error('Ponle nombre al proyecto'); return }
+    if (nuevo.sector === 'publico' && !nuevo.entidad_nombre.trim()) { toast.error('Un contrato estatal necesita la entidad contratante'); return }
+    if (nuevo.sector === 'publico' && !nuevo.contrato_numero.trim()) { toast.error('Un contrato estatal necesita el número de contrato'); return }
     try {
       const p = await proyectosAPI.crear(nuevo)
       toast.success('Proyecto creado')

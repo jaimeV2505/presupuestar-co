@@ -229,6 +229,43 @@ function CicloCompleto() {
   )
 }
 
+function ObraPublica() {
+  const PUNTOS = [
+    ['🏛️', 'Contrato estatal desde el día uno', 'Entidad contratante, número de contrato y supervisor. El primer avance sella el presupuesto oficial — de ahí en adelante, los cambios entran por adicionales, como manda la ejecución pública.'],
+    ['⚖️', 'Deducciones de ley automáticas', 'Contribución especial del 5% (Ley 1106), estampillas territoriales y retefuente, configurables por contrato. Cada acta parcial liquida el NETO REAL que de verdad entra a caja — a peso, con redondeo por línea como liquida la entidad.'],
+    ['📋', 'Actas parciales que cierran solas', 'Corte − amortización del anticipo (con tope) − retegarantía − deducciones = neto. Anti-doble-cobro incluido: lo ya cobrado jamás se vuelve a facturar.'],
+    ['📊', 'Balance oficial vs ejecutado', 'Presupuesto oficial y adicionales separados, avance físico vs financiero, y la bitácora cronológica del contrato. Todo el control vive en tu tablero — nada viaja fuera.'],
+  ]
+  return (
+    <section className="bg-white py-16">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="text-center mb-10">
+          <span className="text-[11px] font-black uppercase tracking-wider text-violet-600">¿Contratas con el Estado?</span>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mt-1.5">Obra pública: la misma máquina, con las reglas del sector</h2>
+          <p className="text-sm text-slate-500 mt-2 max-w-xl mx-auto">
+            Eliges el sector al crear el proyecto y la plataforma cambia de reglas: sin enlace de cliente,
+            aprobación interna de adicionales y las deducciones que la entidad te va a retener — calculadas antes de que te sorprendan.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          {PUNTOS.map(([emoji, titulo, desc]) => (
+            <div key={titulo} className="bg-slate-50 rounded-2xl border border-slate-100 p-5">
+              <span className="text-2xl">{emoji}</span>
+              <h3 className="text-sm font-black text-slate-800 mt-2">{titulo}</h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-center mt-8">
+          <Link to="/registro" className="inline-flex items-center gap-1.5 text-sm font-bold text-violet-600">
+            Crea tu primer contrato estatal gratis <ChevronRight className="w-4 h-4" />
+          </Link>
+        </p>
+      </div>
+    </section>
+  )
+}
+
 function DemoBuscador() {
   const [q, setQ] = useState('')
   const [resultados, setResultados] = useState([])
@@ -437,6 +474,7 @@ export default function Landing() {
 
       {/* ── DEMO BUSCADOR EN VIVO ── */}
       <CicloCompleto />
+      <ObraPublica />
 
       <DemoBuscador />
 

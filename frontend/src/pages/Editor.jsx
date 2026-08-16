@@ -411,7 +411,7 @@ export default function Editor() {
                     <button onClick={async () => {
                               if (!confirm('¿Terminar el contrato?\n\n• El proyecto pasa a TERMINADO\n• Podrás liberar la retegarantía acumulada\n• La bitácora del Seguimiento queda como historial')) return
                               try {
-                                const d = await proyectosAPI.actualizar(id, { estado: 'terminado' })
+                                const d = await proyectosAPI.terminar(id)
                                 setP(d); setShowPanel(false)
                                 toast.success('Contrato terminado — ya puedes liberar la retegarantía 🔓')
                               } catch (e2) { toast.error(e2.message) }

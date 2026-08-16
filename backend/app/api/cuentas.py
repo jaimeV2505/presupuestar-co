@@ -227,7 +227,7 @@ def registrar_abono(cid: int, req: AbonoRequest,
     db.add(Abono(cuenta_id=c.id, monto=req.monto, nota=(req.nota or "").strip()[:150]))
     if req.monto == saldo:
         c.estado = "pagada"
-        c.pagada = datetime.now(timezone.utc)
+        c.pagado = datetime.now(timezone.utc)  # la columna es pagadO — bug "a/o" cazado 2 veces
     db.commit()
     logger.info(f"Abono ${req.monto:,.0f} en {c.numero} ({user.email})")
     return {"ok": True, "cuenta": _cc_out(c, db)}
@@ -276,7 +276,7 @@ def eliminar(cid: int, user: Usuario = Depends(usuario_actual), db: Session = De
 @router.get("/publico/{token}/{cid}.pdf")
 def pdf_publico(token: str, cid: int, db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Enlace no valido")
     c = (db.query(CuentaCobro)
          .filter(CuentaCobro.id == cid, CuentaCobro.proyecto_id == p.id).first())

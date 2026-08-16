@@ -101,7 +101,7 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
     if token == "demo":
         return _demo_payload()
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Este presupuesto no existe o fue retirado")
 
     # PROYECTO TERMINADO: el acceso al presupuesto se cierra — solo encuesta
@@ -214,7 +214,7 @@ class FirmaRequest(BaseModel):
 @router.post("/publico/{token}/aceptar")
 def aceptar_publico(token: str, firma: FirmaRequest, request: Request, db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Este presupuesto no existe")
 
     nombre = (firma.nombre or "").strip()
@@ -263,7 +263,7 @@ def avances_publico(token: str, db: Session = Depends(get_db)):
     if token == "demo":
         return _demo_avances()
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Enlace no valido")
     avances = (
         db.query(Avance)
@@ -324,7 +324,7 @@ def avances_publico(token: str, db: Session = Depends(get_db)):
 @router.post("/publico/{token}/rechazar")
 def rechazar_publico(token: str, request: Request, db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Este presupuesto no existe")
 
     ya_aceptado = (
@@ -390,7 +390,7 @@ def _contrato_de_token(token: str, db: Session):
     if token == "demo":
         return _demo_contrato()
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Enlace no valido")
     user = db.query(Usuario).filter(Usuario.id == p.user_id).first()
     items = json.loads(p.items_json or "[]")
@@ -537,7 +537,7 @@ class EncuestaRequest(BaseModel):
 @router.post("/publico/{token}/encuesta")
 def responder_encuesta(token: str, req: EncuestaRequest, db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Enlace no valido")
     if p.estado != "terminado":
         raise HTTPException(400, "La encuesta se habilita cuando la obra termina")
@@ -707,7 +707,7 @@ class PendientesRequest(BaseModel):
 def confirmar_entrega(token: str, req: ConfirmarEntregaRequest, request: Request,
                       db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Enlace no valido")
     if p.estado != "entrega_solicitada":
         raise HTTPException(400, "La entrega no esta pendiente de confirmacion")
@@ -735,7 +735,7 @@ def confirmar_entrega(token: str, req: ConfirmarEntregaRequest, request: Request
 @router.post("/publico/{token}/reportar-pendientes")
 def reportar_pendientes(token: str, req: PendientesRequest, request: Request, db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Enlace no valido")
     if p.estado != "entrega_solicitada":
         raise HTTPException(400, "La entrega no esta pendiente")
@@ -758,7 +758,7 @@ def reportar_pendientes(token: str, req: PendientesRequest, request: Request, db
 def acta_pdf(token: str, db: Session = Depends(get_db)):
     """Acta de Entrega firmada por ambas partes."""
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Enlace no valido")
     entrega = db.query(EventoShare).filter(
         EventoShare.proyecto_id == p.id, EventoShare.tipo == "entrega_confirmada").first()
@@ -979,7 +979,7 @@ class OtrosiFirmaRequest(BaseModel):
 def otrosi_aprobar(token: str, otrosi_id: int, request: Request, req: OtrosiFirmaRequest,
                    db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Enlace no valido")
     o = db.query(Otrosi).filter(Otrosi.id == otrosi_id, Otrosi.proyecto_id == p.id).first()
     if not o:
@@ -1024,7 +1024,7 @@ class OtrosiRechazoRequest(BaseModel):
 def otrosi_rechazar(token: str, otrosi_id: int, req: OtrosiRechazoRequest,
                     db: Session = Depends(get_db)):
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Enlace no valido")
     o = db.query(Otrosi).filter(Otrosi.id == otrosi_id, Otrosi.proyecto_id == p.id).first()
     if not o or o.estado != "propuesto":
@@ -1043,7 +1043,7 @@ def otrosi_rechazar(token: str, otrosi_id: int, req: OtrosiRechazoRequest,
 def otrosi_pdf(token: str, otrosi_id: int, db: Session = Depends(get_db)):
     """PDF del Otrosi aprobado — descargable por ambas partes."""
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Enlace no valido")
     o = db.query(Otrosi).filter(Otrosi.id == otrosi_id, Otrosi.proyecto_id == p.id).first()
     if not o or o.estado != "aprobado":
@@ -1210,7 +1210,7 @@ def interactuar(token: str, avance_id: int, req: InteraccionRequest,
     from app.db import InteraccionCliente, Avance
     from datetime import timedelta
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
-    if not p:
+    if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Enlace no valido")
     if p.estado in ("borrador", "enviado", "visto", "rechazado"):
         raise HTTPException(400, "La participacion se activa cuando el contrato este firmado")

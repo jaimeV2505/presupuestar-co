@@ -88,6 +88,8 @@ paso("el cliente FIRMA", c.post(f"/api/share/publico/{TOKEN}/aceptar",
      json={"nombre": "Dona Prueba", "documento": "51222333", "firma_imagen": ""}))
 r = c.put(f"/api/proyectos/{PID}", json={"items": ITEMS[:1]}, headers=H)
 paso("CANDADO: editar tras la firma -> 400", r, status=400)
+r = c.put(f"/api/proyectos/{PID}", json={"estado": "borrador"}, headers=H)
+paso("CANDADO: degradar el estado tras la firma -> 400 (el sello no se retrocede)", r, status=400)
 
 print("═══ ACTO 3: LA OBRA ═══")
 d = paso("avance 40% (it1 100%, it2 ~44%)", c.post(f"/api/avances/proyectos/{PID}/avances", json={
@@ -148,7 +150,13 @@ paso("abono parcial de $200.000", c.post(f"/api/cuentas/{CID}/abonos",
      json={"monto": 200000, "nota": "Nequi viernes"}, headers=H))
 r = c.post(f"/api/cuentas/{CID}/abonos", json={"monto": NETO * 2, "nota": "exceso"}, headers=H)
 paso("CANDADO: abono mayor al saldo -> 400", r, status=400)
-paso("ya me pagaron (cierra el saldo)", c.post(f"/api/cuentas/{CID}/pagada", headers=H))
+# El cierre por ABONO EXACTO tambien debe dejar fecha de pago (bug "a/o" cazado 2 veces)
+d = paso("abono del saldo exacto (cierra la cuenta sola)",
+         c.post(f"/api/cuentas/{CID}/abonos", json={"monto": NETO - 200000, "nota": "saldo"}, headers=H))
+_cta = d.get("cuenta") or d
+assert _cta.get("estado") == "pagada", "el abono exacto debia cerrar la cuenta"
+assert _cta.get("fecha_pago"), "cuenta cerrada por abono SIN fecha_pago (la a/o volvio)"
+paso("ya me pagaron (idempotente sobre pagada)", c.post(f"/api/cuentas/{CID}/pagada", headers=H))
 
 print("═══ ACTO 3.5: EL ADICIONAL (otrosi) ═══")
 d = paso("proponer otrosi", c.post("/api/otrosies", json={
