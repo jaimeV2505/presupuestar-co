@@ -149,6 +149,9 @@ class CrearCuentaRequest(BaseModel):
 def crear(pid: int, req: CrearCuentaRequest,
           user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     p = _proyecto(pid, user, db)
+
+    if p.estado == "terminado":
+        raise HTTPException(400, "La obra ya fue entregada — el proyecto es de solo lectura (duplicalo para una obra nueva)")
     a = db.query(Avance).filter(Avance.id == req.avance_id, Avance.proyecto_id == p.id).first()
     if not a:
         raise HTTPException(404, "Avance no encontrado")

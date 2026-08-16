@@ -54,6 +54,32 @@ def calcular_totales(items: List[Dict], aiu: Dict) -> Dict:
 
     total = base_con_aiu + iva
 
+    # ── F3: Incidencia por capitulo (el ojo del presupuestador senior) ──────
+    # % que pesa cada capitulo sobre el costo directo — detecta errores gruesos
+    # ("¿cimentacion al 2%? falta algo") de un vistazo.
+    por_cap: Dict[str, int] = {}
+    for it in items:
+        v = round((_num(it.get("cantidad")) or 0) * (_num(it.get("precio_unitario")) or 0))
+        cap = str(it.get("capitulo") or "OTROS")
+        por_cap[cap] = por_cap.get(cap, 0) + v
+    capitulos = sorted(
+        [{"capitulo": k, "valor": v,
+          "pct": round(v * 100 / subtotal, 1) if subtotal else 0}
+         for k, v in por_cap.items()],
+        key=lambda x: -x["valor"])
+
+    # ── F7: Descuento de negociacion (prorrateado, con precio de lista) ─────
+    # El descuento vive en los items (precio_lista = antes, precio_unitario =
+    # pactado): los APUs quedan honestos, la cadena del dinero no se bifurca.
+    subtotal_lista = 0
+    for it in items:
+        cant = _num(it.get("cantidad")) or 0
+        pu = _num(it.get("precio_unitario")) or 0
+        pl = _num(it.get("precio_lista")) or 0
+        subtotal_lista += round(cant * (pl if pl > pu else pu))
+    descuento_valor = max(0, subtotal_lista - subtotal)
+    descuento_pct = round(descuento_valor * 100 / subtotal_lista, 1) if subtotal_lista else 0
+
     return {
         "subtotal_directo": subtotal,
         "admin_pct": pct_a, "admin_valor": val_a,
@@ -65,7 +91,20 @@ def calcular_totales(items: List[Dict], aiu: Dict) -> Dict:
         "regimen_iva": regimen_iva,
         "total": total,
         "num_items": len(items),
+        "capitulos": capitulos,
+        "subtotal_lista": subtotal_lista,
+        "descuento_valor": descuento_valor,
+        "descuento_pct": descuento_pct,
     }
+
+
+def _num(v, default=0.0):
+    if v is None or v == "":
+        return default
+    try:
+        return float(str(v).replace(",", "."))
+    except (ValueError, TypeError):
+        return default
 
 
 def validar_item(item: Dict) -> Dict:
@@ -86,6 +125,8 @@ def validar_item(item: Dict) -> Dict:
         "unidad": str(item.get("unidad") or "un")[:10],
         "cantidad": max(0.0, _f(item.get("cantidad"))),
         "precio_unitario": max(0.0, _f(item.get("precio_unitario") or item.get("precio"))),
+        "precio_lista": max(0.0, _f(item.get("precio_lista"))) or None,  # F7: precio antes del descuento
+        "apu_id": int(item["apu_id"]) if str(item.get("apu_id") or "").isdigit() else None,  # F1: enlace al desglose
         "precio_editado": bool(item.get("precio_editado", False)),
         "notas": str(item.get("notas") or "")[:300],
         "calc": _validar_calc(item.get("calc")),

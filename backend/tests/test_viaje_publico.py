@@ -157,7 +157,7 @@ paso("items desde MIS APUs + contrato (anticipo 30%, rete 10%)", c.put(f"/api/pr
         {"id": "it1", "descripcion": "Localizacion y replanteo", "unidad": "m2",
          "cantidad": 1200, "precio_unitario": 3500},
         {"id": "it2", "descripcion": "Panete 1:4 muros (compuesto)", "unidad": "m2",
-         "cantidad": 300, "precio_unitario": 22524},
+         "cantidad": 300, "precio_unitario": 22524, "apu_id": APU_COMP},
     ],
     "aiu": {"admin": 20, "imprevistos": 3, "utilidad": 7, "aplicar": True, "iva_sobre_utilidad": True},
     "contrato": {"plazo_dias": 90, "anticipo_pct": 30, "retegarantia_pct": 10,
@@ -205,6 +205,11 @@ r = c.put(f"/api/proyectos/{PID}", json={"items": [
     {"id": "hack", "descripcion": "cambiar presupuesto oficial", "unidad": "un",
      "cantidad": 1, "precio_unitario": 1}]}, headers=H)
 paso("CANDADO: presupuesto oficial sellado (items -> 400)", r, status=400)
+r = c.post("/api/exportar/apus-pdf", json={"proyecto_id": PID}, headers=H)
+paso("ANEXO DE PROPUESTA: APUs detallados en PDF", r)
+assert r.content[:4] == b"%PDF", "el anexo de APUs no es un PDF"
+assert len(r.content) > 2000, "el anexo de APUs salio vacio"
+PASOS.append("anexo de APUs detallados (formato propuesta)")
 r = c.put(f"/api/proyectos/{PID}", json={"estado": "borrador"}, headers=H)
 paso("CANDADO: degradar el estado tras el sello -> 400", r, status=400)
 r = c.put(f"/api/proyectos/{PID}", json={"estado": "entrega_solicitada"}, headers=H)
@@ -298,6 +303,21 @@ r = c.post(f"/api/proyectos/{PID}/terminar", headers=H)
 paso("CANDADO: terminar dos veces -> 400", r, status=400)
 r = c.put(f"/api/proyectos/{PID}", json={"estado": "aceptado"}, headers=H)
 paso("CANDADO: reabrir un contrato terminado -> 400", r, status=400)
+# 🔒 Terminado = SOLO LECTURA total: ni nombre, ni avances, ni gastos
+r = c.put(f"/api/proyectos/{PID}", json={"nombre": "renombrar terminado"}, headers=H)
+paso("CANDADO: editar CUALQUIER campo de un terminado -> 400 (solo lectura)", r, status=400)
+r = c.post(f"/api/avances/proyectos/{PID}/avances",
+           json={"titulo": "avance postumo", "items": [{"id": "it1", "pct": 100}]}, headers=H)
+paso("CANDADO: avance sobre terminado -> 400", r, status=400)
+r = c.post(f"/api/gastos/proyectos/{PID}/gastos",
+           json={"descripcion": "gasto postumo", "valor": 1000}, headers=H)
+paso("CANDADO: gasto sobre terminado -> 400", r, status=400)
+d = paso("duplicar un TERMINADO si esta permitido (nace borrador editable)",
+         c.post(f"/api/proyectos/{PID}/duplicar", headers=H))
+assert d.get("estado") == "borrador" and d.get("sector") == "publico", d
+paso("la copia SI se edita", c.put(f"/api/proyectos/{d['id']}", json={"nombre": "Copia editable"}, headers=H))
+paso("borrar la copia del terminado", c.delete(f"/api/proyectos/{d['id']}", headers=H))
+PASOS.append("terminado = solo lectura (PUT/avance/gasto -> 400) + duplicar vivo")
 d = paso("liberar retegarantia", c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H))
 r = c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H)
 paso("CANDADO: liberar dos veces -> 400", r, status=400)

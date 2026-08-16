@@ -64,13 +64,16 @@ def exportar_excel(req: ExportRequest, user: Usuario = Depends(usuario_actual), 
             c.alignment = Alignment(horizontal="center")
         fila += 1
 
+        _incid = {c["capitulo"]: c["pct"] for c in tot.get("capitulos", [])}
         cap_actual = None
         n = 0
         for it in items:
             cap = it.get("capitulo", "OTROS")
             if cap != cap_actual:
                 cap_actual = cap
-                c = ws.cell(row=fila, column=1, value=cap)
+                pct_cap = _incid.get(cap)
+                c = ws.cell(row=fila, column=1,
+                            value=f"{cap}  ·  incidencia {pct_cap}%" if pct_cap is not None else cap)
                 ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=7)
                 c.fill = gris; c.font = bold
                 fila += 1
@@ -95,6 +98,9 @@ def exportar_excel(req: ExportRequest, user: Usuario = Depends(usuario_actual), 
                 c1.fill = gris; c2.fill = gris
             fila += 1
 
+        if tot.get("descuento_valor"):
+            _linea("Valor de lista", tot["subtotal_lista"])
+            _linea(f"Descuento comercial {tot['descuento_pct']}%", -tot["descuento_valor"])
         _linea("Costo directo", tot["subtotal_directo"])
         if tot["aiu_total"] > 0:
             _linea(f"Administracion {tot['admin_pct']}%", tot["admin_valor"])
@@ -182,13 +188,15 @@ def exportar_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual), db
         data = [["#", "Descripcion", "Und", "Cant", "Vr. Unit", "Vr. Total"]]
         estilos_extra = []
         fila_idx = 1
+        _incid = {c["capitulo"]: c["pct"] for c in tot.get("capitulos", [])}
         cap_actual = None
         n = 0
         for it in items:
             cap = it.get("capitulo", "OTROS")
             if cap != cap_actual:
                 cap_actual = cap
-                data.append([cap, "", "", "", "", ""])
+                _pc = _incid.get(cap)
+                data.append([f"{cap}  ·  incidencia {_pc}%" if _pc is not None else cap, "", "", "", "", ""])
                 estilos_extra.append(("SPAN", (0, fila_idx), (-1, fila_idx)))
                 estilos_extra.append(("BACKGROUND", (0, fila_idx), (-1, fila_idx), colors.HexColor("#F1F5F9")))
                 estilos_extra.append(("FONTNAME", (0, fila_idx), (-1, fila_idx), "Helvetica-Bold"))
@@ -214,7 +222,11 @@ def exportar_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual), db
         story.append(Spacer(1, 14))
 
         # Resumen
-        resumen = [["Costo directo", f"${tot['subtotal_directo']:,.0f}"]]
+        resumen = []
+        if tot.get("descuento_valor"):
+            resumen += [["Valor de lista", f"${tot['subtotal_lista']:,.0f}"],
+                        [f"Descuento comercial {tot['descuento_pct']}%", f"-${tot['descuento_valor']:,.0f}"]]
+        resumen += [["Costo directo", f"${tot['subtotal_directo']:,.0f}"]]
         if tot["aiu_total"] > 0:
             resumen += [
                 [f"Administracion {tot['admin_pct']}%", f"${tot['admin_valor']:,.0f}"],
@@ -266,3 +278,154 @@ def exportar_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual), db
     except Exception as e:
         logger.error(f"PDF: {e}", exc_info=True)
         raise HTTPException(500, f"Error generando PDF: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# F1 — ANALISIS DE PRECIOS UNITARIOS (PDF formato propuesta)
+# El anexo que toda propuesta estatal exige — y que profesionaliza la privada.
+# Un APU por item: si el item nacio del CONSTRUCTOR (apu_id -> desglose_json),
+# imprime el analisis completo (materiales+desperdicio, MO, herramienta);
+# si viene de la base 2026, imprime la referencia con su factor de ciudad.
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.post("/apus-pdf")
+def exportar_apus_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    p, items, aiu, tot = _cargar(req.proyecto_id, user, db)
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import (SimpleDocTemplate, Table, TableStyle,
+                                        Paragraph, Spacer, PageBreak)
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from app.db import ApuUsuario
+        from app.services.apu_service import FACTORES_REGION
+
+        es_publico = (p.sector or "privado") == "publico"
+        region = FACTORES_REGION.get(p.region or "bogota", FACTORES_REGION["bogota"])
+
+        # Desgloses del usuario, indexados (una sola query)
+        ids = [it["apu_id"] for it in items if it.get("apu_id")]
+        desgloses = {}
+        if ids:
+            for a in db.query(ApuUsuario).filter(ApuUsuario.id.in_(ids),
+                                                 ApuUsuario.user_id == user.id).all():
+                if a.desglose_json:
+                    try:
+                        desgloses[a.id] = json.loads(a.desglose_json)
+                    except Exception:
+                        pass
+
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=1.4*cm, bottomMargin=1.4*cm,
+                                leftMargin=1.5*cm, rightMargin=1.5*cm)
+        styles = getSampleStyleSheet()
+        NAVY, GRIS, AMBAR = colors.HexColor("#1C3A5E"), colors.HexColor("#64748B"), colors.HexColor("#B45309")
+        st_t = ParagraphStyle("t", parent=styles["Title"], fontSize=15, textColor=NAVY, alignment=1)
+        st_sub = ParagraphStyle("s", parent=styles["Normal"], fontSize=9, textColor=GRIS, alignment=1)
+        st_h = ParagraphStyle("h", parent=styles["Normal"], fontSize=10, textColor=NAVY, spaceBefore=4)
+        st_n = ParagraphStyle("n", parent=styles["Normal"], fontSize=8, textColor=colors.HexColor("#1A1A1A"))
+        st_nota = ParagraphStyle("no", parent=styles["Normal"], fontSize=7.5, textColor=GRIS)
+        COP = lambda v: f"${round(v or 0):,.0f}".replace(",", ".")
+        story = []
+
+        # ── Portada ──
+        story.append(Paragraph("ANÁLISIS DE PRECIOS UNITARIOS", st_t))
+        story.append(Paragraph("Anexo de la propuesta económica" if es_publico
+                               else "Soporte técnico del presupuesto", st_sub))
+        story.append(Spacer(1, 10))
+        quien = [("Entidad contratante", p.entidad_nombre or "-"),
+                 ("Contrato No.", p.contrato_numero or "-"),
+                 ("Supervisor", p.supervisor_nombre or "-")] if es_publico else \
+                [("Cliente", p.cliente_nombre or "-"), ("Dirección", p.direccion or "-")]
+        cab = [["Proyecto", p.nombre], *quien,
+               ["Proponente" if es_publico else "Contratista", user.empresa or user.nombre],
+               ["Ciudad de referencia", f"{region['nombre']} (factor {region['factor']})"],
+               ["AIU aplicado", f"A {tot['admin_pct']}% · I {tot['imprevistos_pct']}% · U {tot['utilidad_pct']}%"
+                                if aiu.get("aplicar", True) else "Sin AIU"],
+               ["Ítems analizados", str(len(items))],
+               ["Fecha", p.actualizado.strftime("%d/%m/%Y") if p.actualizado else ""]]
+        t = Table([[Paragraph(f"<b>{k}</b>", st_n), Paragraph(str(v)[:120], st_n)] for k, v in cab],
+                  colWidths=[4.5*cm, 12*cm])
+        t.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#E2E8F0")),
+                               ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F1F5F9")),
+                               ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]))
+        story.append(t)
+        story.append(Spacer(1, 6))
+        story.append(Paragraph(
+            "Cada análisis desglosa materiales (con % de desperdicio), mano de obra y herramienta menor. "
+            "Los ítems tomados de la base de referencia 2026 se presentan con su precio unitario ajustado "
+            "por el factor de la ciudad. El desperdicio cubre cortes, mermas y manipulación — práctica "
+            "estándar de presupuestación.", st_nota))
+        story.append(PageBreak())
+
+        # ── Un APU por item ──
+        for idx, it in enumerate(items, 1):
+            cant = float(it.get("cantidad") or 0)
+            pu = round(float(it.get("precio_unitario") or 0))
+            story.append(Paragraph(f"APU {idx:02d} — {(it.get('codigo') or '').strip() or 's/c'}", st_h))
+            story.append(Paragraph(f"<b>{(it.get('descripcion') or 'Ítem')[:180]}</b>", st_n))
+            story.append(Paragraph(
+                f"Capítulo: {(it.get('capitulo') or 'OTROS')[:60]} · Unidad: {it.get('unidad') or 'un'} · "
+                f"Cantidad: {cant:g} · <b>Vr. unitario: {COP(pu)}</b> · Vr. total: {COP(cant*pu)}", st_n))
+            pl = float(it.get("precio_lista") or 0)
+            if pl > pu:
+                story.append(Paragraph(
+                    f"Precio de lista {COP(pl)} — descuento comercial pactado del "
+                    f"{round((pl-pu)*100/pl, 1)}% ya reflejado en el unitario.", st_nota))
+            story.append(Spacer(1, 3))
+
+            d = desgloses.get(it.get("apu_id"))
+            if d and d.get("insumos"):
+                filas = [["1. MATERIALES", "Und", "Cant.", "Desp.%", "Vr. unit.", "Parcial"]]
+                for ins in d["insumos"][:40]:
+                    filas.append([str(ins.get("nombre") or "")[:48], str(ins.get("unidad") or "")[:6],
+                                  f"{float(ins.get('cantidad') or 0):g}",
+                                  f"{float(ins.get('desperdicio_pct') or 0):g}",
+                                  COP(ins.get("precio")), COP(ins.get("parcial"))])
+                filas.append(["Subtotal materiales", "", "", "", "", COP(d.get("materiales"))])
+                filas.append(["2. MANO DE OBRA (por unidad)", "", "", "", "", COP(d.get("mano_obra"))])
+                filas.append([f"3. HERRAMIENTA MENOR ({float(d.get('herramienta_pct') or 0):g}% de MO)",
+                              "", "", "", "", COP(d.get("herramienta"))])
+                filas.append(["PRECIO UNITARIO ANALIZADO", "", "", "", "", COP(d.get("precio_unitario"))])
+                ta = Table(filas, colWidths=[7.2*cm, 1.4*cm, 1.6*cm, 1.6*cm, 2.5*cm, 2.7*cm])
+                ta.setStyle(TableStyle([
+                    ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+                    ("BACKGROUND", (0, 0), (-1, 0), NAVY), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#E2E8F0")),
+                    ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
+                    ("BACKGROUND", (0, -4), (-1, -1), colors.HexColor("#F1F5F9")),
+                    ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2), ("BOTTOMPADDING", (0, 0), (-1, -1), 2)]))
+                story.append(ta)
+                analizado = round(float(d.get("precio_unitario") or 0))
+                if analizado and analizado != pu:
+                    story.append(Paragraph(
+                        f"Nota: el precio pactado ({COP(pu)}) difiere del analizado ({COP(analizado)}) — "
+                        f"ajuste comercial del proponente.",
+                        ParagraphStyle("w", parent=st_nota, textColor=AMBAR)))
+            elif (it.get("codigo") or "").strip() and not str(it.get("codigo")).startswith("MIO"):
+                story.append(Paragraph(
+                    f"Precio unitario de <b>referencia — Base APU 2026</b> (código {it.get('codigo')}), "
+                    f"ajustado a {region['nombre']} con factor {region['factor']}. Incluye materiales, "
+                    f"mano de obra, herramienta y desperdicios propios de la actividad según la base.", st_nota))
+            else:
+                story.append(Paragraph(
+                    "APU propio a precio global del proponente (sin desglose registrado). "
+                    "Constrúyelo por insumos en la plataforma para anexar el análisis completo.", st_nota))
+            story.append(Spacer(1, 10))
+
+        if user.plan == "gratis":
+            story.append(Paragraph("Hecho con <b>PresupuestarCO</b> — del APU al acta, todo conectado",
+                                   ParagraphStyle("m", parent=st_nota, alignment=1)))
+        doc.build(story)
+        buf.seek(0)
+        return StreamingResponse(
+            buf, media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="apus_{p.id}.pdf"'},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"APUs PDF: {e}", exc_info=True)
+        raise HTTPException(500, f"Error generando el anexo de APUs: {e}")

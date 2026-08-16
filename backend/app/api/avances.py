@@ -118,6 +118,9 @@ def crear(proyecto_id: int, req: AvanceCreate,
           user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     p = _proyecto_del_usuario(proyecto_id, user, db)
 
+    if p.estado == "terminado":
+        raise HTTPException(400, "La obra ya fue entregada — el proyecto es de solo lectura (duplicalo para una obra nueva)")
+
     if not req.titulo.strip():
         raise HTTPException(400, "El avance necesita un titulo (ej: 'Corte semana 3')")
 

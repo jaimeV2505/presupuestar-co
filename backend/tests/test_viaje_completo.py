@@ -74,7 +74,28 @@ d = paso("items + AIU + contrato (anticipo 50%, rete 5%)", c.put(f"/api/proyecto
     "contrato": {"plazo_dias": 20, "anticipo_pct": 50, "retegarantia_pct": 5,
                  "fecha_inicio": "2026-09-01", "lugar": "Bogota"},
 }, headers=H))
+# ── LA NEGOCIACION: el cliente pide rebaja -> descuento prorrateado (F7) ──
+ITEMS = [
+    {"id": "it1", "descripcion": "Demolicion enchape", "unidad": "m2", "cantidad": 10,
+     "precio_unitario": 28500, "precio_lista": 30000},
+    {"id": "it2", "descripcion": "Enchape piso y pared", "unidad": "m2", "cantidad": 20,
+     "precio_unitario": 80750, "precio_lista": 85000},
+    {"id": "it3", "descripcion": "Instalacion sanitario", "unidad": "un", "cantidad": 1,
+     "precio_unitario": 285000, "precio_lista": 300000},
+]  # directo = 2.185.000 · lista = 2.300.000 · descuento = 115.000 (5.0%)
+paso("descuento de negociacion 5% prorrateado (precio_lista guardado)",
+     c.put(f"/api/proyectos/{PID}", json={"items": ITEMS}, headers=H))
 d = paso("detalle con totales", c.get(f"/api/proyectos/{PID}", headers=H), contiene=["share_token"])
+t = d["totales"]
+assert t["subtotal_directo"] == 2_185_000, t["subtotal_directo"]
+assert t["subtotal_lista"] == 2_300_000 and t["descuento_valor"] == 115_000, t
+assert t["descuento_pct"] == 5.0, t["descuento_pct"]
+caps = {x["capitulo"]: x["pct"] for x in t["capitulos"]}
+assert abs(sum(x["pct"] for x in t["capitulos"]) - 100.0) < 0.5, "incidencias no suman ~100%"
+r = c.post("/api/exportar/apus-pdf", json={"proyecto_id": PID}, headers=H)
+paso("anexo de APUs detallados (PDF) con descuento visible", r)
+assert r.content[:4] == b"%PDF", "el anexo de APUs no es un PDF"
+PASOS.append("descuento prorrateado exacto + incidencias + anexo de APUs")
 TOKEN = d["share_token"]
 TOTAL = round(d["totales"]["total"])
 print(f"     total del contrato: ${TOTAL:,}")

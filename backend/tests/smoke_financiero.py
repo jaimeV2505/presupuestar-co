@@ -223,3 +223,29 @@ for malo in [[{"nombre": "x", "pct": 5}], [{"nombre": "Estampilla", "pct": 30}],
 assert aplicar_deducciones(1_000_000, []) == {"detalle": [], "total": 0}
 
 print("OK deducciones de ley: 5+4+2 exactas a peso + 3 candados")
+
+# ═══ FAMILIA 6: INCIDENCIA POR CAPITULO + DESCUENTO DE NEGOCIACION (F3+F7) ═══
+ITEMS_F = [
+    {"capitulo": "ESTRUCTURA", "cantidad": 10, "precio_unitario": 60000, "precio_lista": 75000},
+    {"capitulo": "ESTRUCTURA", "cantidad": 5,  "precio_unitario": 40000},
+    {"capitulo": "ACABADOS",   "cantidad": 4,  "precio_unitario": 50000, "precio_lista": 50000},
+]
+r = calcular_totales(ITEMS_F, {"aplicar": False})
+# directo: 600.000 + 200.000 + 200.000 = 1.000.000
+assert r["subtotal_directo"] == 1_000_000, r["subtotal_directo"]
+caps = {c["capitulo"]: c for c in r["capitulos"]}
+assert caps["ESTRUCTURA"]["valor"] == 800_000 and caps["ESTRUCTURA"]["pct"] == 80.0, caps
+assert caps["ACABADOS"]["valor"] == 200_000 and caps["ACABADOS"]["pct"] == 20.0, caps
+assert r["capitulos"][0]["capitulo"] == "ESTRUCTURA", "incidencias deben venir ordenadas desc"
+# lista: 750.000 + 200.000 + 200.000 = 1.150.000 -> descuento 150.000 = 13.0%
+assert r["subtotal_lista"] == 1_150_000, r["subtotal_lista"]
+assert r["descuento_valor"] == 150_000, r["descuento_valor"]
+assert r["descuento_pct"] == 13.0, r["descuento_pct"]
+# sin precio_lista: descuento cero, lista == directo
+r0 = calcular_totales([{"capitulo": "X", "cantidad": 2, "precio_unitario": 100}], {"aplicar": False})
+assert r0["descuento_valor"] == 0 and r0["subtotal_lista"] == r0["subtotal_directo"]
+# precio_lista MENOR al pactado no genera "descuento negativo"
+rneg = calcular_totales([{"cantidad": 1, "precio_unitario": 100, "precio_lista": 50}], {"aplicar": False})
+assert rneg["descuento_valor"] == 0, rneg
+
+print("OK incidencia por capitulo + descuento de negociacion: exactos a peso")

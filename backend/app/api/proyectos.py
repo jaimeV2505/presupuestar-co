@@ -326,6 +326,9 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
     p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
     if not p:
         raise HTTPException(404, "Proyecto no encontrado")
+    if p.estado == "terminado":
+        raise HTTPException(400, "Proyecto terminado — es de solo lectura. "
+                                 "Duplicalo para reutilizar el presupuesto en una obra nueva.")
 
     if req.sector is not None and req.sector != p.sector:
         if _esta_firmado(p):

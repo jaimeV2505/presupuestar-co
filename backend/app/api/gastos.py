@@ -60,6 +60,7 @@ def _resumen(p: Proyecto, gastos, db: Session):
 @router.get("/proyectos/{pid}/gastos")
 def listar(pid: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     p = _proyecto(pid, user, db)
+
     gastos = (db.query(Gasto).filter(Gasto.proyecto_id == p.id)
               .order_by(Gasto.creado.desc()).limit(300).all())
     return {
@@ -79,6 +80,9 @@ def listar(pid: int, user: Usuario = Depends(usuario_actual), db: Session = Depe
 def crear(pid: int, req: GastoCreate,
           user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     p = _proyecto(pid, user, db)
+    if p.estado == "terminado":
+        raise HTTPException(400, "La obra ya fue entregada — el proyecto es de solo lectura (duplicalo para una obra nueva)")
+
     if not req.descripcion.strip():
         raise HTTPException(400, "Describe el gasto (ej: '20 bultos de cemento')")
     if req.valor <= 0:
@@ -105,6 +109,8 @@ def crear(pid: int, req: GastoCreate,
 def eliminar(pid: int, gid: int,
              user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     p = _proyecto(pid, user, db)
+    if p.estado == "terminado":
+        raise HTTPException(400, "La obra ya fue entregada — el proyecto es de solo lectura (duplicalo para una obra nueva)")
     g = db.query(Gasto).filter(Gasto.id == gid, Gasto.proyecto_id == p.id).first()
     if not g:
         raise HTTPException(404, "Gasto no encontrado")

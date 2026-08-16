@@ -5,6 +5,7 @@ import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
          Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
 import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI, insumosAPI } from '../services/api'
 import { comprimirImagen } from '../utils/imagen'
+import InfoTip from '../components/InfoTip'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -48,6 +49,9 @@ export default function Editor() {
 
   // Calculadora de cantidades + Preview
   const [calcAbierta, setCalcAbierta] = useState(null)  // idx del item con calc abierta
+  const [showAnalisis, setShowAnalisis] = useState(false)   // F3: incidencia por capitulos
+  const [showDescuento, setShowDescuento] = useState(false) // F7: negociacion
+  const [descuentoPct, setDescuentoPct] = useState('')
   const [showPreview, setShowPreview] = useState(false)
 
   // Avances de obra (cuando el presupuesto esta aceptado)
@@ -107,9 +111,24 @@ export default function Editor() {
 
   // ── Calculo local instantaneo (mismo algoritmo que el backend) ────────
   const calcularLocal = useCallback((itemsAct, aiuAct) => {
-    let sub = 0
-    itemsAct.forEach(it => { sub += (parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0) })
+    let sub = 0, subLista = 0
+    const porCap = {}
+    itemsAct.forEach(it => {
+      const cant = parseFloat(it.cantidad) || 0
+      const pu = parseFloat(it.precio_unitario) || 0
+      const pl = parseFloat(it.precio_lista) || 0
+      const v = Math.round(cant * pu)
+      sub += v
+      subLista += Math.round(cant * (pl > pu ? pl : pu))
+      const cap = it.capitulo || 'OTROS'
+      porCap[cap] = (porCap[cap] || 0) + v
+    })
     sub = Math.round(sub)
+    const capitulos = Object.entries(porCap)
+      .map(([capitulo, valor]) => ({ capitulo, valor, pct: sub ? Math.round(valor * 1000 / sub) / 10 : 0 }))
+      .sort((x, y) => y.valor - x.valor)
+    const descuento_valor = Math.max(0, subLista - sub)
+    const descuento_pct = subLista ? Math.round(descuento_valor * 1000 / subLista) / 10 : 0
     const a = aiuAct.aplicar ? Math.round(sub * (aiuAct.admin || 0) / 100) : 0
     const i = aiuAct.aplicar ? Math.round(sub * (aiuAct.imprevistos || 0) / 100) : 0
     const u = aiuAct.aplicar ? Math.round(sub * (aiuAct.utilidad || 0) / 100) : 0
@@ -120,6 +139,7 @@ export default function Editor() {
     return {
       subtotal_directo: sub, admin_valor: a, imprevistos_valor: i, utilidad_valor: u,
       aiu_total: a + i + u, base_con_aiu: base, iva, total: base + iva, num_items: itemsAct.length,
+      capitulos, subtotal_lista: subLista, descuento_valor, descuento_pct,
       regimen_iva: aiuAct.iva_sobre_utilidad ? 'IVA 19% solo sobre utilidad (Art. 462-1 ET)' : 'IVA 19% sobre base + AIU',
     }
   }, [])
@@ -157,7 +177,8 @@ export default function Editor() {
         toast.error('Sin conexión — tus cambios se guardarán al volver la señal', { id: 'save-err', duration: 5000 })
         setTimeout(() => _enviar(0), 15000) // sigue intentando en segundo plano
       } else {
-        toast.error('Error guardando: ' + e.message, { id: 'save-err' })
+        const motivo = e.response?.data?.detail || e.message
+        toast.error(motivo, { id: 'save-err', duration: 6000 })
       }
     } finally {
       setGuardando(false)
@@ -172,6 +193,10 @@ export default function Editor() {
   }, [calcularLocal, _enviar])
 
   const setItemsYGuardar = (fn) => {
+    if (p?.estado === 'terminado') {
+      toast.error('Proyecto terminado — solo lectura. Duplícalo para reutilizar el presupuesto.', { id: 'ro' })
+      return
+    }
     setItems(prev => {
       const next = typeof fn === 'function' ? fn(prev) : fn
       guardar(next, aiu)
@@ -181,6 +206,10 @@ export default function Editor() {
 
   const timerContrato = useRef(null)
   const setContratoYGuardar = (nuevo) => {
+    if (p?.estado === 'terminado') {
+      toast.error('Proyecto terminado — solo lectura. Duplícalo para reutilizar el presupuesto.', { id: 'ro' })
+      return
+    }
     setContrato(nuevo)
     clearTimeout(timerContrato.current)
     timerContrato.current = setTimeout(() => {
@@ -216,6 +245,7 @@ export default function Editor() {
   }, [q, categoria, showBuscador, p?.region])
 
   const esPublico = p?.sector === 'publico'
+  const soloLectura = p?.estado === 'terminado'   // 🔒 terminado: solo vista, duplicar para reutilizar
 
   useEffect(() => {
     if (!showBuscador || fuenteApu !== 'mios') return
@@ -244,6 +274,7 @@ export default function Editor() {
       cantidad: 1,
       precio_unitario: apu.precio,
       precio_editado: false,
+      ...(esMio ? { apu_id: apu.id } : {}),   // F1: enlaza el desglose para el anexo de APUs
     }
     setItemsYGuardar(prev => [...prev, nuevo])
     toast.success('Agregado', { duration: 1200 })
@@ -323,11 +354,13 @@ export default function Editor() {
     try {
       toast.loading('Generando ' + tipo.toUpperCase() + '...', { id: 'exp' })
       const payload = { proyecto_id: parseInt(id) }
-      const res = tipo === 'excel' ? await exportarAPI.excel(payload) : await exportarAPI.pdf(payload)
+      const res = tipo === 'excel' ? await exportarAPI.excel(payload)
+                : tipo === 'apus' ? await exportarAPI.apusPdf(payload)
+                : await exportarAPI.pdf(payload)
       const url = URL.createObjectURL(res.data)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${p.nombre.replace(/[^a-z0-9]/gi, '_')}.${tipo === 'excel' ? 'xlsx' : 'pdf'}`
+      a.download = `${p.nombre.replace(/[^a-z0-9]/gi, '_')}${tipo === 'apus' ? '_APUs' : ''}.${tipo === 'excel' ? 'xlsx' : 'pdf'}`
       a.click()
       URL.revokeObjectURL(url)
       toast.success('Descargado', { id: 'exp' })
@@ -465,6 +498,11 @@ export default function Editor() {
                   <FileText className="w-3.5 h-3.5" /> PDF
                 </button>
               </div>
+              <button onClick={() => { setShowPanel(false); exportar('apus') }}
+                      className="w-full mt-1.5 mx-1 flex items-center justify-center gap-1.5 border border-violet-200 rounded-xl py-2 text-xs font-bold text-violet-600 hover:bg-violet-50"
+                      style={{ width: 'calc(100% - 8px)' }}>
+                📑 APUs detallados (anexo de propuesta)
+              </button>
             </div>
   )
 
@@ -615,6 +653,26 @@ export default function Editor() {
         </aside>
 
       <main className="flex-1 min-w-0 max-w-6xl mx-auto px-4 py-5">
+        {soloLectura && (
+          <div className="flex items-center gap-3 bg-slate-100 border border-slate-200 rounded-xl p-3 mb-4">
+            <span className="text-xl">🔒</span>
+            <p className="flex-1 text-xs text-slate-600">
+              <strong className="text-slate-800">Proyecto terminado — solo lectura.</strong>{' '}
+              El historial queda intacto como evidencia (actas, cuentas, bitácora).
+              Para una obra nueva con este mismo presupuesto, duplícalo.
+            </p>
+            <button onClick={async () => {
+                      try {
+                        const copia = await proyectosAPI.duplicar(id)
+                        toast.success('Copia creada — lista para editar')
+                        nav(`/editor/${copia.id}`); window.location.reload()
+                      } catch (e2) { toast.error(e2.response?.data?.detail || e2.message) }
+                    }}
+                    className="shrink-0 px-3 py-2 rounded-xl bg-navy-600 text-white text-xs font-bold hover:bg-navy-700">
+              📄 Duplicar proyecto
+            </button>
+          </div>
+        )}
         {tipEditor && (
           <div className="flex items-start gap-2 bg-navy-50 border border-navy-100 rounded-xl p-3 mb-4 text-[11px] text-navy-700">
             <span className="text-base">💡</span>
@@ -638,11 +696,13 @@ export default function Editor() {
           </div>
         )}
         {/* Boton agregar actividades */}
+        {!soloLectura && (
         <button onClick={() => setShowBuscador(true)}
                 className="w-full flex items-center gap-3 bg-white border-2 border-dashed border-slate-300 hover:border-navy-400 rounded-xl p-4 text-slate-500 hover:text-navy-600 transition mb-5">
           <Search className="w-5 h-5" />
           <span className="font-medium">Buscar actividades en la base APU 2026...</span>
         </button>
+        )}
 
         {/* Items agrupados por capitulo */}
         {Object.keys(grupos).length === 0 ? (
@@ -886,11 +946,100 @@ export default function Editor() {
       </main>
       </div>
 
+      {/* ── F3+F7: Análisis del presupuesto (incidencia) + Negociación ── */}
+      {showAnalisis && totales?.capitulos?.length > 0 && (
+        <div className="fixed bottom-16 left-0 right-0 z-40 px-4">
+          <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-2xl border border-slate-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-black text-slate-700">📊 Incidencia por capítulos
+                <InfoTip texto="El % que pesa cada capítulo sobre el costo directo. Es lo primero que revisa un presupuestador con experiencia: si ESTRUCTURA pesa 3% en una casa nueva, algo falta. Úsalo para cazar errores gruesos antes de enviar." />
+              </p>
+              <button onClick={() => setShowAnalisis(false)} className="text-slate-400 text-xs">✕ cerrar</button>
+            </div>
+            <div className="max-h-44 overflow-y-auto space-y-1.5">
+              {totales.capitulos.map(c => (
+                <div key={c.capitulo} className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-500 w-40 truncate" title={c.capitulo}>{c.capitulo}</span>
+                  <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-navy-500 rounded-full" style={{ width: `${Math.min(100, c.pct)}%` }} />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-600 w-10 text-right">{c.pct}%</span>
+                  <span className="text-[10px] text-slate-400 w-20 text-right">{COP(c.valor)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDescuento && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowDescuento(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="font-black text-slate-800">💸 Descuento de negociación
+              <InfoTip texto="El cliente pidió rebaja. En vez de dañar tus APUs uno a uno, este descuento se prorratea en todos los ítems y GUARDA el precio de lista: el PDF muestra 'valor de lista − descuento = precio pactado'. Tus análisis quedan honestos y el cliente ve cuánto ganó." />
+            </h3>
+            {totales?.descuento_valor > 0 ? (
+              <div className="mt-3">
+                <p className="text-sm text-slate-600">Descuento vigente: <strong className="text-emerald-600">{totales.descuento_pct}%</strong> — el cliente ahorra <strong>{COP(totales.descuento_valor)}</strong> (lista {COP(totales.subtotal_lista)}).</p>
+                <button onClick={() => {
+                          setItemsYGuardar(prev => prev.map(it => it.precio_lista
+                            ? { ...it, precio_unitario: it.precio_lista, precio_lista: null } : it))
+                          toast.success('Descuento retirado — precios de lista restaurados')
+                          setShowDescuento(false)
+                        }}
+                        className="mt-3 w-full py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50">
+                  Quitar descuento (volver a lista)
+                </button>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <label className="text-xs font-semibold text-slate-500">¿Qué % le rebajas al costo directo?</label>
+                <div className="flex gap-2 mt-1.5">
+                  <input type="number" min="0.1" max="30" step="0.1" value={descuentoPct}
+                         onChange={e => setDescuentoPct(e.target.value)} placeholder="Ej: 5"
+                         className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+                  <span className="self-center text-sm text-slate-400">%</span>
+                </div>
+                {parseFloat(descuentoPct) > 0 && totales && (
+                  <p className="text-[11px] text-slate-500 mt-2 bg-emerald-50 rounded-lg p-2">
+                    Nuevo directo ≈ <strong>{COP(Math.round(totales.subtotal_directo * (1 - parseFloat(descuentoPct) / 100)))}</strong>
+                    {' '}· ahorro para el cliente ≈ <strong>{COP(Math.round(totales.subtotal_directo * parseFloat(descuentoPct) / 100))}</strong>
+                  </p>
+                )}
+                <button onClick={() => {
+                          const d = parseFloat(descuentoPct)
+                          if (!d || d <= 0 || d > 30) { toast.error('Un descuento sano va entre 0.1% y 30%'); return }
+                          setItemsYGuardar(prev => prev.map(it => {
+                            const lista = parseFloat(it.precio_lista) || parseFloat(it.precio_unitario) || 0
+                            return { ...it, precio_lista: lista, precio_unitario: Math.round(lista * (1 - d / 100)) }
+                          }))
+                          toast.success(`Descuento del ${d}% aplicado a todos los ítems 🤝`)
+                          setShowDescuento(false); setDescuentoPct('')
+                        }}
+                        className="mt-3 w-full py-2.5 rounded-xl bg-navy-600 text-white text-sm font-bold hover:bg-navy-700">
+                  Aplicar descuento prorrateado
+                </button>
+              </div>
+            )}
+            <p className="text-[10px] text-slate-400 mt-3">Disponible antes de la firma/sello. Tras el sello, los cambios entran por adicionales.</p>
+          </div>
+        </div>
+      )}
+
       {/* Barra de totales fija */}
       {totales && items.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-navy-800 text-white z-40">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-            <div className="flex gap-4 text-xs text-blue-200 overflow-x-auto">
+            <div className="flex gap-4 text-xs text-blue-200 overflow-x-auto items-center">
+              <button onClick={() => setShowAnalisis(v => !v)} title="Incidencia por capítulos"
+                      className="whitespace-nowrap px-2 py-1 rounded-lg bg-navy-700 hover:bg-navy-600 font-bold">📊</button>
+              {!['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado) && (
+                <button onClick={() => setShowDescuento(true)} title="Descuento de negociación"
+                        className="whitespace-nowrap px-2 py-1 rounded-lg bg-navy-700 hover:bg-navy-600 font-bold">💸</button>
+              )}
+              {totales.descuento_valor > 0 && (
+                <span className="whitespace-nowrap text-emerald-300 font-bold">−{totales.descuento_pct}% ({COP(totales.descuento_valor)})</span>
+              )}
               <span className="whitespace-nowrap">Directo: <strong className="text-white">{COP(totales.subtotal_directo)}</strong></span>
               {aiu.aplicar && <span className="whitespace-nowrap">AIU: <strong className="text-white">{COP(totales.aiu_total)}</strong></span>}
               <span className="whitespace-nowrap">IVA: <strong className="text-white">{COP(totales.iva)}</strong></span>

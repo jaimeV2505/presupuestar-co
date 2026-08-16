@@ -189,6 +189,7 @@ export const preciosAPI = {
 export const exportarAPI = {
   excel: (payload) => api.post('/exportar/excel', payload, { responseType: 'blob' }),
   pdf: (payload) => api.post('/exportar/pdf', payload, { responseType: 'blob' }),
+  apusPdf: (payload) => api.post('/exportar/apus-pdf', payload, { responseType: 'blob' }),
 }
 
 export default api
