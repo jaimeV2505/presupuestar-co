@@ -361,7 +361,7 @@ export default function Editor() {
       ...(esMio ? { apu_id: apu.id } : {}),   // F1: enlaza el desglose para el anexo de APUs
     }
     setItemsYGuardar(prev => [...prev, nuevo])
-    toast.success('Agregado', { duration: 1200 })
+    toast.success(`«${(apu.descripcion || '').slice(0, 32)}» → al presupuesto ✓ (cierra el buscador y lo ves en la tabla, capítulo ${nuevo.capitulo})`, { duration: 2600 })
   }
 
   // Detectar que formula aplica segun la unidad del item
@@ -1447,6 +1447,12 @@ export default function Editor() {
           <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[86vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-slate-800 mb-1">🧱 Construir mi APU</h3>
             <p className="text-[11px] text-slate-400 mb-2">Insumos + mano de obra + herramienta + transporte 🚚 → tu precio unitario compuesto (los 4 componentes del APU oficial)</p>
+            {desgloses.porCodigo['REC-PANETE'] ? (
+              <button onClick={() => { setShowConstructor(false); setQ(''); setFuenteApu('mios'); setShowBuscador(true) }}
+                      className="w-full mb-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100">
+                🍳 Recetario cargado ✓ — ver mis 16 recetas en ⭐ Mis APUs
+              </button>
+            ) : (
             <button onClick={async () => {
                       try {
                         toast.loading('Sembrando recetas...', { id: 'rec' })
@@ -1458,11 +1464,17 @@ export default function Editor() {
                         setQ('')
                         setFuenteApu('mios')
                         setShowBuscador(true)
+                        apusAPI.listar({}).then(r2 => {
+                          const porId = {}, porCodigo = {}, codigoAId = {}
+                          for (const a of (r2.items || [])) if (a.desglose?.insumos?.length) { porId[a.id] = a.desglose; if (a.codigo) { porCodigo[a.codigo] = a.desglose; codigoAId[a.codigo] = a.id } }
+                          setDesgloses({ porId, porCodigo, codigoAId })
+                        }).catch(() => {})
                       } catch (e2) { toast.error(e2.response?.data?.detail || e2.message, { id: 'rec' }) }
                     }}
                     className="w-full mb-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100">
               🍳 Cargar recetario de arranque — 16 recetas típicas con su análisis, listas para ajustar a TUS precios
             </button>
+            )}
             <input className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 mb-2" placeholder="Descripción (ej: Pañete 1:4 muros interiores)"
                    value={construyendo.descripcion} onChange={e => setConstruyendo(c => ({ ...c, descripcion: e.target.value }))} />
             <div className="flex flex-wrap gap-2 mb-2">
