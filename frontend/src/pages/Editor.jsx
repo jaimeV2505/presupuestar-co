@@ -930,20 +930,26 @@ export default function Editor() {
                             </div>
                           </div>
                           <p className="text-slate-400 mt-1">💡 Herramienta es un <strong>porcentaje</strong> de la mano de obra (práctica estándar 3-10%). Si lo tuyo es un flete en <strong>pesos</strong>, ese va en la fila 4 · Transporte 🚚.</p>
-                          <div className="flex gap-2 mt-2">
+                          <div className="flex gap-2 mt-2 items-center">
                             <button disabled={anGuardando} onClick={() => recalcularAnalisis(it, false)}
                                     className="flex-1 py-1.5 rounded-lg border border-violet-300 text-violet-700 font-bold hover:bg-violet-100 disabled:opacity-50">
                               💾 Recalcular y guardar el APU
                             </button>
+                            <InfoTip texto="Guarda la receta en tu BIBLIOTECA (Mis APUs) con el precio recalculado por el servidor. Este presupuesto NO cambia — útil si ya enviaste la cotización y solo quieres afinar tu recetario para futuras obras." />
                             {!soloLectura && !['aceptado', 'entrega_solicitada'].includes(p.estado) && (
+                              <>
                               <button disabled={anGuardando} onClick={() => recalcularAnalisis(it, true)}
                                       className="flex-1 py-1.5 rounded-lg bg-violet-600 text-white font-bold hover:bg-violet-700 disabled:opacity-50">
                                 ⚡ Recalcular y APLICAR al ítem
                               </button>
+                              <InfoTip texto="Hace lo mismo que guardar Y ADEMÁS pone el precio analizado en ESTE ítem. En cadena se actualizan: el total del presupuesto, el AIU, la incidencia por capítulos, el anexo de APUs y la lista de materiales. Un solo dato madre — nada se digita dos veces. (Si el ítem tenía descuento de lista, se retira.)" />
+                              </>
                             )}
                           </div>
                           {Math.round(_prevTot) !== Math.round(_num2(it.precio_unitario)) && (
-                            <p className="text-amber-600 mt-1">⚠️ El ítem está a {COP(it.precio_unitario)} — "aplicar" lo actualiza al analizado{it.precio_lista ? ' (y retira su descuento de lista)' : ''}.</p>
+                            <p className="text-amber-600 mt-1">⚠️ El ítem está a {COP(it.precio_unitario)} — "aplicar" lo actualiza al analizado{it.precio_lista ? ' (y retira su descuento de lista)' : ''}.
+                              <InfoTip texto="La receta dice un precio y el presupuesto tiene otro — pasa cuando editas el análisis sin aplicar, o cuando ajustaste el precio a mano. No es error: puedes dejarlo así (el anexo lo anota como 'ajuste comercial del proponente') o pulsar ⚡ para sincronizarlos." />
+                            </p>
                           )}
                         </div>
                       </div>
