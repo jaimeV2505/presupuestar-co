@@ -1109,16 +1109,41 @@ export default function Editor() {
                     )
                   })()}
                 </div>
-                {(contrato.deducciones || []).map((dd, i) => (
-                  <div key={i} className="flex gap-1.5 mb-1.5">
+                {(contrato.deducciones || []).map((dd, i) => {
+                  // 🕵️ Vigía semántico: el nombre y el número no pueden contradecirse
+                  const nom = (dd.nombre || '').toLowerCase()
+                  const pct = parseFloat(dd.pct) || 0
+                  let alerta = null
+                  if ((nom.includes('1106') || nom.includes('5%')) && pct !== 5)
+                    alerta = { msg: `La contribución de la Ley 1106 es 5% FIJO — tienes ${pct}%`, fix: 5 }
+                  else if (nom.includes('retefuente') && pct > 4)
+                    alerta = { msg: `La retefuente de construcción real es ≈2% — ${pct}% no existe ni para honorarios`, fix: 2 }
+                  else if (nom.includes('estampilla') && pct > 10)
+                    alerta = { msg: `Las estampillas territoriales suelen sumar 2-8% — verifica tu contrato`, fix: null }
+                  else if (!alerta && pct > 15)
+                    alerta = { msg: `${pct}% es inusualmente alto para una deducción — verifica el contrato con la entidad`, fix: null }
+                  return (
+                  <div key={i} className="mb-1.5">
+                  <div className="flex gap-1.5">
                     <input className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5" value={dd.nombre}
                            onChange={e => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x) })} />
-                    <input type="number" min="0" max="25" className="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1.5" value={dd.pct}
+                    <input type="number" min="0" max="25" className={`w-16 text-xs border rounded-lg px-2 py-1.5 ${alerta ? 'border-amber-400 bg-amber-50' : 'border-slate-200'}`} value={dd.pct}
                            onChange={e => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.map((x, j) => j === i ? { ...x, pct: Math.max(0, Math.min(25, parseFloat(e.target.value) || 0)) } : x) })} />
                     <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.filter((_, j) => j !== i) })}
                             className="text-slate-300 hover:text-red-400 px-1">×</button>
                   </div>
-                ))}
+                  {alerta && (
+                    <p className="text-[10px] text-amber-700 mt-0.5 flex items-center gap-1.5">
+                      ⚠️ {alerta.msg}
+                      {alerta.fix !== null && (
+                        <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.map((x, j) => j === i ? { ...x, pct: alerta.fix } : x) })}
+                                className="font-black text-emerald-700 underline">corregir a {alerta.fix}%</button>
+                      )}
+                    </p>
+                  )}
+                  </div>
+                  )
+                })}
                 {(contrato.deducciones || []).length === 0 && (
                   <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: [
                             { nombre: 'Contribución obra pública 5% (Ley 1106/2006)', pct: 5 },
