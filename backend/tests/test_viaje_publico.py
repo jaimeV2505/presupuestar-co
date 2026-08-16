@@ -210,6 +210,24 @@ paso("ANEXO DE PROPUESTA: APUs detallados en PDF", r)
 assert r.content[:4] == b"%PDF", "el anexo de APUs no es un PDF"
 assert len(r.content) > 2000, "el anexo de APUs salio vacio"
 PASOS.append("anexo de APUs detallados (formato propuesta)")
+
+# F2: la LISTA DE COMPRAS de la obra — consolidada, con desperdicio y MI precio
+d = paso("explosion de insumos (lista de materiales)",
+         c.post("/api/exportar/explosion", json={"proyecto_id": PID}, headers=H))
+_ins = {x["nombre"]: x for x in d["insumos"]}
+# panete 300 m2 × 0.35 bulto × 1.05 desperdicio = 110.25 bultos exactos
+assert _ins["Cemento gris"]["cantidad"] == 110.25, _ins["Cemento gris"]
+assert _ins["Arena lavada"]["cantidad"] == 12.0, _ins["Arena lavada"]
+# cruzado con MI proveedor (Ferreteria El Roble a $28.500, con fecha)
+assert _ins["Cemento gris"]["fuente_precio"] == "mi_proveedor"
+assert _ins["Cemento gris"]["proveedor"] == "Ferreteria El Roble" and _ins["Cemento gris"]["fecha_precio"]
+assert _ins["Cemento gris"]["subtotal"] == round(110.25 * 28500), _ins["Cemento gris"]["subtotal"]
+# el parte honesto: it1 (replanteo, sin desglose) queda declarado
+assert d["items_sin_desglose"] >= 1 and d["items_explotados"] >= 1
+r = c.post("/api/exportar/explosion-excel", json={"proyecto_id": PID}, headers=H)
+paso("lista de materiales en Excel (para la ferreteria)", r)
+assert r.content[:2] == b"PK", "el Excel de materiales no es un xlsx"
+PASOS.append("explosion de insumos exacta + cruce con proveedor + Excel")
 r = c.put(f"/api/proyectos/{PID}", json={"estado": "borrador"}, headers=H)
 paso("CANDADO: degradar el estado tras el sello -> 400", r, status=400)
 r = c.put(f"/api/proyectos/{PID}", json={"estado": "entrega_solicitada"}, headers=H)

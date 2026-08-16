@@ -250,6 +250,8 @@ export default function Editor() {
   // ── F1: visibilidad del ANÁLISIS del ítem (desglose de Mis APUs) ────────
   const [desgloses, setDesgloses] = useState({ porId: {}, porCodigo: {} })
   const [analisisAbierto, setAnalisisAbierto] = useState(null)  // _idx del item expandido
+  const [showExplosion, setShowExplosion] = useState(false)     // F2: lista de materiales
+  const [explosionData, setExplosionData] = useState(null)
   useEffect(() => {
     apusAPI.listar({}).then(r => {
       const porId = {}, porCodigo = {}
@@ -530,6 +532,19 @@ export default function Editor() {
                 {nAnalizados} de {items.length} ítems con análisis completo
                 {nAnalizados < items.length && ' — constrúyelos por insumos 🧱 para una propuesta 100% sustentada'}
               </p>
+              <button onClick={async () => {
+                        setShowPanel(false)
+                        try {
+                          toast.loading('Consolidando insumos...', { id: 'exp2' })
+                          const d = await exportarAPI.explosion({ proyecto_id: parseInt(id) })
+                          toast.dismiss('exp2')
+                          setExplosionData(d); setShowExplosion(true)
+                        } catch (e2) { toast.error(e2.response?.data?.detail || e2.message, { id: 'exp2' }) }
+                      }}
+                      className="w-full mt-1.5 mx-1 flex items-center justify-center gap-1.5 border border-amber-200 rounded-xl py-2 text-xs font-bold text-amber-700 hover:bg-amber-50"
+                      style={{ width: 'calc(100% - 8px)' }}>
+                🧱 Lista de materiales (explosión de insumos)
+              </button>
             </div>
   )
 
@@ -1042,6 +1057,76 @@ export default function Editor() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── F2: Lista de materiales (explosión de insumos) ── */}
+      {showExplosion && explosionData && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowExplosion(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-5 max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between">
+              <h3 className="font-black text-slate-800">🧱 Lista de materiales de la obra
+                <InfoTip texto="El presupuesto habla en actividades; la ferretería vende insumos. Aquí están TODOS los materiales de la obra consolidados (con desperdicio incluido) y cruzados con tus precios negociados. Es tu lista de compras — y tu control de materiales." />
+              </h3>
+              <button onClick={() => setShowExplosion(false)} className="text-slate-400">✕</button>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">
+              {explosionData.items_explotados} actividades explotadas · {explosionData.n_insumos} insumos ·{' '}
+              {explosionData.con_precio_negociado > 0 && <span className="text-emerald-600 font-semibold">{explosionData.con_precio_negociado} con precio de TU proveedor · </span>}
+              desperdicio ya incluido
+            </p>
+            {explosionData.n_insumos === 0 ? (
+              <div className="mt-4 bg-amber-50 border border-amber-100 rounded-xl p-4 text-xs text-amber-800">
+                Ninguna actividad tiene desglose todavía. Construye tus APUs por insumos (🧱 el constructor)
+                y esta lista se arma sola — cemento, arena y todo lo demás, sumado y con desperdicio.
+              </div>
+            ) : (
+              <div className="mt-3 overflow-y-auto flex-1 border border-slate-100 rounded-xl">
+                <div className="grid grid-cols-12 gap-1 px-3 py-2 bg-navy-700 text-white text-[10px] font-bold sticky top-0">
+                  <span className="col-span-4">Insumo</span><span>Und</span><span className="text-right col-span-2">Cantidad</span><span className="text-right col-span-2">Precio</span><span className="text-right col-span-3">Subtotal</span>
+                </div>
+                {explosionData.insumos.map((i, k) => (
+                  <div key={k} className="grid grid-cols-12 gap-1 px-3 py-2 border-t border-slate-50 text-[11px] text-slate-700 items-center">
+                    <span className="col-span-4">
+                      <span className="block truncate font-medium" title={i.nombre}>{i.nombre}</span>
+                      {i.fuente_precio === 'mi_proveedor' && (
+                        <span className="text-[9px] text-emerald-600">🏪 {i.proveedor} · {i.fecha_precio}</span>
+                      )}
+                      {i.en_items > 1 && <span className="text-[9px] text-slate-400"> · en {i.en_items} actividades</span>}
+                    </span>
+                    <span className="text-slate-400">{i.unidad}</span>
+                    <span className="text-right col-span-2 font-semibold">{i.cantidad}</span>
+                    <span className="text-right col-span-2">{i.precio ? COP(i.precio) : '—'}</span>
+                    <span className="text-right col-span-3 font-semibold">{i.subtotal ? COP(i.subtotal) : '—'}</span>
+                  </div>
+                ))}
+                <div className="grid grid-cols-12 gap-1 px-3 py-2 border-t border-slate-200 bg-slate-50 text-xs font-black text-slate-800">
+                  <span className="col-span-9">TOTAL MATERIALES ESTIMADO</span>
+                  <span className="text-right col-span-3">{COP(explosionData.total_estimado)}</span>
+                </div>
+              </div>
+            )}
+            {explosionData.items_sin_desglose > 0 && (
+              <p className="text-[10px] text-amber-700 mt-2">
+                ⚠️ {explosionData.items_sin_desglose} actividad(es) sin desglose no entran a la lista:{' '}
+                {explosionData.sin_desglose.slice(0, 3).join('; ')}{explosionData.sin_desglose.length > 3 ? '…' : ''}
+              </p>
+            )}
+            {explosionData.n_insumos > 0 && (
+              <button onClick={async () => {
+                        try {
+                          const res = await exportarAPI.explosionExcel({ proyecto_id: parseInt(id) })
+                          const url = URL.createObjectURL(res.data)
+                          const a = document.createElement('a')
+                          a.href = url; a.download = `${p.nombre.replace(/[^a-z0-9]/gi, '_')}_materiales.xlsx`
+                          a.click(); URL.revokeObjectURL(url)
+                        } catch (e2) { toast.error(e2.response?.data?.detail || e2.message) }
+                      }}
+                      className="mt-3 w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700">
+                📥 Descargar Excel — para llevar a la ferretería
+              </button>
+            )}
           </div>
         </div>
       )}

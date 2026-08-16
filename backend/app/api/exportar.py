@@ -288,6 +288,33 @@ def exportar_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual), db
 # si viene de la base 2026, imprime la referencia con su factor de ciudad.
 # ═══════════════════════════════════════════════════════════════════════════
 
+def _resolutor_de_desgloses(user: Usuario, db: Session):
+    """Mapa de desgloses del usuario + resolutor triple (apu_id / MIO-{id} / codigo).
+    Compartido por el anexo de APUs y la explosion de insumos."""
+    from app.db import ApuUsuario
+    por_id, por_codigo = {}, {}
+    for a in db.query(ApuUsuario).filter(ApuUsuario.user_id == user.id,
+                                         ApuUsuario.desglose_json != "").all():
+        try:
+            dj = json.loads(a.desglose_json)
+        except Exception:
+            continue
+        if not dj or not dj.get("insumos"):
+            continue
+        por_id[a.id] = dj
+        if (a.codigo or "").strip():
+            por_codigo[a.codigo.strip()] = dj
+
+    def _desglose_de(it):
+        if it.get("apu_id") and it["apu_id"] in por_id:
+            return por_id[it["apu_id"]]
+        cod = (it.get("codigo") or "").strip()
+        if cod.startswith("MIO-") and cod[4:].isdigit() and int(cod[4:]) in por_id:
+            return por_id[int(cod[4:])]
+        return por_codigo.get(cod)
+    return _desglose_de
+
+
 @router.post("/apus-pdf")
 def exportar_apus_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     p, items, aiu, tot = _cargar(req.proyecto_id, user, db)
@@ -304,29 +331,8 @@ def exportar_apus_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual
         es_publico = (p.sector or "privado") == "publico"
         region = FACTORES_REGION.get(p.region or "bogota", FACTORES_REGION["bogota"])
 
-        # Desgloses del usuario (una sola query): resolvemos por apu_id, por
-        # codigo legado "MIO-{id}" y por codigo exacto — asi los items viejos
-        # (agregados antes del enlace apu_id) tambien entran ESPECIFICADOS.
-        por_id, por_codigo = {}, {}
-        for a in db.query(ApuUsuario).filter(ApuUsuario.user_id == user.id,
-                                             ApuUsuario.desglose_json != "").all():
-            try:
-                dj = json.loads(a.desglose_json)
-            except Exception:
-                continue
-            if not dj or not dj.get("insumos"):
-                continue
-            por_id[a.id] = dj
-            if (a.codigo or "").strip():
-                por_codigo[a.codigo.strip()] = dj
-
-        def _desglose_de(it):
-            if it.get("apu_id") and it["apu_id"] in por_id:
-                return por_id[it["apu_id"]]
-            cod = (it.get("codigo") or "").strip()
-            if cod.startswith("MIO-") and cod[4:].isdigit() and int(cod[4:]) in por_id:
-                return por_id[int(cod[4:])]
-            return por_codigo.get(cod)
+        # Desgloses del usuario: resolutor triple compartido (apu_id / MIO / codigo)
+        _desglose_de = _resolutor_de_desgloses(user, db)
 
         buf = io.BytesIO()
         doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=1.4*cm, bottomMargin=1.4*cm,
@@ -441,3 +447,115 @@ def exportar_apus_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual
     except Exception as e:
         logger.error(f"APUs PDF: {e}", exc_info=True)
         raise HTTPException(500, f"Error generando el anexo de APUs: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# F2 — EXPLOSION DE INSUMOS: la lista de compras de la obra completa
+# Consolida los insumos de todos los APUs con desglose (con desperdicio) y los
+# cruza con los precios negociados de MIS proveedores. JSON para la UI + Excel.
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _precios_negociados(user: Usuario, db: Session) -> dict:
+    """Mejor precio por insumo entre MIS proveedores: {nombre_lower: {...}}."""
+    from app.db import PrecioProveedor, Proveedor
+    filas = (db.query(PrecioProveedor, Proveedor.nombre)
+             .join(Proveedor, Proveedor.id == PrecioProveedor.proveedor_id)
+             .filter(PrecioProveedor.user_id == user.id,
+                     PrecioProveedor.precio > 0).all())
+    mejor = {}
+    for pp, prov_nombre in filas:
+        k = (pp.insumo or "").strip().lower()
+        if not k:
+            continue
+        if k not in mejor or pp.precio < mejor[k]["precio"]:
+            mejor[k] = {"precio": pp.precio, "proveedor": prov_nombre,
+                        "fecha": pp.capturado.strftime("%d/%m/%Y") if pp.capturado else ""}
+    return mejor
+
+
+@router.post("/explosion")
+def explosion(req: ExportRequest, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    """La lista de materiales consolidada, con el parte honesto de cobertura."""
+    p, items, aiu, tot = _cargar(req.proyecto_id, user, db)
+    from app.services.explosion_service import explosion_de_insumos
+    resultado = explosion_de_insumos(items, _resolutor_de_desgloses(user, db),
+                                     _precios_negociados(user, db))
+    resultado["proyecto"] = p.nombre
+    return resultado
+
+
+@router.post("/explosion-excel")
+def explosion_excel(req: ExportRequest, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    """La misma lista, lista para imprimir y llevar a la ferreteria."""
+    p, items, aiu, tot = _cargar(req.proyecto_id, user, db)
+    from app.services.explosion_service import explosion_de_insumos
+    r = explosion_de_insumos(items, _resolutor_de_desgloses(user, db),
+                             _precios_negociados(user, db))
+    if not r["insumos"]:
+        raise HTTPException(400, "Ningun item tiene desglose de insumos todavia — "
+                                 "construye tus APUs por insumos para generar la lista de compras")
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Border, Side
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Lista de materiales"
+        azul = PatternFill("solid", fgColor="1C3A5E")
+        gris = PatternFill("solid", fgColor="F1F5F9")
+        thin = Border(bottom=Side(style="thin", color="E2E8F0"))
+
+        ws["A1"] = user.empresa or user.nombre
+        ws["A1"].font = Font(bold=True, size=14)
+        ws["A2"] = f"LISTA DE MATERIALES — {p.nombre}"
+        ws["A2"].font = Font(bold=True, size=11)
+        ws["A3"] = (f"{r['items_explotados']} actividades explotadas · "
+                    f"{r['n_insumos']} insumos consolidados (desperdicio incluido) · "
+                    f"Fecha: {p.actualizado.strftime('%d/%m/%Y') if p.actualizado else ''}")
+        ws["A3"].font = Font(size=9, color="64748B")
+
+        fila = 5
+        headers = ["Insumo", "Und", "Cantidad total", "Mejor precio", "Proveedor", "Precio al", "Subtotal"]
+        for col, h in enumerate(headers, 1):
+            c = ws.cell(row=fila, column=col, value=h)
+            c.fill = azul
+            c.font = Font(color="FFFFFF", bold=True, size=10)
+        fila += 1
+        for i in r["insumos"]:
+            vals = [i["nombre"], i["unidad"], i["cantidad"],
+                    i["precio"] or "", i["proveedor"] or ("precio del APU" if i["fuente_precio"] == "apu" else ""),
+                    i["fecha_precio"] or "", i["subtotal"] or ""]
+            for col, v in enumerate(vals, 1):
+                c = ws.cell(row=fila, column=col, value=v)
+                c.border = thin
+                if col in (4, 7) and v != "":
+                    c.number_format = '"$"#,##0'
+            fila += 1
+        c1 = ws.cell(row=fila, column=6, value="TOTAL MATERIALES ESTIMADO")
+        c2 = ws.cell(row=fila, column=7, value=r["total_estimado"])
+        c2.number_format = '"$"#,##0'
+        c1.font = c2.font = Font(bold=True)
+        c1.fill = c2.fill = gris
+        if r["items_sin_desglose"]:
+            fila += 2
+            ws.cell(row=fila, column=1,
+                    value=f"Nota: {r['items_sin_desglose']} actividad(es) sin desglose no entran a la lista "
+                          f"(construyelas por insumos): " + "; ".join(r["sin_desglose"])).font = \
+                Font(size=8, italic=True, color="B45309")
+        anchos = [42, 8, 14, 14, 24, 12, 14]
+        from openpyxl.utils import get_column_letter
+        for i2, a in enumerate(anchos, 1):
+            ws.column_dimensions[get_column_letter(i2)].width = a
+
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return StreamingResponse(
+            buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="materiales_{p.id}.xlsx"'},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Explosion Excel: {e}", exc_info=True)
+        raise HTTPException(500, f"Error generando la lista de materiales: {e}")
