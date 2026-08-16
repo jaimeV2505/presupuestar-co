@@ -205,10 +205,10 @@ export default function Dashboard() {
           <div className="mb-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {[
-                ['💰', 'Total cotizado', COP(metricas.total_cotizado), 'text-slate-800'],
+                ['💰', 'Total cotizado (enviados)', COP(metricas.total_cotizado), 'text-slate-800'],
                 ['✅', 'Total ganado', COP(metricas.total_ganado), 'text-emerald-600'],
                 ['💵', 'Utilidad proyectada', COP(metricas.utilidad_proyectada), 'text-emerald-600'],
-                ['📈', 'Tasa de cierre', `${metricas.tasa_cierre}%`, 'text-navy-600'],
+                ['📈', 'Tasa de cierre', `${metricas.tasa_cierre}% (${metricas.n_ganados || 0} de ${metricas.n_enviados || 0})`, 'text-navy-600'],
               ].map(([e, l, v, cls], i) => (
                 <div key={i} className="bg-white rounded-xl border border-slate-100 p-3">
                   <p className="text-[10px] text-slate-400">{e} {l}</p>
@@ -219,6 +219,9 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 px-1 text-[11px] text-slate-400">
               <span>🏗️ En ejecución: <strong className="text-slate-600">{metricas.en_ejecucion_n}</strong> ({COP(metricas.en_ejecucion_valor)})</span>
               <span>🏁 Terminadas: <strong className="text-slate-600">{metricas.n_terminados}</strong></span>
+              {metricas.en_borrador_n > 0 && (
+                <span>📝 En borrador: <strong className="text-slate-600">{metricas.en_borrador_n}</strong> ({COP(metricas.en_borrador_valor)}) — mesa de trabajo, no cuenta como cotizado</span>
+              )}
               {(metricas.cobrado > 0 || metricas.por_cobrar > 0) && (
                 <span>💰 Cobrado: <strong className="text-emerald-600">{COP(metricas.cobrado)}</strong> · Por cobrar: <strong className="text-amber-600">{COP(metricas.por_cobrar)}</strong></span>
               )}

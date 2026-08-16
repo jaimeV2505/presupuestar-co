@@ -135,29 +135,37 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
     n_ganados = 0
 
     # Los adicionales APROBADOS son valor real del contrato — los KPIs los suman
-    _ads = {}
+    _ads, _ads_util = {}, {}
     _ids = [p.id for p in proyectos]
     if _ids:
         for o in db.query(Otrosi).filter(Otrosi.proyecto_id.in_(_ids),
                                          Otrosi.estado == "aprobado").all():
             try:
-                _t = json.loads(o.totales_json or "{}").get("total") or 0
+                _tj = json.loads(o.totales_json or "{}")
             except ValueError:
-                _t = 0
-            _ads[o.proyecto_id] = _ads.get(o.proyecto_id, 0) + _t
+                _tj = {}
+            _ads[o.proyecto_id] = _ads.get(o.proyecto_id, 0) + (_tj.get("total") or 0)
+            _ads_util[o.proyecto_id] = _ads_util.get(o.proyecto_id, 0) + (_tj.get("utilidad_valor") or 0)
 
+    en_borrador_n = 0
+    en_borrador_valor = 0
     for p in proyectos:
         items = json.loads(p.items_json or "[]")
         aiu = json.loads(p.aiu_json or "{}")
         t = calcular_totales(items, aiu)
         valor_real = t["total"] + _ads.get(p.id, 0)   # base + adicionales aprobados
-        total_cotizado += t["total"]
         if p.estado in ENVIADOS:
+            # COTIZADO = lo que salio a la calle. Los borradores son mesa de
+            # trabajo, no actividad comercial — van aparte, con su verdad.
+            total_cotizado += t["total"]
             n_enviados += 1
+        else:
+            en_borrador_n += 1
+            en_borrador_valor += t["total"]
         if p.estado in GANADOS:
             n_ganados += 1
             total_ganado += valor_real
-            utilidad_proyectada += t["utilidad_valor"]
+            utilidad_proyectada += t["utilidad_valor"] + _ads_util.get(p.id, 0)
         if p.estado in ("aceptado", "entrega_solicitada"):
             en_ejecucion_valor += valor_real
             en_ejecucion_n += 1
@@ -182,6 +190,9 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
         "en_ejecucion_valor": en_ejecucion_valor,
         "en_ejecucion_n": en_ejecucion_n,
         "tasa_cierre": round(n_ganados / n_enviados * 100) if n_enviados else 0,
+        "n_enviados": n_enviados,
+        "en_borrador_n": en_borrador_n,
+        "en_borrador_valor": en_borrador_valor,
         "n_presupuestos": len(proyectos),
         "n_ganados": n_ganados,
         "n_terminados": sum(1 for p in proyectos if p.estado == "terminado"),

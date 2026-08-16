@@ -208,6 +208,18 @@ paso("el cliente FIRMA el otrosi (imagen gigante se descarta sola)",
                   "firma_imagen": "data:image/png;base64," + "A" * 700_000}))
 r = c.delete(f"/api/otrosies/{OID}", headers=H)
 paso("CANDADO: otrosi aprobado ineliminable -> 400", r, status=400)
+
+# ── KPIs HONESTOS: el dashboard refleja el valor REAL (base + adicional) ──
+mm = paso("metricas del dashboard tras el otrosi", c.get("/api/proyectos/metricas", headers=H))
+d_p = c.get(f"/api/proyectos/{PID}", headers=H).json()
+TOTAL_BASE = round(d_p["totales"]["total"])
+assert mm["total_ganado"] > TOTAL_BASE, "el KPI ganado ignora el adicional aprobado!"
+assert mm["en_ejecucion_valor"] == mm["total_ganado"], "en ejecucion debe igualar ganado (1 obra activa)"
+assert mm["total_cotizado"] == TOTAL_BASE, "cotizado = lo ENVIADO (el otrosi no re-cotiza, y no hay borradores contando)"
+assert mm["n_enviados"] == 1 and mm["n_ganados"] == 1 and mm["tasa_cierre"] == 100
+assert mm["en_borrador_n"] == 0, "no debe haber borradores fantasma en las metricas"
+assert mm["utilidad_proyectada"] > 0, "la utilidad proyectada debe sumar base + adicional"
+PASOS.append("KPIs honestos: cotizado=enviados, ganado incluye adicional, tasa con denominador")
 d = paso("avance al 100% (incluye item del otrosi)", c.post(f"/api/avances/proyectos/{PID}/avances", json={
     "titulo": "Corte final", "items": [
         {"id": "it1", "pct": 100}, {"id": "it2", "pct": 100}, {"id": "it3", "pct": 100},
