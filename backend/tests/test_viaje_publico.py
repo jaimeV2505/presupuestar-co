@@ -150,6 +150,18 @@ PASOS.append("analisis editable: recalculo en servidor con transporte (24.024 ex
 d = paso("mis APUs listados (filtro sector publico)", c.get("/api/apus?sector=publico", headers=H))
 assert len(d["items"]) >= 3
 
+# R1: EL RECETARIO SEMILLA — 16 recetas listas, precio del servidor, idempotente
+d = paso("cargar el recetario de arranque", c.post("/api/apus/recetario", headers=H))
+assert d["creados"] >= 15, d
+assert "REC-PANETE" in d["codigos"]
+d2 = paso("recetario idempotente (2a vez: cero duplicados)", c.post("/api/apus/recetario", headers=H))
+assert d2["creados"] == 0 and d2["ya_existian"] >= 15, d2
+d = paso("las recetas viven en Mis APUs con su analisis", c.get("/api/apus", headers=H))
+panete = next(a for a in d["items"] if a["codigo"] == "REC-PANETE")
+assert panete["precio"] == 22524, f"la receta semilla del panete debia dar 22.524: {panete['precio']}"
+assert panete["desglose"] and panete["desglose"]["insumos"], "receta semilla sin desglose"
+PASOS.append("recetario semilla: 16 recetas, panete 22.524 exacto, idempotente")
+
 print("═══ ACTO 1.9: EL LADRON (ownership cruzado) ═══")
 d2 = paso("registro del intruso", c.post("/api/auth/registro",
           json={"email": "intruso@publico.test", "password": "Intruso2026x"}))

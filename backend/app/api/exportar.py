@@ -347,6 +347,19 @@ def exportar_apus_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual
         COP = lambda v: f"${round(v or 0):,.0f}".replace(",", ".")
         story = []
 
+        # Logo del contratista (R4): el documento de venta mas fuerte, con marca propia
+        if user.logo_b64:
+            try:
+                import base64
+                from reportlab.platypus import Image as RLImage
+                b64 = user.logo_b64.split(",")[-1]
+                img = RLImage(io.BytesIO(base64.b64decode(b64)), width=2.6*cm, height=2.6*cm, kind='proportional')
+                img.hAlign = "CENTER"
+                story.append(img)
+                story.append(Spacer(1, 6))
+            except Exception:
+                pass
+
         # ── Portada ──
         story.append(Paragraph("ANÁLISIS DE PRECIOS UNITARIOS", st_t))
         story.append(Paragraph("Anexo de la propuesta económica" if es_publico

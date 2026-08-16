@@ -259,6 +259,7 @@ export default function Editor() {
   const [desgloses, setDesgloses] = useState({ porId: {}, porCodigo: {} })
   const [analisisAbierto, setAnalisisAbierto] = useState(null)  // _idx del item expandido
   const [showExplosion, setShowExplosion] = useState(false)     // F2: lista de materiales
+  const [rindeIdx, setRindeIdx] = useState(-1)                  // R2: calculadora de rendimiento
   const [explosionData, setExplosionData] = useState(null)
   useEffect(() => {
     apusAPI.listar({}).then(r => {
@@ -1445,7 +1446,18 @@ export default function Editor() {
         <div className="fixed inset-0 bg-black/40 z-[60] flex items-start justify-center p-4 pt-[6vh]" onClick={() => setShowConstructor(false)}>
           <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[86vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-slate-800 mb-1">🧱 Construir mi APU</h3>
-            <p className="text-[11px] text-slate-400 mb-3">Insumos + mano de obra + herramienta + transporte 🚚 → tu precio unitario compuesto (los 4 componentes del APU oficial)</p>
+            <p className="text-[11px] text-slate-400 mb-2">Insumos + mano de obra + herramienta + transporte 🚚 → tu precio unitario compuesto (los 4 componentes del APU oficial)</p>
+            <button onClick={async () => {
+                      try {
+                        toast.loading('Sembrando recetas...', { id: 'rec' })
+                        const r = await apusAPI.recetario()
+                        if (r.creados > 0) toast.success(`🍳 ${r.creados} recetas listas en Mis APUs — duplícalas y ajusta TUS precios`, { id: 'rec', duration: 5000 })
+                        else toast.success('Tu recetario ya estaba cargado ✓', { id: 'rec' })
+                      } catch (e2) { toast.error(e2.response?.data?.detail || e2.message, { id: 'rec' }) }
+                    }}
+                    className="w-full mb-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100">
+              🍳 Cargar recetario de arranque — 16 recetas típicas con su análisis, listas para ajustar a TUS precios
+            </button>
             <input className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 mb-2" placeholder="Descripción (ej: Pañete 1:4 muros interiores)"
                    value={construyendo.descripcion} onChange={e => setConstruyendo(c => ({ ...c, descripcion: e.target.value }))} />
             <div className="flex flex-wrap gap-2 mb-2">
@@ -1502,11 +1514,29 @@ export default function Editor() {
                 </div>
                 <input type="number" className="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="cant" value={ins.cantidad}
                        onChange={e => setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, cantidad: e.target.value } : x) }))} />
+                <button onClick={() => setRindeIdx(rindeIdx === i ? -1 : i)}
+                        className={`text-[9px] font-bold rounded-lg px-1.5 transition ${rindeIdx === i ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                        title="¿No sabes la cantidad? Dime cuánto te RINDE y yo hago la división">
+                  ⇄rinde
+                </button>
                 <input type="number" className="w-24 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="precio" value={ins.precio}
                        onChange={e => setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, precio: e.target.value } : x) }))} />
                 <button onClick={() => setConstruyendo(c => ({ ...c, insumos: c.insumos.filter((_, j) => j !== i) }))}
                         className="text-slate-300 hover:text-red-400 px-1">×</button>
               </div>
+              {rindeIdx === i && (
+                <div className="flex items-center gap-1.5 mb-1.5 ml-2 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1.5 text-[11px] text-blue-700">
+                  <span>1 {ins.unidad || 'un'} me rinde</span>
+                  <input type="number" step="any" min="0.01" autoFocus placeholder="3"
+                         className="w-16 text-xs border border-blue-200 rounded-lg px-2 py-1 bg-white text-center"
+                         onChange={e => {
+                           const r = parseFloat(e.target.value)
+                           if (r > 0) setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, cantidad: +(1 / r).toFixed(4) } : x) }))
+                         }} />
+                  <span>{construyendo.unidad || 'un'} → cantidad = <strong>{ins.cantidad || '?'}</strong> por {construyendo.unidad || 'un'}</span>
+                  <button onClick={() => setRindeIdx(-1)} className="ml-auto font-bold text-blue-400">✓ listo</button>
+                </div>
+              )}
             ))}
             <div className="flex gap-3 mb-3">
               <button onClick={() => setConstruyendo(c => ({ ...c, insumos: [...c.insumos, { nombre: '', cantidad: '', precio: '' }] }))}

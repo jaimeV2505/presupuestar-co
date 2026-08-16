@@ -71,6 +71,7 @@ export const apusAPI = {
   componer: (data) => api.post('/apus/componer', data).then(r => r.data),
   actualizar: (id, data) => api.put(`/apus/${id}`, data).then(r => r.data),
   guardarDesglose: (id, data) => api.put(`/apus/${id}/desglose`, data).then(r => r.data),
+  recetario: () => api.post('/apus/recetario').then(r => r.data),
   eliminar: (id) => api.delete(`/apus/${id}`).then(r => r.data),
 }
 
