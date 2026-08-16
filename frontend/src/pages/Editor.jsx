@@ -1439,20 +1439,30 @@ export default function Editor() {
         <div className="fixed inset-0 bg-black/40 z-[60] flex items-start justify-center p-4 pt-[6vh]" onClick={() => setShowConstructor(false)}>
           <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[86vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-slate-800 mb-1">🧱 Construir mi APU</h3>
-            <p className="text-[11px] text-slate-400 mb-3">Insumos + mano de obra + herramienta → tu precio unitario compuesto</p>
+            <p className="text-[11px] text-slate-400 mb-3">Insumos + mano de obra + herramienta + transporte 🚚 → tu precio unitario compuesto (los 4 componentes del APU oficial)</p>
             <input className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 mb-2" placeholder="Descripción (ej: Pañete 1:4 muros interiores)"
                    value={construyendo.descripcion} onChange={e => setConstruyendo(c => ({ ...c, descripcion: e.target.value }))} />
-            <div className="flex gap-2 mb-3">
-              <input className="w-24 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="unidad"
+            <div className="flex flex-wrap gap-2 mb-2">
+              <input className="w-20 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="unidad"
                      value={construyendo.unidad} onChange={e => setConstruyendo(c => ({ ...c, unidad: e.target.value }))} />
-              <input type="number" className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="Mano de obra por unidad ($)"
-                     value={construyendo.mano_obra} onChange={e => setConstruyendo(c => ({ ...c, mano_obra: e.target.value }))} />
-              <input type="number" min="0" max="30" className="w-24 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="herr %"
-                     title="Herramienta menor: PORCENTAJE de la mano de obra (0-30)"
-                     value={construyendo.herramienta_pct} onChange={e => setConstruyendo(c => ({ ...c, herramienta_pct: Math.max(0, Math.min(30, parseFloat(e.target.value) || 0)) }))} />
-              <input type="number" className="w-28 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="🚚 transp. ($)"
-                     title="Transporte / acarreo por unidad del APU — 4to componente del formato oficial"
-                     value={construyendo.transporte} onChange={e => setConstruyendo(c => ({ ...c, transporte: e.target.value }))} />
+              <div className="flex-1 min-w-[180px] flex items-center gap-1">
+                <input type="number" className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="Mano de obra por unidad ($)"
+                       value={construyendo.mano_obra} onChange={e => setConstruyendo(c => ({ ...c, mano_obra: e.target.value }))} />
+                <InfoTip texto="Lo que le pagas a la cuadrilla por hacer 1 unidad (1 m², 1 m³...). Va en PESOS. Tip: jornal con prestaciones ÷ rendimiento del día = MO por unidad." />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex items-center gap-1">
+                <input type="number" min="0" max="30" className="w-20 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="herr %"
+                       value={construyendo.herramienta_pct} onChange={e => setConstruyendo(c => ({ ...c, herramienta_pct: Math.max(0, Math.min(30, parseFloat(e.target.value) || 0)) }))} />
+                <span className="text-xs font-bold text-slate-400">%</span>
+                <InfoTip texto="Herramienta menor: desgaste de palas, baldes, taladro. Es un PORCENTAJE de la mano de obra (práctica estándar 3-10%, máx 30). NO va en pesos — si lo tuyo es un flete, ese es el campo de transporte 🚚." />
+              </div>
+              <div className="flex-1 min-w-[160px] flex items-center gap-1">
+                <input type="number" min="0" className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="🚚 Transporte por unidad ($)"
+                       value={construyendo.transporte} onChange={e => setConstruyendo(c => ({ ...c, transporte: e.target.value }))} />
+                <InfoTip texto="Flete o acarreo por unidad del APU — el 4to componente del formato oficial que exigen las entidades. Va en PESOS por unidad. Si no aplica, déjalo en 0 y no cambia nada." />
+              </div>
             </div>
             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Insumos</p>
             {construyendo.insumos.map((ins, i) => (
