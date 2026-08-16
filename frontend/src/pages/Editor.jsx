@@ -1484,7 +1484,8 @@ export default function Editor() {
             </div>
             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Insumos</p>
             {construyendo.insumos.map((ins, i) => (
-              <div key={i} className="flex gap-1.5 mb-1.5">
+              <div key={i}>
+              <div className="flex gap-1.5 mb-1.5">
                 <div className="flex-1 relative">
                   <input className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="insumo" value={ins.nombre}
                          onChange={e => {
@@ -1537,6 +1538,7 @@ export default function Editor() {
                   <button onClick={() => setRindeIdx(-1)} className="ml-auto font-bold text-blue-400">✓ listo</button>
                 </div>
               )}
+              </div>
             ))}
             <div className="flex gap-3 mb-3">
               <button onClick={() => setConstruyendo(c => ({ ...c, insumos: [...c.insumos, { nombre: '', cantidad: '', precio: '' }] }))}
