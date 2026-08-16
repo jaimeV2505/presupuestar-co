@@ -1451,8 +1451,13 @@ export default function Editor() {
                       try {
                         toast.loading('Sembrando recetas...', { id: 'rec' })
                         const r = await apusAPI.recetario()
-                        if (r.creados > 0) toast.success(`🍳 ${r.creados} recetas listas en Mis APUs — duplícalas y ajusta TUS precios`, { id: 'rec', duration: 5000 })
-                        else toast.success('Tu recetario ya estaba cargado ✓', { id: 'rec' })
+                        if (r.creados > 0) toast.success(`🍳 ${r.creados} recetas listas — aquí están, en ⭐ Mis APUs`, { id: 'rec', duration: 5000 })
+                        else toast.success('Tu recetario ya estaba cargado — aquí está, en ⭐ Mis APUs ✓', { id: 'rec' })
+                        // Llevar al usuario DIRECTO a verlas: cerrar constructor, abrir buscador en Mis APUs
+                        setShowConstructor(false)
+                        setQ('')
+                        setFuenteApu('mios')
+                        setShowBuscador(true)
                       } catch (e2) { toast.error(e2.response?.data?.detail || e2.message, { id: 'rec' }) }
                     }}
                     className="w-full mb-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100">
