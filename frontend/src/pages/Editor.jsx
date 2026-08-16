@@ -34,7 +34,7 @@ export default function Editor() {
   const [nuevoProv, setNuevoProv] = useState({ nombre: '', telefono: '' })
   const [nuevoPrecio, setNuevoPrecio] = useState({ insumo: '', unidad: 'un', precio: '' })
   const [showConstructor, setShowConstructor] = useState(false)
-  const [construyendo, setConstruyendo] = useState({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5 })
+  const [construyendo, setConstruyendo] = useState({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5, transporte: '' })
   const [previewComp, setPreviewComp] = useState(null)
   const [showBalance, setShowBalance] = useState(false)
   const [showSeguimiento, setShowSeguimiento] = useState(false)
@@ -254,14 +254,14 @@ export default function Editor() {
   const [explosionData, setExplosionData] = useState(null)
   useEffect(() => {
     apusAPI.listar({}).then(r => {
-      const porId = {}, porCodigo = {}
+      const porId = {}, porCodigo = {}, codigoAId = {}
       for (const a of (r.items || [])) {
         if (a.desglose?.insumos?.length) {
           porId[a.id] = a.desglose
-          if (a.codigo) porCodigo[a.codigo] = a.desglose
+          if (a.codigo) { porCodigo[a.codigo] = a.desglose; codigoAId[a.codigo] = a.id }
         }
       }
-      setDesgloses({ porId, porCodigo })
+      setDesgloses({ porId, porCodigo, codigoAId })
     }).catch(() => {})
   }, [id])
   const desgloseDe = (it) => {
@@ -269,6 +269,51 @@ export default function Editor() {
     const cod = (it.codigo || '').trim()
     if (cod.startsWith('MIO-') && desgloses.porId[parseInt(cod.slice(4))]) return desgloses.porId[parseInt(cod.slice(4))]
     return desgloses.porCodigo[cod] || null
+  }
+  const apuIdDe = (it) => {
+    if (it.apu_id && desgloses.porId[it.apu_id]) return it.apu_id
+    const cod = (it.codigo || '').trim()
+    if (cod.startsWith('MIO-') && desgloses.porId[parseInt(cod.slice(4))]) return parseInt(cod.slice(4))
+    return desgloses.codigoAId?.[cod] || null
+  }
+  const [anEdit, setAnEdit] = useState(null)          // copia editable del desglose abierto
+  const [anGuardando, setAnGuardando] = useState(false)
+  const abrirAnalisis = (it) => {
+    if (analisisAbierto === it._idx) { setAnalisisAbierto(null); setAnEdit(null); return }
+    const d = desgloseDe(it)
+    setAnalisisAbierto(it._idx)
+    setAnEdit(d ? JSON.parse(JSON.stringify({ ...d, transporte: d.transporte || 0 })) : null)
+  }
+  const recalcularAnalisis = async (it, aplicarAlItem) => {
+    const apuId = apuIdDe(it)
+    if (!apuId || !anEdit) return
+    setAnGuardando(true)
+    try {
+      const r = await apusAPI.guardarDesglose(apuId, {
+        insumos: anEdit.insumos.map(x => ({ nombre: x.nombre, unidad: x.unidad,
+          cantidad: parseFloat(x.cantidad) || 0, precio: parseFloat(x.precio) || 0,
+          desperdicio_pct: parseFloat(x.desperdicio_pct) || 0 })),
+        mano_obra: Math.round(parseFloat(anEdit.mano_obra) || 0),
+        herramienta_pct: parseFloat(anEdit.herramienta_pct) || 0,
+        transporte: Math.round(parseFloat(anEdit.transporte) || 0),
+      })
+      // el servidor es la fuente de verdad: refrescamos mapa y copia editable
+      setDesgloses(prev => {
+        const porId = { ...prev.porId, [apuId]: r.desglose }
+        const porCodigo = { ...prev.porCodigo }
+        if (r.codigo) porCodigo[r.codigo] = r.desglose
+        return { ...prev, porId, porCodigo }
+      })
+      setAnEdit(JSON.parse(JSON.stringify({ ...r.desglose, transporte: r.desglose.transporte || 0 })))
+      if (aplicarAlItem) {
+        setItemsYGuardar(prev => prev.map(x => x._idx === it._idx
+          ? { ...x, precio_unitario: r.precio, precio_lista: null, precio_editado: false } : x))
+        toast.success(`APU recalculado y aplicado: ${COP(r.precio)} — totales, anexo y lista de materiales al día ✨`)
+      } else {
+        toast.success(`APU recalculado: ${COP(r.precio)} (guardado en Mis APUs)`)
+      }
+    } catch (e2) { toast.error(e2.response?.data?.detail || e2.message) }
+    setAnGuardando(false)
   }
   const nAnalizados = items.filter(it => desgloseDe(it)).length
 
@@ -774,7 +819,7 @@ export default function Editor() {
                           </span>
                         )}
                         {desgloseDe(it) && (
-                          <button onClick={() => setAnalisisAbierto(analisisAbierto === it._idx ? null : it._idx)}
+                          <button onClick={() => abrirAnalisis(it)}
                                   className={`text-[10px] font-bold rounded-full px-2 py-0.5 transition ${analisisAbierto === it._idx ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-600 hover:bg-violet-100'}`}
                                   title="Este ítem entra ESPECIFICADO al anexo de APUs">
                             🔬 Análisis {analisisAbierto === it._idx ? '▲' : '▼'}
@@ -813,41 +858,68 @@ export default function Editor() {
                   </div>
 
                   {/* Calculadora de cantidades */}
-                  {analisisAbierto === it._idx && desgloseDe(it) && (() => {
-                    const d = desgloseDe(it)
+                  {analisisAbierto === it._idx && anEdit && (() => {
+                    const _in = "w-full text-right text-[10px] border border-violet-200 rounded px-1 py-0.5 bg-white outline-none focus:border-violet-400"
+                    const _upd = (k, i2, campo, v) => setAnEdit(prev => {
+                      const n = { ...prev }
+                      if (k === 'insumo') { n.insumos = prev.insumos.map((x, j) => j === i2 ? { ...x, [campo]: v } : x) }
+                      else n[campo] = v
+                      return n
+                    })
+                    const _num2 = (v) => parseFloat(v) || 0
+                    const _prevMat = anEdit.insumos.reduce((s, x) => s + _num2(x.cantidad) * _num2(x.precio) * (1 + _num2(x.desperdicio_pct) / 100), 0)
+                    const _prevTot = Math.round(_prevMat + _num2(anEdit.mano_obra) + _num2(anEdit.mano_obra) * _num2(anEdit.herramienta_pct) / 100 + _num2(anEdit.transporte))
                     return (
                       <div className="px-3 pb-3 bg-violet-50/60">
                         <div className="pt-2 text-[10px]">
-                          <p className="font-bold text-violet-700 mb-1">Así se compone este precio (igual que en el anexo de propuesta):</p>
+                          <p className="font-bold text-violet-700 mb-1">🔬 Juega con el análisis — el servidor recalcula y todo se actualiza (ítem, totales, anexo y lista de materiales):</p>
                           <div className="bg-white rounded-lg border border-violet-100 overflow-hidden">
                             <div className="grid grid-cols-12 gap-1 px-2 py-1 bg-violet-600 text-white font-bold">
                               <span className="col-span-5">1. MATERIALES</span><span>Und</span><span className="text-right">Cant.</span><span className="text-right">Desp.%</span><span className="col-span-2 text-right">Vr. unit.</span><span className="col-span-2 text-right">Parcial</span>
                             </div>
-                            {d.insumos.map((ins, k) => (
-                              <div key={k} className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-600">
+                            {anEdit.insumos.map((ins, k) => (
+                              <div key={k} className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-600 items-center">
                                 <span className="col-span-5 truncate" title={ins.nombre}>{ins.nombre}</span>
                                 <span>{ins.unidad}</span>
-                                <span className="text-right">{ins.cantidad}</span>
-                                <span className="text-right">{ins.desperdicio_pct || 0}</span>
-                                <span className="col-span-2 text-right">{COP(ins.precio)}</span>
-                                <span className="col-span-2 text-right">{COP(ins.parcial)}</span>
+                                <input type="number" step="any" min="0" value={ins.cantidad} onChange={e => _upd('insumo', k, 'cantidad', e.target.value)} className={_in} />
+                                <input type="number" step="any" min="0" max="50" value={ins.desperdicio_pct || 0} onChange={e => _upd('insumo', k, 'desperdicio_pct', e.target.value)} className={_in} />
+                                <input type="number" step="any" min="0" value={ins.precio} onChange={e => _upd('insumo', k, 'precio', e.target.value)} className={`${_in} col-span-2`} />
+                                <span className="col-span-2 text-right">{COP(_num2(ins.cantidad) * _num2(ins.precio) * (1 + _num2(ins.desperdicio_pct) / 100))}</span>
                               </div>
                             ))}
-                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-100 bg-violet-50 font-semibold text-slate-700">
-                              <span className="col-span-10">Subtotal materiales</span><span className="col-span-2 text-right">{COP(d.materiales)}</span>
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700 items-center">
+                              <span className="col-span-8">2. Mano de obra (por {it.unidad})</span>
+                              <input type="number" step="any" min="0" value={anEdit.mano_obra} onChange={e => _upd(null, null, 'mano_obra', e.target.value)} className={`${_in} col-span-2`} />
+                              <span className="col-span-2 text-right">{COP(_num2(anEdit.mano_obra))}</span>
                             </div>
-                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700">
-                              <span className="col-span-10">2. Mano de obra (por {it.unidad})</span><span className="col-span-2 text-right">{COP(d.mano_obra)}</span>
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700 items-center">
+                              <span className="col-span-8">3. Herramienta menor (% de MO)</span>
+                              <input type="number" step="any" min="0" max="30" value={anEdit.herramienta_pct} onChange={e => _upd(null, null, 'herramienta_pct', e.target.value)} className={`${_in} col-span-2`} />
+                              <span className="col-span-2 text-right">{COP(_num2(anEdit.mano_obra) * _num2(anEdit.herramienta_pct) / 100)}</span>
                             </div>
-                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700">
-                              <span className="col-span-10">3. Herramienta menor ({d.herramienta_pct || 0}% de MO)</span><span className="col-span-2 text-right">{COP(d.herramienta)}</span>
+                            <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700 items-center">
+                              <span className="col-span-8">4. Transporte (por {it.unidad}) 🚚</span>
+                              <input type="number" step="any" min="0" value={anEdit.transporte || 0} onChange={e => _upd(null, null, 'transporte', e.target.value)} className={`${_in} col-span-2`} />
+                              <span className="col-span-2 text-right">{COP(_num2(anEdit.transporte))}</span>
                             </div>
                             <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-200 bg-violet-100 font-black text-violet-800">
-                              <span className="col-span-10">PRECIO UNITARIO ANALIZADO</span><span className="col-span-2 text-right">{COP(d.precio_unitario)}</span>
+                              <span className="col-span-10">PRECIO UNITARIO ANALIZADO (previo)</span><span className="col-span-2 text-right">{COP(_prevTot)}</span>
                             </div>
                           </div>
-                          {Math.round(d.precio_unitario) !== Math.round(parseFloat(it.precio_unitario) || 0) && (
-                            <p className="text-amber-600 mt-1">⚠️ El precio pactado ({COP(it.precio_unitario)}) difiere del analizado — el anexo lo anota como ajuste comercial.</p>
+                          <div className="flex gap-2 mt-2">
+                            <button disabled={anGuardando} onClick={() => recalcularAnalisis(it, false)}
+                                    className="flex-1 py-1.5 rounded-lg border border-violet-300 text-violet-700 font-bold hover:bg-violet-100 disabled:opacity-50">
+                              💾 Recalcular y guardar el APU
+                            </button>
+                            {!soloLectura && !['aceptado', 'entrega_solicitada'].includes(p.estado) && (
+                              <button disabled={anGuardando} onClick={() => recalcularAnalisis(it, true)}
+                                      className="flex-1 py-1.5 rounded-lg bg-violet-600 text-white font-bold hover:bg-violet-700 disabled:opacity-50">
+                                ⚡ Recalcular y APLICAR al ítem
+                              </button>
+                            )}
+                          </div>
+                          {Math.round(_prevTot) !== Math.round(_num2(it.precio_unitario)) && (
+                            <p className="text-amber-600 mt-1">⚠️ El ítem está a {COP(it.precio_unitario)} — "aplicar" lo actualiza al analizado{it.precio_lista ? ' (y retira su descuento de lista)' : ''}.</p>
                           )}
                         </div>
                       </div>
@@ -1233,7 +1305,7 @@ export default function Editor() {
                 ))}
                 {fuenteApu === 'mios' && (
                   <>
-                  <button onClick={() => { setShowConstructor(true); setPreviewComp(null); setConstruyendo({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5 }) }}
+                  <button onClick={() => { setShowConstructor(true); setPreviewComp(null); setConstruyendo({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5, transporte: '' }) }}
                           className="text-xs font-bold px-3 py-1.5 rounded-lg bg-navy-600 text-white ml-auto">
                     + Construir APU
                   </button>
@@ -1308,6 +1380,9 @@ export default function Editor() {
                      value={construyendo.mano_obra} onChange={e => setConstruyendo(c => ({ ...c, mano_obra: e.target.value }))} />
               <input type="number" className="w-24 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="herr %"
                      value={construyendo.herramienta_pct} onChange={e => setConstruyendo(c => ({ ...c, herramienta_pct: e.target.value }))} />
+              <input type="number" className="w-28 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="🚚 transp. ($)"
+                     title="Transporte / acarreo por unidad del APU — 4to componente del formato oficial"
+                     value={construyendo.transporte} onChange={e => setConstruyendo(c => ({ ...c, transporte: e.target.value }))} />
             </div>
             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Insumos</p>
             {construyendo.insumos.map((ins, i) => (
@@ -1360,6 +1435,7 @@ export default function Editor() {
                           insumos: construyendo.insumos.map(i => ({ nombre: i.nombre, cantidad: parseFloat(i.cantidad) || 0, precio: parseFloat(i.precio) || 0 })),
                           mano_obra: parseInt(construyendo.mano_obra) || 0,
                           herramienta_pct: parseFloat(construyendo.herramienta_pct) || 0,
+                          transporte: Math.round(parseFloat(construyendo.transporte) || 0),
                         })
                         setPreviewComp(r)
                       } catch (e) { toast.error(e.message) }
@@ -1381,6 +1457,7 @@ export default function Editor() {
                           insumos: construyendo.insumos.map(i => ({ nombre: i.nombre, cantidad: parseFloat(i.cantidad) || 0, precio: parseFloat(i.precio) || 0 })),
                           mano_obra: parseInt(construyendo.mano_obra) || 0,
                           herramienta_pct: parseFloat(construyendo.herramienta_pct) || 0,
+                          transporte: Math.round(parseFloat(construyendo.transporte) || 0),
                         })
                         toast.success('APU compuesto guardado en Mis APUs 🧱')
                         setShowConstructor(false); setFuenteApu('mios'); setQ('')

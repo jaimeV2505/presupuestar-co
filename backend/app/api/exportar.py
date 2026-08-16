@@ -405,6 +405,7 @@ def exportar_apus_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual
                 filas.append(["2. MANO DE OBRA (por unidad)", "", "", "", "", COP(d.get("mano_obra"))])
                 filas.append([f"3. HERRAMIENTA MENOR ({float(d.get('herramienta_pct') or 0):g}% de MO)",
                               "", "", "", "", COP(d.get("herramienta"))])
+                filas.append(["4. TRANSPORTE (por unidad)", "", "", "", "", COP(d.get("transporte") or 0)])
                 filas.append(["PRECIO UNITARIO ANALIZADO", "", "", "", "", COP(d.get("precio_unitario"))])
                 ta = Table(filas, colWidths=[7.2*cm, 1.4*cm, 1.6*cm, 1.6*cm, 2.5*cm, 2.7*cm])
                 ta.setStyle(TableStyle([
@@ -412,7 +413,7 @@ def exportar_apus_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual
                     ("BACKGROUND", (0, 0), (-1, 0), NAVY), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                     ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#E2E8F0")),
                     ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
-                    ("BACKGROUND", (0, -4), (-1, -1), colors.HexColor("#F1F5F9")),
+                    ("BACKGROUND", (0, -5), (-1, -1), colors.HexColor("#F1F5F9")),
                     ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
                     ("TOPPADDING", (0, 0), (-1, -1), 2), ("BOTTOMPADDING", (0, 0), (-1, -1), 2)]))
                 story.append(ta)

@@ -294,3 +294,19 @@ r0 = explosion_de_insumos([], lambda it: None)
 assert r0["n_insumos"] == 0 and r0["total_estimado"] == 0
 
 print("OK explosion de insumos: 120.25 bultos exactos, cruce con proveedor y parte honesto")
+
+# ═══ FAMILIA 8: TRANSPORTE — el 4to componente del APU oficial ═══
+from app.services.apu_propio_service import componer_precio as _cp
+# el panete canonico + $1.500 de acarreo por m2 -> 22.524 + 1.500 = 24.024
+_r = _cp([{"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.35, "precio": 28500, "desperdicio_pct": 5},
+          {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}],
+         mano_obra=9000, herramienta_pct=5, transporte=1500)
+assert _r["transporte"] == 1500 and _r["precio_unitario"] == 24024, _r
+# sin transporte: identico al historico (retro-compatibilidad a peso)
+_r0 = _cp([{"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.35, "precio": 28500, "desperdicio_pct": 5},
+           {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}], 9000, 5)
+assert _r0["precio_unitario"] == 22524 and _r0["transporte"] == 0
+# negativo se aplana a 0 (no hay fletes que devuelven plata)
+assert _cp([], 1000, 0, transporte=-500)["precio_unitario"] == 1000
+
+print("OK transporte en el APU: 24.024 exacto + retro-compatible a peso")

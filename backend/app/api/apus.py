@@ -45,6 +45,7 @@ class ComponerRequest(BaseModel):
     insumos: List[Dict] = []
     mano_obra: int = 0
     herramienta_pct: float = 0
+    transporte: int = 0
 
 
 @router.get("")
@@ -103,7 +104,7 @@ def componer(req: ComponerRequest, user: Usuario = Depends(usuario_actual)):
     if len(req.insumos) > 40:
         raise HTTPException(400, "Maximo 40 insumos por APU")
     try:
-        return componer_precio(req.insumos, req.mano_obra, req.herramienta_pct)
+        return componer_precio(req.insumos, req.mano_obra, req.herramienta_pct, req.transporte)
     except ValueError as e:
         raise HTTPException(400, str(e))
 
@@ -137,7 +138,7 @@ def guardar_desglose(apu_id: int, req: ComponerRequest,
     if len(req.insumos) > 40:
         raise HTTPException(400, "Maximo 40 insumos por APU")
     try:
-        r = componer_precio(req.insumos, req.mano_obra, req.herramienta_pct)
+        r = componer_precio(req.insumos, req.mano_obra, req.herramienta_pct, req.transporte)
     except ValueError as e:
         raise HTTPException(400, str(e))
     a.desglose_json = json.dumps(r, ensure_ascii=False)

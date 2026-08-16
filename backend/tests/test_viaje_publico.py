@@ -133,6 +133,20 @@ d = paso("fijar desglose", c.put(f"/api/apus/{APU_COMP}/desglose", json={
         {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}],
     "mano_obra": 9000, "herramienta_pct": 5}, headers=H))
 assert d["precio"] == 22524 and d["desglose"]["materiales"] == 13074
+# EL ANALISIS ES EDITABLE: jugar con los valores -> el servidor recalcula (transporte incluido)
+d = paso("editar el analisis: +$1.500 de transporte por m2", c.put(f"/api/apus/{APU_COMP}/desglose", json={
+    "insumos": [
+        {"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.35, "precio": 28500, "desperdicio_pct": 5},
+        {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}],
+    "mano_obra": 9000, "herramienta_pct": 5, "transporte": 1500}, headers=H))
+assert d["precio"] == 24024 and d["desglose"]["transporte"] == 1500, d
+d = paso("volver el analisis al canonico (transporte 0)", c.put(f"/api/apus/{APU_COMP}/desglose", json={
+    "insumos": [
+        {"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.35, "precio": 28500, "desperdicio_pct": 5},
+        {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}],
+    "mano_obra": 9000, "herramienta_pct": 5}, headers=H))
+assert d["precio"] == 22524 and (d["desglose"].get("transporte") or 0) == 0
+PASOS.append("analisis editable: recalculo en servidor con transporte (24.024 exacto)")
 d = paso("mis APUs listados (filtro sector publico)", c.get("/api/apus?sector=publico", headers=H))
 assert len(d["items"]) >= 3
 
