@@ -1097,12 +1097,14 @@ export default function Editor() {
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-[10px] text-slate-400 uppercase font-semibold">
                     Deducciones de ley por acta 🏛️ <span className="normal-case">(la entidad las retiene de cada pago)</span>
+                    <InfoTip texto="Aquí NO se descuenta nada todavía — solo configuras las reglas del contrato. Se aplican DESPUÉS, cada vez que generes un acta parcial: neto = corte − amortización del anticipo − retegarantía − ESTAS deducciones. Cada % se calcula sobre el valor del corte, línea por línea con redondeo a peso (igual que liquida la entidad). Así sabes desde HOY cuánta plata de verdad entra a tu caja en cada pago — sin sorpresas el día del giro." />
                   </p>
                   {(contrato.deducciones || []).length > 0 && (() => {
                     const totalDed = (contrato.deducciones || []).reduce((s, x) => s + (parseFloat(x.pct) || 0), 0)
                     return (
                       <span className={`text-[10px] font-black rounded-full px-2 py-0.5 ${totalDed > 50 ? 'bg-red-100 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
                         Total {Math.round(totalDed * 10) / 10}% {totalDed > 50 ? '— máx 50%, NO se guarda' : 'de cada corte'}
+                        <InfoTip texto={`De cada $1.000.000 que factures en un acta, la entidad te retendrá ~$${Math.round((contrato.deducciones || []).reduce((s, x) => s + (parseFloat(x.pct) || 0), 0) * 10000).toLocaleString('es-CO')} por estas deducciones (además del anticipo amortizado y la retegarantía). El NETO REAL lo ves calculado a peso en cada cuenta de cobro.`} />
                       </span>
                     )
                   })()}
@@ -1141,6 +1143,7 @@ export default function Editor() {
               <p className="text-[11px] text-slate-500 mt-2.5 bg-slate-50 rounded-lg p-2">
                 Forma de pago: anticipo {contrato.anticipo_pct}% = <strong>{COP(totales.total * contrato.anticipo_pct / 100)}</strong>
                 {' · '}saldo {100 - contrato.anticipo_pct}% = <strong>{COP(totales.total * (100 - contrato.anticipo_pct) / 100)}</strong>
+                <InfoTip texto={`El anticipo te lo pagan al arrancar — pero no es tuyo todavía: se AMORTIZA en cada acta (a cada corte se le descuenta el ${contrato.anticipo_pct}% hasta devolverlo completo, con tope: jamás amortizas más de lo que te dieron). Junto con la retegarantía y las deducciones, así se calcula el NETO que de verdad recibes en cada pago.`} />
               </p>
             )}
           </div>
