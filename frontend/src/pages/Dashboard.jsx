@@ -83,13 +83,16 @@ export default function Dashboard() {
     } catch (e) { toast.error(e.message) }
   }
 
-  const duplicar = async (id, e) => {
+  const duplicar = async (proy, e) => {
     e.stopPropagation()
+    const nombre = window.prompt('Nombre para la copia (la copia es 100% independiente del original):',
+                                 `${proy.nombre} (copia)`)
+    if (nombre === null) return   // canceló
     try {
-      const p = await proyectosAPI.duplicar(id)
-      toast.success('Proyecto duplicado')
+      const c = await proyectosAPI.duplicar(proy.id, { nombre: nombre.trim() })
+      toast.success(`Copia creada: "${c.nombre}"`)
       cargar()
-    } catch (e2) { toast.error(e2.message) }
+    } catch (e2) { toast.error(e2.response?.data?.detail || e2.message) }
   }
 
   const eliminar = async (id, e) => {
@@ -340,7 +343,7 @@ export default function Dashboard() {
                         <p className="text-[10px] font-bold text-amber-600">➕ {COP(p.total_adicionales)} en adicionales</p>
                       )}
                       <div className="flex items-center gap-1 mt-1.5 justify-end">
-                        <button onClick={(e) => duplicar(p.id, e)} className="p-1.5 hover:bg-slate-100 rounded-lg" title="Duplicar">
+                        <button onClick={(e) => duplicar(p, e)} className="p-1.5 hover:bg-slate-100 rounded-lg" title="Duplicar">
                           <Copy className="w-3.5 h-3.5 text-slate-400" />
                         </button>
                         <button onClick={(e) => eliminar(p.id, e)} className="p-1.5 hover:bg-red-50 rounded-lg" title="Eliminar">

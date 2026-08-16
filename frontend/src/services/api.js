@@ -51,7 +51,7 @@ export const proyectosAPI = {
   obtener: (id) => api.get(`/proyectos/${id}`).then(r => r.data),
   actualizar: (id, data) => api.put(`/proyectos/${id}`, data).then(r => r.data),
   eliminar: (id) => api.delete(`/proyectos/${id}`).then(r => r.data),
-  duplicar: (id) => api.post(`/proyectos/${id}/duplicar`).then(r => r.data),
+  duplicar: (id, data) => api.post(`/proyectos/${id}/duplicar`, data || {}).then(r => r.data),
   terminar: (id) => api.post(`/proyectos/${id}/terminar`).then(r => r.data),
   metricas: () => api.get('/proyectos/metricas').then(r => r.data),
   plantillas: () => api.get('/proyectos/plantillas').then(r => r.data),

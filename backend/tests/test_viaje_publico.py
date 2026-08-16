@@ -344,12 +344,21 @@ paso("CANDADO: avance sobre terminado -> 400", r, status=400)
 r = c.post(f"/api/gastos/proyectos/{PID}/gastos",
            json={"descripcion": "gasto postumo", "valor": 1000}, headers=H)
 paso("CANDADO: gasto sobre terminado -> 400", r, status=400)
-d = paso("duplicar un TERMINADO si esta permitido (nace borrador editable)",
-         c.post(f"/api/proyectos/{PID}/duplicar", headers=H))
+d = paso("duplicar un TERMINADO si esta permitido (nace borrador editable, con nombre propio)",
+         c.post(f"/api/proyectos/{PID}/duplicar", json={"nombre": "Via El Roble FASE 2"}, headers=H))
 assert d.get("estado") == "borrador" and d.get("sector") == "publico", d
+assert d.get("nombre") == "Via El Roble FASE 2", "el nombre propio de la copia no se respeto"
 paso("la copia SI se edita", c.put(f"/api/proyectos/{d['id']}", json={"nombre": "Copia editable"}, headers=H))
+# INDEPENDENCIA: editar la copia jamas toca al original (cero herencia post-creacion)
+paso("items nuevos en la copia", c.put(f"/api/proyectos/{d['id']}", json={"items": [
+    {"id": "solo-copia", "descripcion": "Item exclusivo de la copia", "unidad": "un",
+     "cantidad": 1, "precio_unitario": 999}]}, headers=H))
+d_orig = paso("el ORIGINAL sigue intacto", c.get(f"/api/proyectos/{PID}", headers=H))
+assert d_orig["estado"] == "terminado", "editar la copia cambio el estado del original!"
+assert all(i["id"] != "solo-copia" for i in d_orig.get("items", [])), "la copia heredo items al original!"
+assert d_orig["nombre"].startswith("Mantenimiento via"), "el nombre del original cambio!"
 paso("borrar la copia del terminado", c.delete(f"/api/proyectos/{d['id']}", headers=H))
-PASOS.append("terminado = solo lectura (PUT/avance/gasto -> 400) + duplicar vivo")
+PASOS.append("terminado = solo lectura (PUT/avance/gasto -> 400) + duplicar con nombre + copias independientes")
 d = paso("liberar retegarantia", c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H))
 r = c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H)
 paso("CANDADO: liberar dos veces -> 400", r, status=400)

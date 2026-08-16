@@ -211,6 +211,14 @@ export default function Editor() {
       return
     }
     setContrato(nuevo)
+    // Deducciones >50%: se ve en pantalla (chip rojo) pero NO viaja al servidor
+    const totalDed = (nuevo.deducciones || []).reduce((s, x) => s + (parseFloat(x.pct) || 0), 0)
+    if (totalDed > 50) {
+      clearTimeout(timerContrato.current)
+      toast.error('Las deducciones suman más del 50% del corte — ajusta antes de guardar', { id: 'ded50' })
+      return
+    }
+    toast.dismiss('ded50')
     clearTimeout(timerContrato.current)
     timerContrato.current = setTimeout(() => {
       proyectosAPI.actualizar(id, { contrato: nuevo }).catch(e => toast.error(e.message))
@@ -287,6 +295,11 @@ export default function Editor() {
   const recalcularAnalisis = async (it, aplicarAlItem) => {
     const apuId = apuIdDe(it)
     if (!apuId || !anEdit) return
+    // Pre-validación didáctica: el 400 del servidor jamás debe sorprender
+    const herr = parseFloat(anEdit.herramienta_pct) || 0
+    if (herr > 30) { toast.error('La herramienta es un % de la MO (máx 30). ¿Era un flete en pesos? Va en Transporte 🚚'); return }
+    const despMalo = (anEdit.insumos || []).find(x => (parseFloat(x.desperdicio_pct) || 0) > 50)
+    if (despMalo) { toast.error(`Desperdicio de "${despMalo.nombre}" fuera de rango (máx 50%)`); return }
     setAnGuardando(true)
     try {
       const r = await apusAPI.guardarDesglose(apuId, {
@@ -749,9 +762,12 @@ export default function Editor() {
               Para una obra nueva con este mismo presupuesto, duplícalo.
             </p>
             <button onClick={async () => {
+                      const nombre = window.prompt('Nombre para la copia (100% independiente del original):',
+                                                   `${p.nombre} (copia)`)
+                      if (nombre === null) return
                       try {
-                        const copia = await proyectosAPI.duplicar(id)
-                        toast.success('Copia creada — lista para editar')
+                        const copia = await proyectosAPI.duplicar(id, { nombre: nombre.trim() })
+                        toast.success(`Copia creada: "${copia.nombre}" — lista para editar`)
                         nav(`/editor/${copia.id}`); window.location.reload()
                       } catch (e2) { toast.error(e2.response?.data?.detail || e2.message) }
                     }}
@@ -862,8 +878,12 @@ export default function Editor() {
                     const _in = "w-full text-right text-[10px] border border-violet-200 rounded px-1 py-0.5 bg-white outline-none focus:border-violet-400"
                     const _upd = (k, i2, campo, v) => setAnEdit(prev => {
                       const n = { ...prev }
-                      if (k === 'insumo') { n.insumos = prev.insumos.map((x, j) => j === i2 ? { ...x, [campo]: v } : x) }
-                      else n[campo] = v
+                      // Campos de % se defienden solos (misma medicina que deducciones)
+                      let vv = v
+                      if (campo === 'herramienta_pct') vv = Math.max(0, Math.min(30, parseFloat(v) || 0))
+                      if (campo === 'desperdicio_pct') vv = Math.max(0, Math.min(50, parseFloat(v) || 0))
+                      if (k === 'insumo') { n.insumos = prev.insumos.map((x, j) => j === i2 ? { ...x, [campo]: vv } : x) }
+                      else n[campo] = vv
                       return n
                     })
                     const _num2 = (v) => parseFloat(v) || 0
@@ -893,8 +913,11 @@ export default function Editor() {
                               <span className="col-span-2 text-right">{COP(_num2(anEdit.mano_obra))}</span>
                             </div>
                             <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700 items-center">
-                              <span className="col-span-8">3. Herramienta menor (% de MO)</span>
-                              <input type="number" step="any" min="0" max="30" value={anEdit.herramienta_pct} onChange={e => _upd(null, null, 'herramienta_pct', e.target.value)} className={`${_in} col-span-2`} />
+                              <span className="col-span-8">3. Herramienta menor — <strong>% de la MO</strong> (0-30)</span>
+                              <div className="col-span-2 flex items-center gap-0.5">
+                                <input type="number" step="any" min="0" max="30" value={anEdit.herramienta_pct} onChange={e => _upd(null, null, 'herramienta_pct', e.target.value)} className={_in} />
+                                <span className="text-violet-500 font-bold">%</span>
+                              </div>
                               <span className="col-span-2 text-right">{COP(_num2(anEdit.mano_obra) * _num2(anEdit.herramienta_pct) / 100)}</span>
                             </div>
                             <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700 items-center">
@@ -906,6 +929,7 @@ export default function Editor() {
                               <span className="col-span-10">PRECIO UNITARIO ANALIZADO (previo)</span><span className="col-span-2 text-right">{COP(_prevTot)}</span>
                             </div>
                           </div>
+                          <p className="text-slate-400 mt-1">💡 Herramienta es un <strong>porcentaje</strong> de la mano de obra (práctica estándar 3-10%). Si lo tuyo es un flete en <strong>pesos</strong>, ese va en la fila 4 · Transporte 🚚.</p>
                           <div className="flex gap-2 mt-2">
                             <button disabled={anGuardando} onClick={() => recalcularAnalisis(it, false)}
                                     className="flex-1 py-1.5 rounded-lg border border-violet-300 text-violet-700 font-bold hover:bg-violet-100 disabled:opacity-50">
@@ -1070,9 +1094,19 @@ export default function Editor() {
             </div>
             {esPublico && (
               <div className="mt-3 border-t border-slate-100 pt-3">
-                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1.5">
-                  Deducciones de ley por acta 🏛️ <span className="normal-case">(la entidad las retiene de cada pago)</span>
-                </p>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] text-slate-400 uppercase font-semibold">
+                    Deducciones de ley por acta 🏛️ <span className="normal-case">(la entidad las retiene de cada pago)</span>
+                  </p>
+                  {(contrato.deducciones || []).length > 0 && (() => {
+                    const totalDed = (contrato.deducciones || []).reduce((s, x) => s + (parseFloat(x.pct) || 0), 0)
+                    return (
+                      <span className={`text-[10px] font-black rounded-full px-2 py-0.5 ${totalDed > 50 ? 'bg-red-100 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        Total {Math.round(totalDed * 10) / 10}% {totalDed > 50 ? '— máx 50%, NO se guarda' : 'de cada corte'}
+                      </span>
+                    )
+                  })()}
+                </div>
                 {(contrato.deducciones || []).map((dd, i) => (
                   <div key={i} className="flex gap-1.5 mb-1.5">
                     <input className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5" value={dd.nombre}
@@ -1093,6 +1127,13 @@ export default function Editor() {
                 {(contrato.deducciones || []).length > 0 && (
                   <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: [...contrato.deducciones, { nombre: '', pct: 0 }] })}
                           className="text-xs font-medium text-navy-600">+ agregar deducción</button>
+                )}
+                {(contrato.deducciones || []).length > 0 && (
+                  <p className="text-[10px] text-slate-400 mt-1.5">
+                    📖 Referencia real: Ley 1106 = <strong>5% fijo</strong> · estampillas territoriales = 2-8% según
+                    departamento/municipio (revisa tu contrato) · retefuente construcción ≈ <strong>2%</strong>.
+                    Cada línea máx 25%, total máx 50% — como liquida la entidad, con redondeo por línea.
+                  </p>
                 )}
               </div>
             )}
@@ -1378,8 +1419,9 @@ export default function Editor() {
                      value={construyendo.unidad} onChange={e => setConstruyendo(c => ({ ...c, unidad: e.target.value }))} />
               <input type="number" className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="Mano de obra por unidad ($)"
                      value={construyendo.mano_obra} onChange={e => setConstruyendo(c => ({ ...c, mano_obra: e.target.value }))} />
-              <input type="number" className="w-24 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="herr %"
-                     value={construyendo.herramienta_pct} onChange={e => setConstruyendo(c => ({ ...c, herramienta_pct: e.target.value }))} />
+              <input type="number" min="0" max="30" className="w-24 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="herr %"
+                     title="Herramienta menor: PORCENTAJE de la mano de obra (0-30)"
+                     value={construyendo.herramienta_pct} onChange={e => setConstruyendo(c => ({ ...c, herramienta_pct: Math.max(0, Math.min(30, parseFloat(e.target.value) || 0)) }))} />
               <input type="number" className="w-28 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="🚚 transp. ($)"
                      title="Transporte / acarreo por unidad del APU — 4to componente del formato oficial"
                      value={construyendo.transporte} onChange={e => setConstruyendo(c => ({ ...c, transporte: e.target.value }))} />
