@@ -3,7 +3,6 @@
 Regla sagrada: la base 2026 es INMUTABLE (vigilada por hash en el CI);
 aqui vive lo propio: manual, duplicado de la base, o compuesto por insumos."""
 import json
-import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -12,7 +11,6 @@ from app.db import get_db, Usuario, ApuUsuario
 from app.api.auth import usuario_actual
 from app.services.apu_propio_service import componer_precio
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 MAX_APUS = 500          # candado de volumen por usuario
 SECTORES = ("privado", "publico", "ambos")
@@ -47,7 +45,6 @@ class ComponerRequest(BaseModel):
     insumos: List[Dict] = []
     mano_obra: int = 0
     herramienta_pct: float = 0
-    transporte: int = 0
 
 
 @router.get("")
@@ -106,7 +103,7 @@ def componer(req: ComponerRequest, user: Usuario = Depends(usuario_actual)):
     if len(req.insumos) > 40:
         raise HTTPException(400, "Maximo 40 insumos por APU")
     try:
-        return componer_precio(req.insumos, req.mano_obra, req.herramienta_pct, req.transporte)
+        return componer_precio(req.insumos, req.mano_obra, req.herramienta_pct)
     except ValueError as e:
         raise HTTPException(400, str(e))
 
@@ -140,7 +137,7 @@ def guardar_desglose(apu_id: int, req: ComponerRequest,
     if len(req.insumos) > 40:
         raise HTTPException(400, "Maximo 40 insumos por APU")
     try:
-        r = componer_precio(req.insumos, req.mano_obra, req.herramienta_pct, req.transporte)
+        r = componer_precio(req.insumos, req.mano_obra, req.herramienta_pct)
     except ValueError as e:
         raise HTTPException(400, str(e))
     a.desglose_json = json.dumps(r, ensure_ascii=False)
@@ -155,47 +152,3 @@ def eliminar(apu_id: int, user: Usuario = Depends(usuario_actual),
     a = _mio(apu_id, user, db)
     db.delete(a); db.commit()
     return {"ok": True}
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# R1 — EL RECETARIO SEMILLA 🍳
-# 16 APUs compuestos tipicos, listos para duplicar-y-ajustar. Convierte el
-# constructor de examen en plantilla: el maestro no arranca desde cero.
-# Idempotente por codigo (llamarlo dos veces no duplica) y el precio lo
-# calcula SIEMPRE el servidor (componer_precio) — la misma fuente de verdad.
-# ═══════════════════════════════════════════════════════════════════════════
-
-@router.post("/recetario")
-def cargar_recetario(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
-    import os
-    ruta = os.path.join(os.path.dirname(__file__), "..", "data", "recetario_semilla.json")
-    with open(ruta, encoding="utf-8") as f:
-        recetario = json.load(f)
-
-    existentes = {a.codigo for a in db.query(ApuUsuario.codigo)
-                  .filter(ApuUsuario.user_id == user.id).all()}
-    total_actual = db.query(ApuUsuario).filter(ApuUsuario.user_id == user.id).count()
-
-    creados, ya_existian = [], []
-    for r in recetario.get("recetas", []):
-        if r["codigo"] in existentes:
-            ya_existian.append(r["codigo"])
-            continue
-        if total_actual + len(creados) >= MAX_APUS:
-            break
-        try:
-            d = componer_precio(r.get("insumos", []), r.get("mano_obra", 0),
-                                r.get("herramienta_pct", 0), r.get("transporte", 0))
-        except ValueError:
-            continue
-        db.add(ApuUsuario(
-            user_id=user.id, codigo=r["codigo"][:30],
-            descripcion=r["descripcion"][:250], unidad=r["unidad"][:10],
-            precio=d["precio_unitario"], sector_tag="ambos",
-            origen_base="recetario", desglose_json=json.dumps(d, ensure_ascii=False),
-        ))
-        creados.append(r["codigo"])
-    db.commit()
-    logger.info(f"Recetario: {len(creados)} recetas sembradas para {user.email}")
-    return {"creados": len(creados), "ya_existian": len(ya_existian),
-            "codigos": creados, "version": recetario.get("version", "1.0")}

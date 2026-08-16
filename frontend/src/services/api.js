@@ -51,7 +51,7 @@ export const proyectosAPI = {
   obtener: (id) => api.get(`/proyectos/${id}`).then(r => r.data),
   actualizar: (id, data) => api.put(`/proyectos/${id}`, data).then(r => r.data),
   eliminar: (id) => api.delete(`/proyectos/${id}`).then(r => r.data),
-  duplicar: (id, data) => api.post(`/proyectos/${id}/duplicar`, data || {}).then(r => r.data),
+  duplicar: (id) => api.post(`/proyectos/${id}/duplicar`).then(r => r.data),
   terminar: (id) => api.post(`/proyectos/${id}/terminar`).then(r => r.data),
   metricas: () => api.get('/proyectos/metricas').then(r => r.data),
   plantillas: () => api.get('/proyectos/plantillas').then(r => r.data),
@@ -71,7 +71,6 @@ export const apusAPI = {
   componer: (data) => api.post('/apus/componer', data).then(r => r.data),
   actualizar: (id, data) => api.put(`/apus/${id}`, data).then(r => r.data),
   guardarDesglose: (id, data) => api.put(`/apus/${id}/desglose`, data).then(r => r.data),
-  recetario: () => api.post('/apus/recetario').then(r => r.data),
   eliminar: (id) => api.delete(`/apus/${id}`).then(r => r.data),
 }
 
@@ -191,8 +190,6 @@ export const exportarAPI = {
   excel: (payload) => api.post('/exportar/excel', payload, { responseType: 'blob' }),
   pdf: (payload) => api.post('/exportar/pdf', payload, { responseType: 'blob' }),
   apusPdf: (payload) => api.post('/exportar/apus-pdf', payload, { responseType: 'blob' }),
-  explosion: (payload) => api.post('/exportar/explosion', payload).then(r => r.data),
-  explosionExcel: (payload) => api.post('/exportar/explosion-excel', payload, { responseType: 'blob' }),
 }
 
 export default api

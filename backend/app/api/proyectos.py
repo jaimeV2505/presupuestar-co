@@ -450,13 +450,8 @@ def terminar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sess
     return _proyecto_out(p, incluir_items=False, db=db)
 
 
-class DuplicarRequest(BaseModel):
-    nombre: str = ""   # opcional: nombre propio para la copia (flexibilidad, cero confusion)
-
-
 @router.post("/{proyecto_id}/duplicar")
-def duplicar(proyecto_id: int, req: DuplicarRequest = None,
-             user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+def duplicar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     _verificar_limite(user, db)
     p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
     if not p:
@@ -464,7 +459,7 @@ def duplicar(proyecto_id: int, req: DuplicarRequest = None,
     nuevo = Proyecto(
         user_id=user.id,
         numero=_generar_numero(user.id, db),
-        nombre=((req.nombre if req else "").strip()[:200] or f"{p.nombre} (copia)"),
+        nombre=f"{p.nombre} (copia)",
         sector=p.sector or "privado",
         entidad_nombre=p.entidad_nombre or "",
         contrato_numero=p.contrato_numero or "",

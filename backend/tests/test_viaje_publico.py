@@ -133,34 +133,8 @@ d = paso("fijar desglose", c.put(f"/api/apus/{APU_COMP}/desglose", json={
         {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}],
     "mano_obra": 9000, "herramienta_pct": 5}, headers=H))
 assert d["precio"] == 22524 and d["desglose"]["materiales"] == 13074
-# EL ANALISIS ES EDITABLE: jugar con los valores -> el servidor recalcula (transporte incluido)
-d = paso("editar el analisis: +$1.500 de transporte por m2", c.put(f"/api/apus/{APU_COMP}/desglose", json={
-    "insumos": [
-        {"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.35, "precio": 28500, "desperdicio_pct": 5},
-        {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}],
-    "mano_obra": 9000, "herramienta_pct": 5, "transporte": 1500}, headers=H))
-assert d["precio"] == 24024 and d["desglose"]["transporte"] == 1500, d
-d = paso("volver el analisis al canonico (transporte 0)", c.put(f"/api/apus/{APU_COMP}/desglose", json={
-    "insumos": [
-        {"nombre": "Cemento gris", "unidad": "bulto", "cantidad": 0.35, "precio": 28500, "desperdicio_pct": 5},
-        {"nombre": "Arena lavada", "unidad": "m3", "cantidad": 0.04, "precio": 65000}],
-    "mano_obra": 9000, "herramienta_pct": 5}, headers=H))
-assert d["precio"] == 22524 and (d["desglose"].get("transporte") or 0) == 0
-PASOS.append("analisis editable: recalculo en servidor con transporte (24.024 exacto)")
 d = paso("mis APUs listados (filtro sector publico)", c.get("/api/apus?sector=publico", headers=H))
 assert len(d["items"]) >= 3
-
-# R1: EL RECETARIO SEMILLA — 16 recetas listas, precio del servidor, idempotente
-d = paso("cargar el recetario de arranque", c.post("/api/apus/recetario", headers=H))
-assert d["creados"] >= 15, d
-assert "REC-PANETE" in d["codigos"]
-d2 = paso("recetario idempotente (2a vez: cero duplicados)", c.post("/api/apus/recetario", headers=H))
-assert d2["creados"] == 0 and d2["ya_existian"] >= 15, d2
-d = paso("las recetas viven en Mis APUs con su analisis", c.get("/api/apus", headers=H))
-panete = next(a for a in d["items"] if a["codigo"] == "REC-PANETE")
-assert panete["precio"] == 22524, f"la receta semilla del panete debia dar 22.524: {panete['precio']}"
-assert panete["desglose"] and panete["desglose"]["insumos"], "receta semilla sin desglose"
-PASOS.append("recetario semilla: 16 recetas, panete 22.524 exacto, idempotente")
 
 print("═══ ACTO 1.9: EL LADRON (ownership cruzado) ═══")
 d2 = paso("registro del intruso", c.post("/api/auth/registro",
@@ -236,24 +210,6 @@ paso("ANEXO DE PROPUESTA: APUs detallados en PDF", r)
 assert r.content[:4] == b"%PDF", "el anexo de APUs no es un PDF"
 assert len(r.content) > 2000, "el anexo de APUs salio vacio"
 PASOS.append("anexo de APUs detallados (formato propuesta)")
-
-# F2: la LISTA DE COMPRAS de la obra — consolidada, con desperdicio y MI precio
-d = paso("explosion de insumos (lista de materiales)",
-         c.post("/api/exportar/explosion", json={"proyecto_id": PID}, headers=H))
-_ins = {x["nombre"]: x for x in d["insumos"]}
-# panete 300 m2 × 0.35 bulto × 1.05 desperdicio = 110.25 bultos exactos
-assert _ins["Cemento gris"]["cantidad"] == 110.25, _ins["Cemento gris"]
-assert _ins["Arena lavada"]["cantidad"] == 12.0, _ins["Arena lavada"]
-# cruzado con MI proveedor (Ferreteria El Roble a $28.500, con fecha)
-assert _ins["Cemento gris"]["fuente_precio"] == "mi_proveedor"
-assert _ins["Cemento gris"]["proveedor"] == "Ferreteria El Roble" and _ins["Cemento gris"]["fecha_precio"]
-assert _ins["Cemento gris"]["subtotal"] == round(110.25 * 28500), _ins["Cemento gris"]["subtotal"]
-# el parte honesto: it1 (replanteo, sin desglose) queda declarado
-assert d["items_sin_desglose"] >= 1 and d["items_explotados"] >= 1
-r = c.post("/api/exportar/explosion-excel", json={"proyecto_id": PID}, headers=H)
-paso("lista de materiales en Excel (para la ferreteria)", r)
-assert r.content[:2] == b"PK", "el Excel de materiales no es un xlsx"
-PASOS.append("explosion de insumos exacta + cruce con proveedor + Excel")
 r = c.put(f"/api/proyectos/{PID}", json={"estado": "borrador"}, headers=H)
 paso("CANDADO: degradar el estado tras el sello -> 400", r, status=400)
 r = c.put(f"/api/proyectos/{PID}", json={"estado": "entrega_solicitada"}, headers=H)
@@ -356,21 +312,12 @@ paso("CANDADO: avance sobre terminado -> 400", r, status=400)
 r = c.post(f"/api/gastos/proyectos/{PID}/gastos",
            json={"descripcion": "gasto postumo", "valor": 1000}, headers=H)
 paso("CANDADO: gasto sobre terminado -> 400", r, status=400)
-d = paso("duplicar un TERMINADO si esta permitido (nace borrador editable, con nombre propio)",
-         c.post(f"/api/proyectos/{PID}/duplicar", json={"nombre": "Via El Roble FASE 2"}, headers=H))
+d = paso("duplicar un TERMINADO si esta permitido (nace borrador editable)",
+         c.post(f"/api/proyectos/{PID}/duplicar", headers=H))
 assert d.get("estado") == "borrador" and d.get("sector") == "publico", d
-assert d.get("nombre") == "Via El Roble FASE 2", "el nombre propio de la copia no se respeto"
 paso("la copia SI se edita", c.put(f"/api/proyectos/{d['id']}", json={"nombre": "Copia editable"}, headers=H))
-# INDEPENDENCIA: editar la copia jamas toca al original (cero herencia post-creacion)
-paso("items nuevos en la copia", c.put(f"/api/proyectos/{d['id']}", json={"items": [
-    {"id": "solo-copia", "descripcion": "Item exclusivo de la copia", "unidad": "un",
-     "cantidad": 1, "precio_unitario": 999}]}, headers=H))
-d_orig = paso("el ORIGINAL sigue intacto", c.get(f"/api/proyectos/{PID}", headers=H))
-assert d_orig["estado"] == "terminado", "editar la copia cambio el estado del original!"
-assert all(i["id"] != "solo-copia" for i in d_orig.get("items", [])), "la copia heredo items al original!"
-assert d_orig["nombre"].startswith("Mantenimiento via"), "el nombre del original cambio!"
 paso("borrar la copia del terminado", c.delete(f"/api/proyectos/{d['id']}", headers=H))
-PASOS.append("terminado = solo lectura (PUT/avance/gasto -> 400) + duplicar con nombre + copias independientes")
+PASOS.append("terminado = solo lectura (PUT/avance/gasto -> 400) + duplicar vivo")
 d = paso("liberar retegarantia", c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H))
 r = c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H)
 paso("CANDADO: liberar dos veces -> 400", r, status=400)

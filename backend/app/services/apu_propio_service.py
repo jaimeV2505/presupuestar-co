@@ -4,14 +4,11 @@ a partir de insumos + mano de obra + herramienta. La misma filosofia de JARVIS:
 el calculo es puro, testeable en el smoke, y la UI solo lo consume."""
 
 
-def componer_precio(insumos: list, mano_obra: int = 0, herramienta_pct: float = 0,
-                    transporte: int = 0) -> dict:
+def componer_precio(insumos: list, mano_obra: int = 0, herramienta_pct: float = 0) -> dict:
     """
     insumos: [{nombre, unidad, cantidad, precio, desperdicio_pct?}]
     mano_obra: valor de MO por unidad del APU (COP)
     herramienta_pct: % sobre la mano de obra (practica estandar: 3-10%)
-    transporte: acarreo/flete por unidad del APU (COP) — 4to componente del
-                formato oficial. Default 0: los APUs viejos no cambian un peso.
     Devuelve el desglose completo con el precio unitario compuesto.
     """
     detalle = []
@@ -34,14 +31,12 @@ def componer_precio(insumos: list, mano_obra: int = 0, herramienta_pct: float = 
     if herramienta_pct < 0 or herramienta_pct > 30:
         raise ValueError("Herramienta fuera de rango (0-30%)")
     herramienta = mo * herramienta_pct / 100
-    transp = max(0, int(transporte or 0))
-    total = total_materiales + mo + herramienta + transp
+    total = total_materiales + mo + herramienta
     return {
         "insumos": detalle,
         "materiales": round(total_materiales),
         "mano_obra": mo,
         "herramienta_pct": herramienta_pct,
         "herramienta": round(herramienta),
-        "transporte": transp,
         "precio_unitario": round(total),
     }
