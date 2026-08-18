@@ -478,8 +478,8 @@ export default function Editor() {
                         }}
                         className="w-full flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-50 text-left">
                   <span className="text-lg">🎨</span>
-                  <span>
-                    <span className="block text-sm font-semibold text-slate-700">Diseños</span>
+                  <span data-testid="total-obra">
+                    <span data-testid="menu-disenos" className="block text-sm font-semibold text-slate-700">Diseños</span>
                     <span className="block text-[10px] text-slate-400">Renders y planos — tu cliente los ve y comenta</span>
                   </span>
                 </button>
@@ -607,7 +607,7 @@ export default function Editor() {
                 </button>
               </div>
               <button onClick={() => { setShowPanel(false); exportar('apus') }}
-                      className="w-full mt-1.5 mx-1 flex items-center justify-center gap-1.5 border border-violet-200 rounded-xl py-2 text-xs font-bold text-violet-600 hover:bg-violet-50"
+                      data-testid="btn-export-apus" className="w-full mt-1.5 mx-1 flex items-center justify-center gap-1.5 border border-violet-200 rounded-xl py-2 text-xs font-bold text-violet-600 hover:bg-violet-50"
                       style={{ width: 'calc(100% - 8px)' }}>
                 📑 APUs detallados (anexo de propuesta)
               </button>
@@ -624,7 +624,7 @@ export default function Editor() {
                           setExplosionData(d); setShowExplosion(true)
                         } catch (e2) { toast.error(e2.response?.data?.detail || e2.message, { id: 'exp2' }) }
                       }}
-                      className="w-full mt-1.5 mx-1 flex items-center justify-center gap-1.5 border border-amber-200 rounded-xl py-2 text-xs font-bold text-amber-700 hover:bg-amber-50"
+                      data-testid="btn-export-explosion" className="w-full mt-1.5 mx-1 flex items-center justify-center gap-1.5 border border-amber-200 rounded-xl py-2 text-xs font-bold text-amber-700 hover:bg-amber-50"
                       style={{ width: 'calc(100% - 8px)' }}>
                 🧱 Lista de materiales (explosión de insumos)
               </button>
@@ -684,7 +684,7 @@ export default function Editor() {
             )}
             <button onClick={() => setShowPanel(true)}
                     className="relative flex lg:hidden items-center gap-1.5 border border-slate-300 text-slate-700 text-sm font-medium px-3 py-2 rounded-xl transition hover:bg-slate-50"
-                    title="Herramientas de la obra">
+                    data-testid="btn-herramientas" title="Herramientas de la obra">
               🛠️ <span className="hidden sm:inline">Obra</span>
               {!['borrador', 'enviado', 'visto', 'rechazado'].includes(p.estado) && (
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />
@@ -782,11 +782,11 @@ export default function Editor() {
           <div className="flex items-center gap-3 bg-slate-100 border border-slate-200 rounded-xl p-3 mb-4">
             <span className="text-xl">🔒</span>
             <p className="flex-1 text-xs text-slate-600">
-              <strong className="text-slate-800">Proyecto terminado — solo lectura.</strong>{' '}
+              <strong data-testid="banner-terminado" className="text-slate-800">Proyecto terminado — solo lectura.</strong>{' '}
               El historial queda intacto como evidencia (actas, cuentas, bitácora).
               Para una obra nueva con este mismo presupuesto, duplícalo.
             </p>
-            <button onClick={async () => {
+            <button data-testid="btn-duplicar-terminado" onClick={async () => {
                       const nombre = await pedirTexto({ titulo: '📄 Duplicar proyecto',
                         mensaje: 'La copia es 100% independiente del original.',
                         valorInicial: `${p.nombre} (copia)`, confirmar: 'Crear copia' })
@@ -829,7 +829,7 @@ export default function Editor() {
         <button onClick={() => setShowBuscador(true)}
                 className="w-full flex items-center gap-3 bg-white border-2 border-dashed border-slate-300 hover:border-navy-400 rounded-xl p-4 text-slate-500 hover:text-navy-600 transition mb-5">
           <Search className="w-5 h-5" />
-          <span className="font-medium">Buscar actividades en la base APU 2026...</span>
+          <span data-testid="abrir-buscador" className="font-medium">Buscar actividades en la base APU 2026...</span>
         </button>
         )}
 
@@ -861,7 +861,7 @@ export default function Editor() {
                           </span>
                         )}
                         {desgloseDe(it) && (
-                          <button onClick={() => abrirAnalisis(it)}
+                          <button data-testid="chip-analisis" onClick={() => abrirAnalisis(it)}
                                   className={`text-[10px] font-bold rounded-full px-2 py-0.5 transition ${analisisAbierto === it._idx ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-600 hover:bg-violet-100'}`}
                                   title="Este ítem entra ESPECIFICADO al anexo de APUs">
                             🔬 Análisis {analisisAbierto === it._idx ? '▲' : '▼'}
@@ -958,14 +958,14 @@ export default function Editor() {
                           <p className="text-slate-400 mt-1">💡 Herramienta es un <strong>porcentaje</strong> de la mano de obra (práctica estándar 3-10%). Si lo tuyo es un flete en <strong>pesos</strong>, ese va en la fila 4 · Transporte 🚚.</p>
                           <div className="flex gap-2 mt-2 items-center">
                             <button disabled={anGuardando} onClick={() => recalcularAnalisis(it, false)}
-                                    className="flex-1 py-1.5 rounded-lg border border-violet-300 text-violet-700 font-bold hover:bg-violet-100 disabled:opacity-50">
+                                    data-testid="btn-guardar-apu" className="flex-1 py-1.5 rounded-lg border border-violet-300 text-violet-700 font-bold hover:bg-violet-100 disabled:opacity-50">
                               💾 Recalcular y guardar el APU
                             </button>
                             <InfoTip texto="Guarda la receta en tu BIBLIOTECA (Mis APUs) con el precio recalculado por el servidor. Este presupuesto NO cambia — útil si ya enviaste la cotización y solo quieres afinar tu recetario para futuras obras." />
                             {!soloLectura && !['aceptado', 'entrega_solicitada'].includes(p.estado) && (
                               <>
                               <button disabled={anGuardando} onClick={() => recalcularAnalisis(it, true)}
-                                      className="flex-1 py-1.5 rounded-lg bg-violet-600 text-white font-bold hover:bg-violet-700 disabled:opacity-50">
+                                      data-testid="btn-aplicar-apu" className="flex-1 py-1.5 rounded-lg bg-violet-600 text-white font-bold hover:bg-violet-700 disabled:opacity-50">
                                 ⚡ Recalcular y APLICAR al ítem
                               </button>
                               <InfoTip texto="Hace lo mismo que guardar Y ADEMÁS pone el precio analizado en ESTE ítem. En cadena se actualizan: el total del presupuesto, el AIU, la incidencia por capítulos, el anexo de APUs y la lista de materiales. Un solo dato madre — nada se digita dos veces. (Si el ítem tenía descuento de lista, se retira.)" />
@@ -1317,7 +1317,7 @@ export default function Editor() {
             {!soloLectura && (
               <label className="mt-3 flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 hover:border-navy-400 rounded-xl py-3 text-sm text-slate-500 cursor-pointer">
                 📤 Subir diseño (JPG/PNG — se comprime solo)
-                <input type="file" accept="image/*" className="hidden"
+                <input data-testid="input-diseno" type="file" accept="image/*" className="hidden"
                        onChange={async e => {
                          const file = e.target.files?.[0]
                          if (!file) return
@@ -1409,7 +1409,7 @@ export default function Editor() {
               <div className="mt-3">
                 <label className="text-xs font-semibold text-slate-500">¿Qué % le rebajas al costo directo?</label>
                 <div className="flex gap-2 mt-1.5">
-                  <input type="number" min="0.1" max="30" step="0.1" value={descuentoPct}
+                  <input type="number" min="0.1" max="30" step="0.1" data-testid="input-descuento" value={descuentoPct}
                          onChange={e => setDescuentoPct(e.target.value)} placeholder="Ej: 5"
                          className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm" />
                   <span className="self-center text-sm text-slate-400">%</span>
@@ -1430,7 +1430,7 @@ export default function Editor() {
                           toast.success(`Descuento del ${d}% aplicado a todos los ítems 🤝`)
                           setShowDescuento(false); setDescuentoPct('')
                         }}
-                        className="mt-3 w-full py-2.5 rounded-xl bg-navy-600 text-white text-sm font-bold hover:bg-navy-700">
+                        data-testid="btn-aplicar-descuento" className="mt-3 w-full py-2.5 rounded-xl bg-navy-600 text-white text-sm font-bold hover:bg-navy-700">
                   Aplicar descuento prorrateado
                 </button>
               </div>
@@ -1445,16 +1445,16 @@ export default function Editor() {
         <div className="fixed bottom-0 left-0 right-0 bg-navy-800 text-white z-40">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
             <div className="flex gap-4 text-xs text-blue-200 overflow-x-auto items-center">
-              <button onClick={() => setShowAnalisis(v => !v)} title="Incidencia por capítulos"
+              <button onClick={() => setShowAnalisis(v => !v)} data-testid="btn-incidencia" title="Incidencia por capítulos"
                       className="whitespace-nowrap px-2 py-1 rounded-lg bg-navy-700 hover:bg-navy-600 font-bold">📊</button>
               {!['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado) && (
-                <button onClick={() => setShowDescuento(true)} title="Descuento de negociación"
+                <button onClick={() => setShowDescuento(true)} data-testid="btn-descuento" title="Descuento de negociación"
                         className="whitespace-nowrap px-2 py-1 rounded-lg bg-navy-700 hover:bg-navy-600 font-bold">💸</button>
               )}
               {totales.descuento_valor > 0 && (
                 <span className="whitespace-nowrap text-emerald-300 font-bold">−{totales.descuento_pct}% ({COP(totales.descuento_valor)})</span>
               )}
-              <span className="whitespace-nowrap">Directo: <strong className="text-white">{COP(totales.subtotal_directo)}</strong></span>
+              <span data-testid="total-directo" className="whitespace-nowrap">Directo: <strong className="text-white">{COP(totales.subtotal_directo)}</strong></span>
               {aiu.aplicar && <span className="whitespace-nowrap">AIU: <strong className="text-white">{COP(totales.aiu_total)}</strong></span>}
               <span className="whitespace-nowrap">IVA: <strong className="text-white">{COP(totales.iva)}</strong></span>
             </div>
@@ -1556,7 +1556,7 @@ export default function Editor() {
             <p className="text-[11px] text-slate-400 mb-2">Insumos + mano de obra + herramienta + transporte 🚚 → tu precio unitario compuesto (los 4 componentes del APU oficial)</p>
             {desgloses.porCodigo['REC-PANETE'] ? (
               <button onClick={() => { setShowConstructor(false); setQ(''); setFuenteApu('mios'); setShowBuscador(true) }}
-                      className="w-full mb-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100">
+                      data-testid="btn-recetario-atajo" className="w-full mb-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100">
                 🍳 Recetario cargado ✓ — ver mis 16 recetas en ⭐ Mis APUs
               </button>
             ) : (
@@ -1578,7 +1578,7 @@ export default function Editor() {
                         }).catch(() => {})
                       } catch (e2) { toast.error(e2.response?.data?.detail || e2.message, { id: 'rec' }) }
                     }}
-                    className="w-full mb-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100">
+                    data-testid="btn-recetario" className="w-full mb-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100">
               🍳 Cargar recetario de arranque — 16 recetas típicas con su análisis, listas para ajustar a TUS precios
             </button>
             )}

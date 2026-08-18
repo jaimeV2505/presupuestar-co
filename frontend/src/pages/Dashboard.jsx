@@ -214,7 +214,7 @@ export default function Dashboard() {
                 ['💵', 'Utilidad proyectada', COP(metricas.utilidad_proyectada), 'text-emerald-600'],
                 ['📈', 'Tasa de cierre', `${metricas.tasa_cierre}% (${metricas.n_ganados || 0} de ${metricas.n_enviados || 0})`, 'text-navy-600'],
               ].map(([e, l, v, cls], i) => (
-                <div key={i} className="bg-white rounded-xl border border-slate-100 p-3">
+                <div key={i} data-testid={`kpi-${i}`} className="bg-white rounded-xl border border-slate-100 p-3">
                   <p className="text-[10px] text-slate-400">{e} {l}</p>
                   <p className={`text-sm sm:text-base font-black mt-0.5 truncate ${cls}`}>{v}</p>
                 </div>
@@ -308,7 +308,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-slate-800">Mis presupuestos</h2>
           <button onClick={() => { setShowNuevo(true); setPlantillaSel(null); if (plantillas.length === 0) proyectosAPI.plantillas().then(setPlantillas).catch(() => {}); clientesAPI.listar().then(setMisClientes).catch(() => {}) }}
-                  className="flex items-center gap-2 bg-navy-600 hover:bg-navy-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition">
+                  data-testid="btn-nuevo-presupuesto" className="flex items-center gap-2 bg-navy-600 hover:bg-navy-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition">
             <Plus className="w-4 h-4" /> Nuevo presupuesto
           </button>
         </div>
@@ -335,7 +335,7 @@ export default function Dashboard() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.sector === 'publico' ? 'bg-violet-100 text-violet-700' : 'bg-sky-50 text-sky-600'}`}
+                        <span data-testid="badge-sector" className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.sector === 'publico' ? 'bg-violet-100 text-violet-700' : 'bg-sky-50 text-sky-600'}`}
                               title={p.sector === 'publico' ? 'Contrato de obra pública — entidad estatal' : 'Obra privada — cliente con enlace'}>
                           {p.sector === 'publico' ? '🏛️ Pública' : '🏠 Privada'}
                         </span>
@@ -589,7 +589,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            <input className="input" placeholder="Nombre del proyecto * (ej: Remodelación cocina Casa López)"
+            <input className="input" data-testid="input-nombre-proyecto" placeholder="Nombre del proyecto * (ej: Remodelación cocina Casa López)"
                    value={nuevo.nombre} onChange={e => setNuevo(n => ({ ...n, nombre: e.target.value }))} autoFocus />
             {nuevo.sector === 'privado' && (<>
             <input className="input" placeholder="Nombre del cliente" list="lista-clientes"
@@ -642,7 +642,7 @@ export default function Dashboard() {
                         } catch (e) { toast.error(e.message) }
                         finally { setCreandoTpl(false) }
                       }}
-                      className="flex-1 py-2.5 rounded-xl bg-navy-600 text-white text-sm font-medium disabled:opacity-50">
+                      data-testid="btn-crear" className="flex-1 py-2.5 rounded-xl bg-navy-600 text-white text-sm font-medium disabled:opacity-50">
                 {creandoTpl ? 'Armando...' : plantillaSel ? '⚡ Crear con plantilla' : 'Crear y editar'}
               </button>
             </div>

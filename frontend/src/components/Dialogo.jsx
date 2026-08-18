@@ -61,17 +61,17 @@ export default function DialogoHost() {
           <p className="text-xs text-slate-500 mt-2 whitespace-pre-line leading-relaxed">{d.mensaje}</p>
         )}
         {d.tipo === 'texto' && (
-          <input ref={inputRef} value={valor} onChange={e => setValor(e.target.value)}
+          <input data-testid="dialogo-input" ref={inputRef} value={valor} onChange={e => setValor(e.target.value)}
                  onKeyDown={e => { if (e.key === 'Enter') aceptar() }}
                  placeholder={d.placeholder || ''}
                  className="mt-3 w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-navy-400" />
         )}
         <div className="flex gap-2 mt-4">
-          <button onClick={() => cerrar(d.tipo === 'texto' ? null : false)}
+          <button data-testid="dialogo-cancelar" onClick={() => cerrar(d.tipo === 'texto' ? null : false)}
                   className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-50">
             Cancelar
           </button>
-          <button onClick={aceptar}
+          <button data-testid="dialogo-ok" onClick={aceptar}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white ${d.peligro ? 'bg-red-500 hover:bg-red-600' : 'bg-navy-600 hover:bg-navy-700'}`}>
             {d.confirmar || (d.tipo === 'texto' ? 'Aceptar' : 'Sí, continuar')}
           </button>

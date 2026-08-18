@@ -362,7 +362,7 @@ export default function VistaPublica() {
           <div className="bg-white rounded-2xl border border-slate-100 p-4 mb-2">
             {disenos === null ? (
               <button onClick={() => shareAPI.disenos(token).then(r => setDisenos(r.disenos || [])).catch(() => setDisenos([]))}
-                      className="w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-navy-600 hover:bg-slate-50">
+                      data-testid="btn-ver-disenos" className="w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-navy-600 hover:bg-slate-50">
                 🎨 Ver los diseños del proyecto
               </button>
             ) : disenos.length === 0 ? (
@@ -381,7 +381,7 @@ export default function VistaPublica() {
                         </p>
                       ))}
                       <div className="mt-1.5 space-y-1">
-                        <input value={comDiseno[d.id]?.texto || ''} placeholder='Comenta este diseño ("me gusta, pero en gris")'
+                        <input value={comDiseno[d.id]?.texto || ''} data-testid="input-comentar-diseno" placeholder='Comenta este diseño ("me gusta, pero en gris")'
                                onChange={e => setComDiseno(prev => ({ ...prev, [d.id]: { ...prev[d.id], texto: e.target.value } }))}
                                className="w-full text-[10px] border border-slate-200 rounded-lg px-2 py-1.5" />
                         <div className="flex gap-1">
@@ -398,7 +398,7 @@ export default function VistaPublica() {
                                         setComDiseno(prev => ({ ...prev, [d.id]: { ...prev[d.id], texto: '' } }))
                                       }).catch(() => {})
                                   }}
-                                  className="text-[10px] font-bold bg-navy-600 text-white rounded-lg px-3">💬 Enviar</button>
+                                  className="text-[10px] font-bold bg-navy-600 text-white rounded-lg px-3" data-testid="btn-enviar-comentario">💬 Enviar</button>
                         </div>
                       </div>
                     </div>

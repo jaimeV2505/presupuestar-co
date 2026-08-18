@@ -1,0 +1,12 @@
+{
+  "name": "presupuestarco-robot-ui",
+  "private": true,
+  "description": "El Robot de UI: Playwright recorre la plataforma como un humano. La API prueba que el sistema FUNCIONA; este robot prueba que el humano PUEDE USARLO.",
+  "scripts": {
+    "test": "playwright test",
+    "ver": "playwright test --headed --project=desktop"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

@@ -68,11 +68,11 @@ export default function Login({ modo = 'login' }) {
             </>
           )}
 
-          <input className="input" type="email" placeholder="Email *" value={form.email} onChange={set('email')} autoComplete="email" />
-          {!olvide && <input className="input" type="password" placeholder={esRegistro ? 'Contraseña (mínimo 8 caracteres) *' : 'Contraseña *'}
+          <input data-testid="auth-email" className="input" type="email" placeholder="Email *" value={form.email} onChange={set('email')} autoComplete="email" />
+          {!olvide && <input data-testid="auth-password" className="input" type="password" placeholder={esRegistro ? 'Contraseña (mínimo 8 caracteres) *' : 'Contraseña *'}
                  value={form.password} onChange={set('password')} autoComplete={esRegistro ? 'new-password' : 'current-password'} />}
 
-          <button disabled={loading}
+          <button data-testid="auth-submit" disabled={loading}
                   className="w-full bg-navy-600 hover:bg-navy-700 text-white font-semibold rounded-xl py-3 transition disabled:opacity-50">
             {loading ? 'Un momento...' : olvide ? 'Enviarme el enlace' : esRegistro ? 'Crear cuenta gratis' : 'Entrar'}
           </button>
