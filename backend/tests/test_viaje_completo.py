@@ -214,6 +214,7 @@ r = c.get(f"/api/s/{TOKEN}")
 assert r.status_code == 200 and "og:title" in r.text and "Remodelacion bano viaje" in r.text
 assert r.headers.get("X-Frame-Options") == "SAMEORIGIN", "faltan headers de seguridad"
 assert r.headers.get("X-Content-Type-Options") == "nosniff"
+assert "$" not in r.text.split("og:description")[1][:200], "el MONTO se filtro al preview publico de WhatsApp!"
 print("  ✓ /api/s/{token}: HTML con og:title de LA obra + headers de seguridad")
 PASOS.append("preview OG")
 r = c.get("/api/s/token-que-no-existe")

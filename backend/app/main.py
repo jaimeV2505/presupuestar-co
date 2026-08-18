@@ -137,21 +137,14 @@ def preview_social(token: str):
         if not p or (p.sector or "privado") == "publico":
             return HTMLResponse("<h1>Este enlace no existe o fue retirado</h1>", status_code=404)
         u = db.query(Usuario).filter(Usuario.id == p.user_id).first()
-        try:
-            from app.services.calculo_presupuesto import calcular_totales
-            from app.services.otrosi_service import valor_adicionales
-            total = calcular_totales(_json.loads(p.items_json or "[]"),
-                                     _json.loads(p.aiu_json or "{}"))["total"]
-            total += valor_adicionales(p, db)
-            total_txt = "$" + f"{round(total):,}".replace(",", ".")
-        except Exception:
-            total_txt = ""
+        # PRIVACIDAD: el MONTO jamas viaja en el preview (WhatsApp lo cachea y
+        # cualquiera en el chat lo ve sin abrir). La cifra se ve AL ABRIR, con el token.
         titulo = _html.escape(f"🏗️ {p.nombre} — {u.empresa or u.nombre}")
         firmado = p.estado not in ("borrador", "enviado", "visto", "rechazado")
         desc = _html.escape(
-            (f"Presupuesto {total_txt} · Sigue el avance de tu obra en vivo, fotos y cuentas claras"
+            ("Tu obra en vivo: avances con fotos, cuentas claras y documentos al dia"
              if firmado else
-             f"Presupuesto {total_txt} · Revisa el detalle y firma el contrato desde tu celular"))
+             "Tu presupuesto esta listo — revisa el detalle y firma desde tu celular"))
         destino = f"/p/{token}"
         # ¿foto del ultimo avance como imagen del preview?
         tiene_foto = False
