@@ -20,6 +20,11 @@ test('humo: login por UI, KPIs pintan, badges y modales viven', async ({ page })
   await cerrarBienvenida(page)
 
   await expect(page.getByTestId('kpi-3')).toContainText('%')
+  // las tarjetas se ABREN: donde vive cada numero
+  await page.getByTestId('kpi-0').click()
+  await expect(page.getByTestId('kpi-detalle')).toBeVisible()
+  await expect(page.getByTestId('kpi-detalle')).toContainText('Obra de humo')
+  await page.getByTestId('kpi-0').click()
   await expect(page.getByTestId('badge-sector').first()).toContainText('Privada')
   await expect(page.getByText('Obra de humo')).toBeVisible()
 

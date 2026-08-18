@@ -154,6 +154,8 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
 
     en_borrador_n = 0
     en_borrador_valor = 0
+    # el desglose: DONDE VIVE cada numero (para las tarjetas que se abren)
+    det_cotizado, det_ganado, det_utilidad, det_enviados = [], [], [], []
     for p in proyectos:
         items = json.loads(p.items_json or "[]")
         aiu = json.loads(p.aiu_json or "{}")
@@ -164,6 +166,10 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
             # trabajo, no actividad comercial — van aparte, con su verdad.
             total_cotizado += t["total"]
             n_enviados += 1
+            det_cotizado.append({"id": p.id, "nombre": p.nombre, "sector": p.sector or "privado",
+                                 "valor": t["total"]})
+            det_enviados.append({"id": p.id, "nombre": p.nombre, "sector": p.sector or "privado",
+                                 "gano": p.estado in GANADOS, "estado": p.estado})
         else:
             en_borrador_n += 1
             en_borrador_valor += t["total"]
@@ -171,6 +177,12 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
             n_ganados += 1
             total_ganado += valor_real
             utilidad_proyectada += t["utilidad_valor"] + _ads_util.get(p.id, 0)
+            det_ganado.append({"id": p.id, "nombre": p.nombre, "sector": p.sector or "privado",
+                               "valor": valor_real})
+            _u = t["utilidad_valor"] + _ads_util.get(p.id, 0)
+            if _u > 0:
+                det_utilidad.append({"id": p.id, "nombre": p.nombre, "sector": p.sector or "privado",
+                                     "valor": _u})
         if p.estado in ("aceptado", "entrega_solicitada"):
             en_ejecucion_valor += valor_real
             en_ejecucion_n += 1
@@ -189,6 +201,12 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
     calificacion = round(sum(e.estrellas for e in encs) / len(encs), 1) if encs else None
 
     return {
+        "desglose": {
+            "cotizado": sorted(det_cotizado, key=lambda x: -x["valor"]),
+            "ganado": sorted(det_ganado, key=lambda x: -x["valor"]),
+            "utilidad": sorted(det_utilidad, key=lambda x: -x["valor"]),
+            "enviados": det_enviados,
+        },
         "total_cotizado": total_cotizado,
         "total_ganado": total_ganado,
         "utilidad_proyectada": utilidad_proyectada,

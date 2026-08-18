@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [proyectos, setProyectos] = useState([])
   const [loading, setLoading] = useState(true)
   const [showNuevo, setShowNuevo] = useState(false)
+  const [kpiAbierto, setKpiAbierto] = useState(null)   // 0..3: la tarjeta que muestra su desglose
   const [nuevo, setNuevo] = useState({ nombre: '', cliente_nombre: '', cliente_telefono: '', region: 'bogota', sector: 'privado', entidad_nombre: '', contrato_numero: '', supervisor_nombre: '' })
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
   const [infoPago, setInfoPago] = useState(null)
@@ -214,12 +215,48 @@ export default function Dashboard() {
                 ['💵', 'Utilidad proyectada', COP(metricas.utilidad_proyectada), 'text-emerald-600'],
                 ['📈', 'Tasa de cierre', `${metricas.tasa_cierre}% (${metricas.n_ganados || 0} de ${metricas.n_enviados || 0})`, 'text-navy-600'],
               ].map(([e, l, v, cls], i) => (
-                <div key={i} data-testid={`kpi-${i}`} className="bg-white rounded-xl border border-slate-100 p-3">
-                  <p className="text-[10px] text-slate-400">{e} {l}</p>
+                <div key={i} data-testid={`kpi-${i}`} onClick={() => setKpiAbierto(kpiAbierto === i ? null : i)}
+                     className={`bg-white rounded-xl border p-3 cursor-pointer transition ${kpiAbierto === i ? 'border-navy-300 ring-1 ring-navy-200' : 'border-slate-100 hover:border-slate-300'}`}>
+                  <p className="text-[10px] text-slate-400">{e} {l} <span className="text-slate-300">{kpiAbierto === i ? '▲' : '▼'}</span></p>
                   <p className={`text-sm sm:text-base font-black mt-0.5 truncate ${cls}`}>{v}</p>
                 </div>
               ))}
             </div>
+            {kpiAbierto !== null && metricas.desglose && (() => {
+              const titulos = ['💰 Quien compone lo cotizado', '✅ Quien te dio lo ganado', '💵 De donde sale tu utilidad', '📈 Los enviados: quien gano y quien no']
+              const lista = kpiAbierto === 3 ? (metricas.desglose.enviados || [])
+                : [metricas.desglose.cotizado, metricas.desglose.ganado, metricas.desglose.utilidad][kpiAbierto] || []
+              const max = Math.max(1, ...lista.map(x => x.valor || 0))
+              const suma = lista.reduce((a, x) => a + (x.valor || 0), 0) || 1
+              return (
+                <div data-testid="kpi-detalle" className="mt-2 bg-white rounded-xl border border-navy-200 p-3">
+                  <p className="text-[11px] font-bold text-slate-500 mb-2">{titulos[kpiAbierto]}</p>
+                  {lista.length === 0 && <p className="text-[11px] text-slate-400">Todavía no hay proyectos aquí.</p>}
+                  <div className="space-y-1.5">
+                    {lista.slice(0, 8).map(x => (
+                      <div key={x.id} className="flex items-center gap-2 text-[11px]">
+                        <span className="shrink-0">{x.sector === 'publico' ? '🏛️' : '🏠'}</span>
+                        <span className="w-32 sm:w-44 truncate text-slate-600 font-medium">{x.nombre}</span>
+                        {kpiAbierto === 3 ? (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${x.gano ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                            {x.gano ? '✓ ganado' : x.estado}
+                          </span>
+                        ) : (
+                          <>
+                            <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-navy-500 rounded-full" style={{ width: `${Math.max(3, (x.valor / max) * 100)}%` }} />
+                            </div>
+                            <span className="w-24 text-right font-bold text-slate-700 tabular-nums">{COP(x.valor)}</span>
+                            <span className="w-10 text-right text-slate-400">{Math.round((x.valor / suma) * 100)}%</span>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {lista.length > 8 && <p className="text-[10px] text-slate-400 mt-1.5">y {lista.length - 8} más…</p>}
+                </div>
+              )
+            })()}
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 px-1 text-[11px] text-slate-400">
               <span>🏗️ En ejecución: <strong className="text-slate-600">{metricas.en_ejecucion_n}</strong> ({COP(metricas.en_ejecucion_valor)})</span>
               <span>🏁 Terminadas: <strong className="text-slate-600">{metricas.n_terminados}</strong></span>
