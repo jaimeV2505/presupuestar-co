@@ -222,7 +222,29 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-            {kpiAbierto !== null && metricas.desglose && (() => {
+            {kpiAbierto === 'cartera' && metricas.desglose && (
+              <div data-testid="cartera-detalle" className="mt-2 bg-white rounded-xl border border-amber-200 p-3">
+                <p className="text-[11px] font-bold text-slate-500 mb-2">💰 Tu cartera: cada acta enviada sin pagar — la más vieja arriba</p>
+                {(metricas.desglose.cartera || []).length === 0 && (
+                  <p className="text-[11px] text-emerald-600 font-medium">✓ Cartera limpia — todo lo enviado está pagado.</p>
+                )}
+                <div className="space-y-1.5">
+                  {(metricas.desglose.cartera || []).slice(0, 10).map(x => (
+                    <div key={x.id} className="flex items-center gap-2 text-[11px]">
+                      <span className="shrink-0">{x.semaforo === 'rojo' ? '🔴' : x.semaforo === 'ambar' ? '🟠' : '🟢'}</span>
+                      <span className="font-mono text-slate-500 shrink-0">{x.numero}</span>
+                      <span className="shrink-0">{x.sector === 'publico' ? '🏛️' : '🏠'}</span>
+                      <span className="flex-1 truncate text-slate-600 font-medium">{x.proyecto}</span>
+                      <span className="font-bold text-slate-700 tabular-nums">{COP(x.neto)}</span>
+                      <span className={`w-20 text-right ${x.dias > 60 ? 'text-red-500 font-bold' : x.dias > 30 ? 'text-amber-600' : 'text-slate-400'}`}>
+                        hace {x.dias} {x.dias === 1 ? 'día' : 'días'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {kpiAbierto !== null && kpiAbierto !== 'cartera' && metricas.desglose && (() => {
               const titulos = ['💰 Quien compone lo cotizado', '✅ Quien te dio lo ganado', '💵 De donde sale tu utilidad', '📈 Los enviados: quien gano y quien no']
               const lista = kpiAbierto === 3 ? (metricas.desglose.enviados || [])
                 : [metricas.desglose.cotizado, metricas.desglose.ganado, metricas.desglose.utilidad][kpiAbierto] || []
@@ -264,7 +286,10 @@ export default function Dashboard() {
                 <span>📝 En borrador: <strong className="text-slate-600">{metricas.en_borrador_n}</strong> ({COP(metricas.en_borrador_valor)}) — mesa de trabajo, no cuenta como cotizado</span>
               )}
               {(metricas.cobrado > 0 || metricas.por_cobrar > 0) && (
-                <span>💰 Cobrado: <strong className="text-emerald-600">{COP(metricas.cobrado)}</strong> · Por cobrar: <strong className="text-amber-600">{COP(metricas.por_cobrar)}</strong></span>
+                <span data-testid="chip-cartera" onClick={() => setKpiAbierto(kpiAbierto === 'cartera' ? null : 'cartera')}
+                      className="cursor-pointer hover:text-slate-600 transition">
+                  💰 Cobrado: <strong className="text-emerald-600">{COP(metricas.cobrado)}</strong> · Por cobrar: <strong className="text-amber-600 underline decoration-dotted">{COP(metricas.por_cobrar)}</strong> {kpiAbierto === 'cartera' ? '▲' : '▼'}
+                </span>
               )}
               {(metricas.cobrado > 0 || metricas.gastado > 0) && (
                 <span>💼 Caja neta: <strong className={metricas.caja_neta >= 0 ? 'text-emerald-600' : 'text-red-500'}>{COP(metricas.caja_neta)}</strong></span>

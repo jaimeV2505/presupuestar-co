@@ -191,6 +191,20 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
     ccs = db.query(CuentaCobro).filter(CuentaCobro.user_id == user.id).all()
     cobrado = sum(c.neto for c in ccs if c.estado == "pagada")
     por_cobrar = sum(c.neto for c in ccs if c.estado == "enviada")
+    # LA CARTERA: cada acta enviada sin pagar, con su edad y su semaforo
+    nombres_p = {pp.id: (pp.nombre, pp.sector or "privado") for pp in proyectos}
+    _hoy = datetime.now(timezone.utc).replace(tzinfo=None)
+    det_cartera = []
+    for c in ccs:
+        if c.estado != "enviada":
+            continue
+        _f = c.creado.replace(tzinfo=None) if c.creado else _hoy
+        dias = max(0, (_hoy - _f).days)
+        nom, sec = nombres_p.get(c.proyecto_id, ("(proyecto)", "privado"))
+        det_cartera.append({"id": c.id, "numero": c.numero, "proyecto": nom, "sector": sec,
+                            "neto": c.neto, "dias": dias,
+                            "semaforo": "rojo" if dias > 60 else ("ambar" if dias > 30 else "verde")})
+    det_cartera.sort(key=lambda x: -x["dias"])   # la mas vieja ARRIBA: la que duele
     ids_proyectos = [p.id for p in proyectos]
     gastado_total = sum(
         g.valor for g in db.query(Gasto).filter(Gasto.proyecto_id.in_(ids_proyectos)).all()
@@ -206,6 +220,7 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
             "ganado": sorted(det_ganado, key=lambda x: -x["valor"]),
             "utilidad": sorted(det_utilidad, key=lambda x: -x["valor"]),
             "enviados": det_enviados,
+            "cartera": det_cartera,
         },
         "total_cotizado": total_cotizado,
         "total_ganado": total_ganado,

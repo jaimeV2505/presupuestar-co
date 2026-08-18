@@ -240,6 +240,13 @@ RETE1 = d.get("retencion") or d.get("cuenta", {}).get("retencion") or 0
 print(f"     cuenta: neto=${NETO:,} retuvo=${RETE1:,}")
 assert RETE1 > 0, "la retegarantia del 5% debia retener algo"
 
+# 💰 LA CARTERA VIVE: la cuenta recien enviada aparece con su edad y semaforo
+d = paso("la cartera muestra el acta sin pagar", c.get("/api/proyectos/metricas", headers=H))
+_cart = (d.get("desglose") or {}).get("cartera") or []
+assert any(x["numero"].startswith("CC-") and x["neto"] > 0 and x["dias"] == 0
+           and x["semaforo"] == "verde" for x in _cart), f"cartera incoherente: {_cart}"
+assert d["por_cobrar"] == sum(x["neto"] for x in _cart), "por_cobrar != suma de la cartera"
+
 paso("abono parcial de $200.000", c.post(f"/api/cuentas/{CID}/abonos",
      json={"monto": 200000, "nota": "Nequi viernes"}, headers=H))
 r = c.post(f"/api/cuentas/{CID}/abonos", json={"monto": NETO * 2, "nota": "exceso"}, headers=H)
