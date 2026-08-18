@@ -354,7 +354,7 @@ export default function VistaPublica() {
       {/* Capitulos */}
       <div className="max-w-lg mx-auto px-4 space-y-2">
         {/* ── 🎨 Diseños: el cliente VE su obra antes de que exista ── */}
-        {!data.demo && (
+        {!data.demo && data.n_disenos > 0 && (
           <>
           <Cejilla>Diseños de tu proyecto</Cejilla>
           <div className="bg-white rounded-2xl border border-slate-100 p-4 mb-2">

@@ -110,6 +110,8 @@ def comentar(pid: int, did: int, req: ComentarioRequest,
              user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     """El contratista responde en el hilo del diseno."""
     p = _proyecto_privado(pid, user, db)
+    if p.estado == "terminado":
+        raise HTTPException(400, "Proyecto terminado — solo lectura")
     d = db.query(Diseno).filter(Diseno.id == did, Diseno.proyecto_id == p.id).first()
     if not d:
         raise HTTPException(404, "Diseno no encontrado")

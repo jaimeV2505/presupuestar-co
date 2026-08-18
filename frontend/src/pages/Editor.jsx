@@ -1319,7 +1319,9 @@ export default function Editor() {
                          if (titulo === null) return
                          comprimirImagen(file).then(img =>
                            disenosAPI.crear(id, { titulo, imagen_b64: img })
-                             .then(d => { setDisenos(prev => [...prev, d]); toast.success('Diseño subido — tu cliente ya lo puede ver 🎨') })
+                             .then(d => { setDisenos(prev => [...prev, d]); toast.success(p.share_token
+                                 ? 'Diseño subido — tu cliente ya lo puede ver en su enlace 🎨'
+                                 : 'Diseño guardado 🎨 — será visible cuando compartas el enlace con tu cliente') })
                              .catch(e2 => toast.error(e2.response?.data?.detail || e2.message))
                          ).catch(() => toast.error('Imagen no válida'))
                          e.target.value = ''

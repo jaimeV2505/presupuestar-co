@@ -13,7 +13,7 @@ import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from app.db import get_db, Usuario, Proyecto, EventoShare, Avance, Encuesta
+from app.db import get_db, Usuario, Proyecto, EventoShare, Avance, Encuesta, Diseno
 from app.api.notificaciones import notificar
 from pydantic import BaseModel
 from app.api.auth import usuario_actual
@@ -179,6 +179,7 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
     return {
         "proyecto": p.nombre,
         "numero": p.numero or "",
+        "n_disenos": db.query(Diseno).filter(Diseno.proyecto_id == p.id).count(),
         "firma": {
             "nombre": firma_ev.nombre_firma,
             "fecha": firma_ev.creado.strftime("%d/%m/%Y %H:%M"),
@@ -1263,6 +1264,9 @@ def _proyecto_por_token_vivo(token: str, db: Session) -> Proyecto:
     p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
     if not p or (p.sector or "privado") == "publico":
         raise HTTPException(404, "Este presupuesto no existe o fue retirado")
+    if p.estado == "terminado":
+        # el mismo cierre del GET principal: obra entregada = acceso cerrado
+        raise HTTPException(404, "La obra fue entregada — este enlace ya se cerro")
     return p
 
 

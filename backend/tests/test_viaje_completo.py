@@ -139,6 +139,9 @@ d = paso("el contratista RESPONDE en el hilo", c.post(
     f"/api/disenos/proyectos/{PID}/disenos/{DIS1}/comentario",
     json={"texto": "Listo, lo cotizo en gris humo"}, headers=H))
 assert len(d["comentarios"]) == 2 and d["comentarios"][1]["autor"] == "contratista"
+# el GET principal del cliente anuncia cuantos disenos hay (seccion nunca vacia)
+d = paso("el enlace anuncia los disenos", c.get(f"/api/share/publico/{TOKEN}"))
+assert d.get("n_disenos") == 2, f"n_disenos debia ser 2: {d.get('n_disenos')}"
 # la notificacion del comentario llego al dueno
 d = paso("notificacion del comentario", c.get("/api/notificaciones", headers=H))
 assert any("comento un diseno" in (n.get("titulo") or "") for n in d["notificaciones"]), d["notificaciones"][:3]
@@ -299,6 +302,14 @@ paso("CANDADO: retegarantia UNA sola vez -> 400", r, status=400)
 r = c.post(f"/api/disenos/proyectos/{PID}/disenos",
            json={"titulo": "postumo", "imagen_b64": "data:image/jpeg;base64,AAAA"}, headers=H)
 paso("CANDADO: subir diseno a terminado -> 400 (solo lectura)", r, status=400)
+r = c.post(f"/api/disenos/proyectos/{PID}/disenos/{DIS1}/comentario",
+           json={"texto": "respuesta postuma"}, headers=H)
+paso("CANDADO: comentar diseno en terminado -> 400 (solo lectura total)", r, status=400)
+r = c.get(f"/api/share/publico/{TOKEN}/disenos")
+paso("CANDADO: el token de disenos TAMBIEN se cierra al terminar -> 404", r, status=404)
+r = c.post(f"/api/share/publico/{TOKEN}/disenos/{DIS1}/comentario",
+           json={"nombre": "Dona Prueba", "texto": "tarde"})
+paso("CANDADO: el cliente tampoco comenta tras la entrega -> 404", r, status=404)
 paso("encuesta 5 estrellas", c.post(f"/api/share/publico/{TOKEN}/encuesta",
      json={"estrellas": 5, "recomendaria": True, "comentario": "Excelente y transparente"}))
 
