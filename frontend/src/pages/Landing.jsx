@@ -319,11 +319,11 @@ const ACTIVIDADES = ['Pañete 1:4 muros', 'Mampostería e=12', 'Acero 60.000 PSI
 function Marquee() {
   const doble = [...ACTIVIDADES, ...ACTIVIDADES]
   return (
-    <div className="overflow-hidden py-3 border-y border-navy-700/50 bg-navy-800/40">
+    <div className="overflow-hidden py-3 border-y border-slate-200 bg-slate-50">
       <div className="flex gap-8 whitespace-nowrap animate-[marquesina_28s_linear_infinite] w-max">
         {doble.map((a, i) => (
-          <span key={i} className="text-[12px] text-navy-300 font-medium">
-            <span className="text-amber-500/80 mr-2">◆</span>{a}
+          <span key={i} className="text-[12px] text-slate-500 font-medium">
+            <span className="text-amber-500 mr-2">◆</span>{a}
           </span>
         ))}
       </div>
@@ -339,18 +339,18 @@ function DockShowcase() {
   return (
     <div className="max-w-5xl mx-auto mt-10 grid lg:grid-cols-5 gap-6 items-start text-left">
       <div key={'d' + sel} className="lg:col-span-2 lg:pt-6 animate-[aparecer_.35s_ease-out]">
-        <p className="text-[10px] font-black tracking-widest text-amber-400">{HERRAMIENTAS[sel].e} {HERRAMIENTAS[sel].t.toUpperCase()}</p>
+        <p className="text-[10px] font-black tracking-widest text-amber-600">{HERRAMIENTAS[sel].e} {HERRAMIENTAS[sel].t.toUpperCase()}</p>
         <h3 className="text-xl font-black mt-2 leading-snug">{det.titulo}</h3>
         <ul className="mt-4 space-y-2.5">
           {det.puntos.map(p => (
-            <li key={p} className="flex items-start gap-2 text-sm text-navy-200">
-              <span className="text-amber-400 mt-0.5">✓</span>{p}
+            <li key={p} className="flex items-start gap-2 text-sm text-slate-600">
+              <span className="text-amber-500 mt-0.5">✓</span>{p}
             </li>
           ))}
         </ul>
       </div>
       <div className="lg:col-span-3">
-        <div className="bg-white rounded-2xl shadow-2xl shadow-navy-900/50 border border-slate-200 overflow-hidden text-left">
+        <div className="bg-white rounded-2xl shadow-2xl shadow-slate-300/50 border border-slate-200 overflow-hidden text-left">
         <div className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
           <span className="w-2.5 h-2.5 rounded-full bg-red-300" />
           <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
@@ -377,17 +377,17 @@ function SeccionSeguimiento() {
     { e: '✍️', t: 'Firmó el contrato', d: 'Ley 527 · evidencia guardada · la obra ARRANCA', c: 'border-emerald-300 bg-emerald-50' },
   ]
   return (
-    <section ref={ref} className="py-20 px-5 bg-navy-800">
+    <section ref={ref} className="py-20 px-5 bg-slate-50">
       <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
         <div>
-          <p className="text-[10px] font-black tracking-widest text-sky-400">🏠 OBRA PRIVADA · SEGUIMIENTO</p>
+          <p className="text-[10px] font-black tracking-widest text-sky-600">🏠 OBRA PRIVADA · SEGUIMIENTO</p>
           <h2 className="text-2xl sm:text-3xl font-black mt-2">Sabes qué hace tu cliente con tu propuesta</h2>
-          <p className="text-navy-200 mt-3 text-sm leading-relaxed max-w-md">
+          <p className="text-slate-500 mt-3 text-sm leading-relaxed max-w-md">
             Se acabó el "¿ya lo viste?". Cada apertura, cada comentario y cada firma
             te llega como notificación — y la bitácora comercial guarda la historia completa
             para tu follow-up.
           </p>
-          <ul className="mt-5 space-y-2 text-sm text-navy-100">
+          <ul className="mt-5 space-y-2 text-sm text-slate-600">
             <li>🔔 Notificación cuando lo abre, comenta o firma</li>
             <li>📔 Bitácora: la historia de cada negociación</li>
             <li>📈 Tasa de cierre por cliente — a quién sí cotizarle</li>
@@ -423,16 +423,16 @@ function Telefono({ children }) {
 function SeccionEmbudo() {
   const [ref, visto] = useEnVista()
   return (
-    <section ref={ref} className="py-20 px-5 bg-gradient-to-b from-navy-800 to-navy-900">
+    <section ref={ref} className="py-20 px-5 bg-slate-50">
       <div className="max-w-6xl mx-auto text-center">
-        <p className="text-[10px] font-black tracking-widest text-amber-400">EL EMBUDO — DE LA COTIZACIÓN A LA FIRMA</p>
+        <p className="text-[10px] font-black tracking-widest text-amber-600">EL EMBUDO — DE LA COTIZACIÓN A LA FIRMA</p>
         <h2 className="text-2xl sm:text-3xl font-black mt-2">Tu cliente firma sin descargar nada</h2>
-        <p className="text-navy-300 mt-2 text-sm max-w-xl mx-auto">Le envías UN enlace. Esto es exactamente lo que ve en su celular — y la firma cierra el negocio.</p>
+        <p className="text-slate-500 mt-2 text-sm max-w-xl mx-auto">Le envías UN enlace. Esto es exactamente lo que ve en su celular — y la firma cierra el negocio.</p>
         <div className="mt-12 grid md:grid-cols-3 gap-8 items-start">
           {/* PASO 1: cotizas */}
           <div style={{ transitionDelay: '0ms' }}
                className={`transition-all duration-700 ${visto ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <p className="text-sm font-black text-navy-200 mb-4"><span className="text-amber-400">1.</span> Cotizas en minutos</p>
+            <p className="text-sm font-black text-slate-600 mb-4"><span className="text-amber-500">1.</span> Cotizas en minutos</p>
             <div className="bg-white rounded-2xl p-4 text-left text-slate-700 shadow-xl mx-auto max-w-[250px]">
               <p className="text-[10px] font-bold text-slate-400">COT-2026-0007 · Apto 501</p>
               {[['Pañete 1:4 muros', '$2.402.400'], ['Enchape piso', '$1.870.000'], ['Pintura general', '$1.200.000']].map(([t, v]) => (
@@ -449,7 +449,7 @@ function SeccionEmbudo() {
           {/* PASO 2: el telefono del cliente */}
           <div style={{ transitionDelay: '350ms' }}
                className={`flex flex-col items-center transition-all duration-700 ${visto ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <p className="text-sm font-black text-navy-200 mb-4"><span className="text-amber-400">2.</span> Tu cliente lo ve así</p>
+            <p className="text-sm font-black text-slate-600 mb-4"><span className="text-amber-500">2.</span> Tu cliente lo ve así</p>
             <Telefono>
               <p className="text-[9px] font-bold text-slate-400 text-center">presupuestar-co.app/p/f_NX…</p>
               <p className="text-sm font-black text-slate-800 text-center mt-1">Apto 501</p>
@@ -465,11 +465,21 @@ function SeccionEmbudo() {
               </div>
               <p className="text-[8px] text-slate-400 text-center mt-1.5">Firma electrónica — Ley 527 de 1999</p>
             </Telefono>
+            <div className="flex gap-2 mt-4">
+              <button data-testid="btn-demo-enlace" onClick={() => window.dispatchEvent(new CustomEvent('abrir-demo', { detail: 'enlace' }))}
+                      className="text-[11px] font-bold bg-navy-600 text-white rounded-xl px-3.5 py-2 hover:bg-navy-700 transition shadow-lg">
+                👀 Ver el enlace de ejemplo
+              </button>
+              <button data-testid="btn-demo-contrato" onClick={() => window.dispatchEvent(new CustomEvent('abrir-demo', { detail: 'contrato' }))}
+                      className="text-[11px] font-bold border border-slate-300 text-slate-600 rounded-xl px-3.5 py-2 hover:bg-slate-50 transition">
+                📄 Ver el contrato
+              </button>
+            </div>
           </div>
           {/* PASO 3: firma y arranca */}
           <div style={{ transitionDelay: '700ms' }}
                className={`transition-all duration-700 ${visto ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <p className="text-sm font-black text-navy-200 mb-4"><span className="text-amber-400">3.</span> Firma — y la obra arranca</p>
+            <p className="text-sm font-black text-slate-600 mb-4"><span className="text-amber-500">3.</span> Firma — y la obra arranca</p>
             <div className="bg-white rounded-2xl p-4 text-left text-slate-700 shadow-xl mx-auto max-w-[250px]">
               <p className="text-[10px] font-bold text-slate-400">CONTRATO DE EJECUCIÓN DE OBRA</p>
               <div className="bg-slate-50 rounded-xl p-2 mt-2">
@@ -489,11 +499,78 @@ function SeccionEmbudo() {
   )
 }
 
+
+function DemoModal({ tab, cerrar }) {
+  const [t, setT] = useState(tab)
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={cerrar}>
+      <div data-testid="demo-modal" onClick={ev => ev.stopPropagation()}
+           className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-y-auto animate-[aparecer_.25s_ease-out]">
+        <div className="sticky top-0 bg-white border-b border-slate-200 px-5 pt-4 pb-0 flex gap-1 rounded-t-3xl">
+          {[['enlace', '📱 El enlace del cliente'], ['contrato', '📄 El contrato']].map(([k, l]) => (
+            <button key={k} onClick={() => setT(k)}
+                    className={`text-xs font-bold px-3 py-2.5 rounded-t-xl border-b-2 transition ${t === k ? 'border-navy-600 text-navy-700' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+              {l}
+            </button>
+          ))}
+          <button onClick={cerrar} className="ml-auto text-slate-400 text-xl px-2">×</button>
+        </div>
+        {t === 'enlace' ? (
+          <div className="p-5">
+            <p className="text-[10px] text-slate-400 text-center font-mono">presupuestar-co.app/p/f_NXKgOR…</p>
+            <p className="text-center font-black text-slate-800 mt-2">Remodelación Apto 501</p>
+            <p className="text-center text-[11px] text-slate-400">de: Construcciones El Maestro · COT-2026-0007</p>
+            <div className="mt-3 bg-slate-50 rounded-2xl p-3 text-[12px] space-y-1.5">
+              {[['Pañete 1:4 muros — 100 m²', '$2.402.400'], ['Enchape piso porcelanato — 44 m²', '$1.870.000'], ['Pintura general — 100 m²', '$1.200.000']].map(([a, v]) => (
+                <div key={a} className="flex justify-between"><span className="text-slate-600">{a}</span><strong>{v}</strong></div>
+              ))}
+              <div className="flex justify-between pt-1.5 border-t border-slate-200 text-[11px] text-slate-500">
+                <span>AIU (15/5/8) + IVA s/ utilidad</span><span>$1.038.148</span>
+              </div>
+              <div className="flex justify-between pt-1 text-sm font-black text-navy-600"><span>TOTAL</span><span>$6.510.548</span></div>
+            </div>
+            <div className="mt-3 h-20 rounded-2xl bg-gradient-to-br from-rose-200 to-orange-100 flex items-end p-2">
+              <span className="text-[10px] bg-white/90 rounded px-1.5 py-0.5 font-bold text-slate-600">🎨 Render sala — comenta aquí</span>
+            </div>
+            <div className="mt-4 text-center text-sm font-black bg-emerald-500 text-white rounded-2xl py-3 shadow-lg shadow-emerald-500/30">
+              ✍️ Aceptar y firmar
+            </div>
+            <p className="text-[10px] text-slate-400 text-center mt-2">Al firmar se genera el contrato con validez de la Ley 527 de 1999</p>
+          </div>
+        ) : (
+          <div className="p-5 text-[11px] leading-relaxed text-slate-600">
+            <p className="text-center font-black text-slate-800 text-sm">CONTRATO DE EJECUCIÓN DE OBRA CIVIL</p>
+            <p className="text-center text-[10px] text-slate-400 mb-3">COT-2026-0007</p>
+            <p><strong>PRIMERA — OBJETO.</strong> La contratante MARÍA F. LÓPEZ requiere la ejecución del proyecto
+              "Remodelación Apto 501", según las actividades y precios de la cotización COT-2026-0007.</p>
+            <p className="mt-2"><strong>SEGUNDA — VALOR.</strong> $6.510.548 COP, con anticipo del 50% y saldo contra avances de obra verificados.</p>
+            <p className="mt-2"><strong>TERCERA — PLAZO.</strong> 20 días hábiles desde el pago del anticipo.</p>
+            <p className="mt-2"><strong>CUARTA — RETEGARANTÍA.</strong> 5% de cada acta, liberada con el acta de entrega firmada.</p>
+            <p className="mt-2 text-slate-400 italic">…el contrato completo se genera con TUS condiciones y queda en PDF firmado.</p>
+            <div className="mt-4 bg-slate-50 rounded-2xl p-3">
+              <p className="text-[10px] text-slate-400">Firma del contratante</p>
+              <FirmaViva activa={true} />
+              <p className="text-[10px] font-bold text-right">María Fernanda López · C.C. ***2333 · 18/8/2026 · IP registrada</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ═══════════════════════════ LA PÁGINA ═══════════════════════════
 export default function Landing() {
   const [refU, vistoU] = useEnVista()
+  const [demo, setDemo] = useState(null)   // 'enlace' | 'contrato' 
+  useEffect(() => {
+    const h = (ev) => setDemo(ev.detail)
+    window.addEventListener('abrir-demo', h)
+    return () => window.removeEventListener('abrir-demo', h)
+  }, [])
   return (
-    <div className="bg-navy-900 text-white overflow-x-hidden">
+    <div className="bg-white text-slate-800 overflow-x-hidden">
+      {demo && <DemoModal tab={demo} cerrar={() => setDemo(null)} />}
       <style>{`
         @keyframes aparecer { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
         @keyframes marquesina { from { transform: translateX(0) } to { transform: translateX(-50%) } }
@@ -501,19 +578,19 @@ export default function Landing() {
         @keyframes flotar { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
         @keyframes brillo { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }
         @keyframes palabra { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
-        .grid-plano { background-image: linear-gradient(rgba(103,232,249,.05) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(103,232,249,.05) 1px, transparent 1px); background-size: 44px 44px; }
+        .grid-plano { background-image: linear-gradient(rgba(28,58,94,.055) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(28,58,94,.055) 1px, transparent 1px); background-size: 44px 44px; }
         .cta-brillo { background: linear-gradient(110deg, #B45309 20%, #F59E0B 40%, #FDE68A 50%, #F59E0B 60%, #B45309 80%);
                       background-size: 200% 100%; animation: brillo 3.2s linear infinite; }
       `}</style>
 
       {/* NAV */}
-      <nav className="fixed top-0 inset-x-0 z-40 backdrop-blur bg-navy-900/70 border-b border-navy-700/50">
+      <nav className="fixed top-0 inset-x-0 z-40 backdrop-blur bg-white/85 border-b border-slate-200">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-5 py-3">
-          <span className="font-black text-lg tracking-tight">Presupuestar<span className="text-amber-400">CO</span></span>
+          <span className="font-black text-lg tracking-tight text-navy-600">Presupuestar<span className="text-amber-500">CO</span></span>
           <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm text-navy-200 hover:text-white transition">Entrar</Link>
-            <Link to="/registro" className="text-sm font-bold bg-white text-navy-800 rounded-xl px-4 py-2 hover:scale-105 transition">
+            <Link to="/login" className="text-sm text-slate-500 hover:text-navy-600 transition">Entrar</Link>
+            <Link to="/registro" className="text-sm font-bold bg-navy-600 text-white rounded-xl px-4 py-2 hover:scale-105 transition">
               Crear cuenta gratis
             </Link>
           </div>
@@ -523,8 +600,8 @@ export default function Landing() {
       {/* HERO */}
       <header data-testid="landing-hero" className="relative grid-plano pt-28 pb-20 px-5">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-40 h-[140%] bg-gradient-to-b from-cyan-400/10 to-transparent blur-2xl animate-[rayo_9s_linear_infinite]" />
-          <div className="absolute top-0 left-1/2 w-24 h-[140%] bg-gradient-to-b from-amber-400/10 to-transparent blur-2xl animate-[rayo_13s_linear_infinite]" style={{ animationDelay: '3s' }} />
+          <div className="absolute top-0 left-1/4 w-40 h-[140%] bg-gradient-to-b from-navy-400/10 to-transparent blur-2xl animate-[rayo_9s_linear_infinite]" />
+          <div className="absolute top-0 left-1/2 w-24 h-[140%] bg-gradient-to-b from-amber-400/15 to-transparent blur-2xl animate-[rayo_13s_linear_infinite]" style={{ animationDelay: '3s' }} />
         </div>
         <div className="relative max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <div>
@@ -534,7 +611,7 @@ export default function Landing() {
                       style={{ animationDelay: `${i * 90}ms` }}>{p}</span>
               ))}
             </h1>
-            <p className="mt-5 text-navy-200 text-lg max-w-md opacity-0 animate-[palabra_.6s_ease-out_.9s_forwards]">
+            <p className="mt-5 text-slate-500 text-lg max-w-md opacity-0 animate-[palabra_.6s_ease-out_.9s_forwards]">
               APU con formato oficial, contratos que tu cliente firma desde el celular,
               y actas de obra pública liquidadas a peso. Hecho para Colombia.
             </p>
@@ -543,7 +620,7 @@ export default function Landing() {
                     className="cta-brillo text-navy-900 font-black rounded-2xl px-7 py-3.5 text-sm shadow-xl shadow-amber-500/20 hover:scale-105 transition">
                 Empieza gratis — 3 presupuestos al mes
               </Link>
-              <Link to="/login" className="border border-navy-500 text-navy-100 rounded-2xl px-6 py-3.5 text-sm font-bold hover:bg-navy-800 transition">
+              <Link to="/login" className="border border-slate-300 text-slate-600 rounded-2xl px-6 py-3.5 text-sm font-bold hover:bg-slate-50 transition">
                 Ya tengo cuenta
               </Link>
             </div>
@@ -562,16 +639,16 @@ export default function Landing() {
       {/* EL DOCK 2.0: showcase con pantalla viva */}
       <section className="py-20 px-5 text-center">
         <h2 className="text-2xl sm:text-3xl font-black">Las herramientas de la obra, en un solo lugar</h2>
-        <p className="text-navy-300 mt-2 text-sm">Toca cada herramienta — la pantalla te la muestra viva.</p>
+        <p className="text-slate-500 mt-2 text-sm">Toca cada herramienta — la pantalla te la muestra viva.</p>
         <DockShowcase />
       </section>
 
       {/* LOS DOS UNIVERSOS */}
-      <section ref={refU} className="py-20 px-5 bg-gradient-to-b from-navy-900 to-navy-800">
+      <section ref={refU} className="py-20 px-5 bg-white">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-black text-center">Dos universos, una sola matemática</h2>
           <div className="mt-12 grid md:grid-cols-2 gap-6">
-            <div className="group bg-white rounded-3xl p-7 text-slate-800 hover:scale-[1.02] transition-transform duration-300 shadow-2xl">
+            <div className="group bg-white rounded-3xl p-7 text-slate-800 border border-slate-200 hover:scale-[1.02] transition-transform duration-300 shadow-xl">
               <p className="text-[10px] font-black tracking-widest text-navy-500">🏠 OBRA PRIVADA</p>
               <h3 className="text-xl font-black mt-2">Tu cliente firma desde el celular</h3>
               <p className="text-sm text-slate-500 mt-2">Envías el enlace. Ve el presupuesto, los diseños, comenta —
@@ -611,9 +688,9 @@ export default function Landing() {
       <section className="py-20 px-5">
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl font-black">Tu APU, por el camino que quieras</h2>
-          <p className="text-navy-300 mt-2 text-sm">Los tres llegan al mismo lugar: TU precio, con TU realidad.</p>
+          <p className="text-slate-500 mt-2 text-sm">Los tres llegan al mismo lugar: TU precio, con TU realidad.</p>
           <div className="mt-10 grid md:grid-cols-3 gap-5 text-left">
-            <div className="bg-white rounded-3xl p-5 text-slate-700 shadow-xl hover:-translate-y-1.5 transition-transform duration-300">
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 text-slate-700 shadow-lg hover:-translate-y-1.5 transition-transform duration-300">
               <p className="text-[10px] font-black tracking-widest text-navy-500">📦 DESDE LA BASE 2026</p>
               <p className="text-sm font-bold mt-2">2.288 actividades con desglose</p>
               <div className="mt-3 bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1">
@@ -644,16 +721,16 @@ export default function Landing() {
         </div>
       </section>
       {/* EL ACTA QUE SE LIQUIDA */}
-      <section className="py-20 px-5 bg-navy-800">
+      <section className="py-20 px-5 bg-white">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <h2 className="text-2xl sm:text-3xl font-black">La plata de la obra, a peso</h2>
-            <p className="text-navy-200 mt-3 text-sm leading-relaxed max-w-md">
+            <p className="text-slate-500 mt-3 text-sm leading-relaxed max-w-md">
               Anticipo que se amortiza con tope, retegarantía que se libera con el acta,
               deducciones de ley que el vigía corrige con un clic. El neto que ves es el neto que llega
               — y un robot lo verifica en cada versión de la plataforma.
             </p>
-            <ul className="mt-5 space-y-2 text-sm text-navy-100">
+            <ul className="mt-5 space-y-2 text-sm text-slate-600">
               <li>💵 Acta de anticipo al flujo de caja</li>
               <li>📅 Cartera por edades con semáforo 🟢🟠🔴</li>
               <li>🏁 Margen ejecutado: contrato − costos reales</li>
@@ -665,7 +742,7 @@ export default function Landing() {
 
 
       {/* EL BENTO: todo lo demas que trabaja por ti */}
-      <section className="py-20 px-5 bg-navy-800">
+      <section className="py-20 px-5 bg-slate-50">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-black text-center">Y todo lo demás que trabaja por ti</h2>
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -677,10 +754,10 @@ export default function Landing() {
               ['🚦', 'Cartera por edades', 'Cada acta sin pagar con su semáforo 🟢🟠🔴'],
               ['⚠️', 'Vigía de precios viejos', 'Un precio de hace 8 meses no cotiza una obra de hoy'],
             ].map(([e2, t, d]) => (
-              <div key={t} className="group bg-navy-700/50 border border-navy-600/60 rounded-2xl p-5 hover:border-amber-500/50 hover:bg-navy-700/80 transition-all duration-300">
+              <div key={t} className="group bg-white border border-slate-200 rounded-2xl p-5 hover:border-amber-400 hover:shadow-lg transition-all duration-300">
                 <span className="text-2xl">{e2}</span>
-                <p className="text-sm font-bold mt-2 group-hover:text-amber-300 transition">{t}</p>
-                <p className="text-[11px] text-navy-300 mt-1 leading-snug">{d}</p>
+                <p className="text-sm font-bold mt-2 text-slate-700 group-hover:text-amber-600 transition">{t}</p>
+                <p className="text-[11px] text-slate-500 mt-1 leading-snug">{d}</p>
               </div>
             ))}
           </div>
@@ -692,16 +769,16 @@ export default function Landing() {
           <div className="flex justify-center order-2 lg:order-1"><Terminal /></div>
           <div className="order-1 lg:order-2">
             <h2 className="text-2xl sm:text-3xl font-black">Vigilado por robots, no por promesas</h2>
-            <p className="text-navy-200 mt-3 text-sm leading-relaxed max-w-md">
+            <p className="text-slate-500 mt-3 text-sm leading-relaxed max-w-md">
               Antes de cada versión, dos robots recorren la plataforma completa: registran, cotizan,
               firman, sellan, liquidan actas y exportan — 159 pasos con la matemática verificada a peso.
               Si un solo peso no cuadra, la versión no sale.
             </p>
             <div className="mt-6 grid grid-cols-3 gap-3 max-w-sm">
               {[['159', 'pasos de robot'], ['49', 'candados 4xx'], ['2.288', 'actividades APU']].map(([n, l]) => (
-                <div key={l} className="bg-navy-800 border border-navy-700 rounded-2xl p-3 text-center">
-                  <p className="text-xl font-black text-amber-400">{n}</p>
-                  <p className="text-[10px] text-navy-300">{l}</p>
+                <div key={l} className="bg-white border border-slate-200 rounded-2xl p-3 text-center shadow-sm">
+                  <p className="text-xl font-black text-amber-600">{n}</p>
+                  <p className="text-[10px] text-slate-500">{l}</p>
                 </div>
               ))}
             </div>
@@ -711,22 +788,22 @@ export default function Landing() {
 
 
       {/* LOS PLANES */}
-      <section className="py-20 px-5 bg-navy-900">
+      <section className="py-20 px-5 bg-slate-50">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl font-black">Empieza gratis. Crece cuando la obra crezca.</h2>
           <div className="mt-10 grid md:grid-cols-2 gap-6 text-left">
-            <div className="bg-navy-800/70 border border-navy-600 rounded-3xl p-7">
-              <p className="text-[10px] font-black tracking-widest text-navy-300">GRATIS</p>
-              <p className="text-4xl font-black mt-2">$0 <span className="text-sm font-medium text-navy-300">/ siempre</span></p>
-              <p className="text-[12px] text-navy-300 mt-1">Para cotizar tus primeras obras</p>
-              <ul className="mt-5 space-y-2.5 text-sm text-navy-100">
+            <div className="bg-white border border-slate-200 rounded-3xl p-7 shadow-lg">
+              <p className="text-[10px] font-black tracking-widest text-slate-400">GRATIS</p>
+              <p className="text-4xl font-black mt-2">$0 <span className="text-sm font-medium text-slate-400">/ siempre</span></p>
+              <p className="text-[12px] text-slate-500 mt-1">Para cotizar tus primeras obras</p>
+              <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
                 <li>✓ <strong>3 presupuestos al mes</strong> con TODO el poder</li>
                 <li>✓ APUs, análisis 🔬, recetario y constructor</li>
                 <li>✓ Enlace del cliente + firma electrónica</li>
                 <li>✓ Excel del formato oficial y anexo PDF</li>
                 <li>✓ Avances, gastos, actas y cartera</li>
               </ul>
-              <Link to="/registro" className="block mt-6 text-center border border-navy-500 rounded-2xl py-3 text-sm font-bold hover:bg-navy-700 transition">
+              <Link to="/registro" className="block mt-6 text-center border border-navy-300 text-navy-600 rounded-2xl py-3 text-sm font-bold hover:bg-navy-50 transition">
                 Crear cuenta gratis
               </Link>
             </div>
@@ -750,18 +827,18 @@ export default function Landing() {
         </div>
       </section>
       {/* CTA FINAL */}
-      <section className="py-24 px-5 text-center bg-gradient-to-b from-navy-900 to-navy-800 grid-plano">
+      <section className="py-24 px-5 text-center bg-white grid-plano">
         <h2 className="text-3xl sm:text-4xl font-black">Tu próxima obra empieza aquí</h2>
-        <p className="text-navy-300 mt-3 text-sm">Gratis: 3 presupuestos al mes con TODO el poder. Sin tarjeta.</p>
+        <p className="text-slate-500 mt-3 text-sm">Gratis: 3 presupuestos al mes con TODO el poder. Sin tarjeta.</p>
         <Link to="/registro"
               className="cta-brillo inline-block mt-8 text-navy-900 font-black rounded-2xl px-9 py-4 shadow-xl shadow-amber-500/20 hover:scale-105 transition">
           Crear mi cuenta gratis
         </Link>
       </section>
 
-      <footer className="py-8 px-5 border-t border-navy-700/50 text-center text-[11px] text-navy-400">
+      <footer className="py-8 px-5 border-t border-slate-200 text-center text-[11px] text-slate-400">
         PresupuestarCO — presupuestos de obra profesionales, hechos en Colombia 🇨🇴 ·
-        <Link to="/legal" className="underline ml-1 hover:text-navy-200">Términos y privacidad</Link>
+        <Link to="/legal" className="underline ml-1 hover:text-navy-600">Términos y privacidad</Link>
       </footer>
     </div>
   )

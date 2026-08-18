@@ -13,6 +13,11 @@ test('humo: login por UI, KPIs pintan, badges y modales viven', async ({ page })
   await page.goto('/')
   await expect(page.getByTestId('landing-hero')).toBeVisible()
   await expect(page.getByText('Crear cuenta gratis').first()).toBeVisible()
+  // el demo del cliente abre (la joya del embudo) y cierra por backdrop
+  await page.getByTestId('btn-demo-enlace').click()
+  await expect(page.getByTestId('demo-modal')).toBeVisible()
+  await page.mouse.click(8, 8)
+  await expect(page.getByTestId('demo-modal')).toHaveCount(0)
 
   // LOGIN COMO HUMANO (el unico viaje que lo hace por UI, a proposito)
   await page.goto('/login')
