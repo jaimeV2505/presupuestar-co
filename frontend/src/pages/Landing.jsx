@@ -300,7 +300,7 @@ function Terminal() {
         <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
         <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
-        <span className="text-[10px] text-navy-300 ml-2 font-mono">shield — cada push</span>
+        <span className="text-[10px] text-navy-300 ml-2 font-mono">shield + vigia — cada push y cada 30 min</span>
       </div>
       <div className="p-4 font-mono text-[12px] leading-relaxed min-h-[150px]">
         {LINEAS.slice(0, n).map(l => (
@@ -768,11 +768,12 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <div className="flex justify-center order-2 lg:order-1"><Terminal /></div>
           <div className="order-1 lg:order-2">
-            <h2 className="text-2xl sm:text-3xl font-black">Vigilado por robots, no por promesas</h2>
+            <h2 className="text-2xl sm:text-3xl font-black">Tu plata está bien calculada. Siempre.</h2>
             <p className="text-navy-200 mt-3 text-sm leading-relaxed max-w-md">
-              Antes de cada versión, dos robots recorren la plataforma completa: registran, cotizan,
-              firman, sellan, liquidan actas y exportan — 159 pasos con la matemática verificada a peso.
-              Si un solo peso no cuadra, la versión no sale.
+              Doble vigilancia: antes de cada versión, dos robots recorren la plataforma completa
+              — 159 pasos con la matemática verificada a peso; si un solo peso no cuadra, la versión no sale.
+              Y en vivo, un vigía patrulla la plataforma cada 30 minutos: cotiza, verifica y se va.
+              Si algo falla a las 3 a.m., lo sabemos antes que tú.
             </p>
             <div className="mt-6 grid grid-cols-3 gap-3 max-w-sm">
               {[['159', 'pasos de robot'], ['49', 'candados 4xx'], ['2.288', 'actividades APU']].map(([n, l]) => (
