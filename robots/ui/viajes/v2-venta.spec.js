@@ -22,10 +22,10 @@ test('la venta: diseno → enlace → cliente comenta y firma → candado', asyn
   await page.getByTestId('dialogo-input').fill('Render sala — opcion 1')
   await page.getByTestId('dialogo-ok').click()
   await expect(page.getByText('Render sala — opcion 1')).toBeVisible({ timeout: 10_000 })
-  await page.mouse.click(8, 8)   // el modal cierra por backdrop
+  await page.keyboard.press('Escape')
 
   const share = await api(token, 'POST', `/share/proyectos/${p.id}/compartir`)
-  const t = share.share_token || (share.ruta_publica || '').split('/p/').pop()
+  const t = share.token || (share.url || '').split('/p/').pop()
 
   // ── EL CLIENTE (otro navegador): ve, comenta y FIRMA en el pad ──
   const ctx = await browser.newContext()
@@ -41,7 +41,7 @@ test('la venta: diseno → enlace → cliente comenta y firma → candado', asyn
   await expect(cliente.getByText('Me gusta, pero en gris')).toBeVisible()
 
   await cliente.getByTestId('btn-aceptar').click()
-  await cliente.getByPlaceholder('Ej: María Fernanda López García').fill('Dona Robot Cliente')
+  await cliente.getByPlaceholder('Tu nombre completo *').fill('Dona Robot Cliente')
   const pad = cliente.locator('canvas').first()
   const caja = await pad.boundingBox()
   await cliente.mouse.move(caja.x + 20, caja.y + 30)

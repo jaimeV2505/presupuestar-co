@@ -17,15 +17,6 @@ if DATABASE_URL:
     if url.startswith("postgresql://") and "+psycopg2" not in url:
         url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
     engine = create_engine(url, pool_pre_ping=True, pool_size=2, max_overflow=3)
-
-# sqlite trae las FOREIGN KEYS apagadas por defecto — despertarlas para que el
-# mundo de pruebas defienda la integridad IGUAL que Postgres (bug del DELETE 500
-# en prod que los robots no vieron: cazado el 18/8/2026)
-if engine.url.get_backend_name() == "sqlite":
-    from sqlalchemy import event as _ev
-    @_ev.listens_for(engine, "connect")
-    def _fk_on(dbapi_con, _):
-        dbapi_con.execute("PRAGMA foreign_keys=ON")
     ES_POSTGRES = True
 else:
     DB_PATH = os.environ.get("DB_PATH", "/app/data_db/presupuestar.db")

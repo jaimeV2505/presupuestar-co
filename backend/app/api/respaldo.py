@@ -13,7 +13,7 @@ import os
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from app.db import (get_db, Usuario, Cliente, Proyecto, EventoShare, Avance, Diseno,
+from app.db import (get_db, Usuario, Cliente, Proyecto, EventoShare, Avance,
                     Gasto, CuentaCobro, Encuesta, Notificacion, PagoWompi,
                     Otrosi, Abono, InteraccionCliente, ApuUsuario, Proveedor,
                     PrecioProveedor, TicketSoporte, MensajeSoporte, SolicitudPro)
@@ -25,7 +25,7 @@ router = APIRouter()
 # TODO lo que vale la pena renacer, en orden de restore (padres antes que hijos).
 # Excluido A PROPOSITO: IntentoAcceso (ruido de rate-limit, sin valor de restore).
 MODELOS = [Usuario, Cliente, Proyecto, EventoShare, Avance, Gasto,
-           CuentaCobro, Abono, Otrosi, InteraccionCliente, Diseno,
+           CuentaCobro, Abono, Otrosi, InteraccionCliente,
            ApuUsuario, Proveedor, PrecioProveedor,
            Encuesta, Notificacion, PagoWompi,
            TicketSoporte, MensajeSoporte, SolicitudPro]
