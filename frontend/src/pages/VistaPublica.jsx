@@ -79,6 +79,8 @@ export default function VistaPublica() {
   const [interLocal, setInterLocal] = useState({})            // {avanceId: {reacciones, comentarios}} optimista
   const [galeria, setGaleria] = useState(null)                // {fotos, inicial}
   const [verHistoria, setVerHistoria] = useState(false)
+  const [disenos, setDisenos] = useState(null)                // null = no cargados aun (lazy)
+  const [comDiseno, setComDiseno] = useState({})              // did -> {nombre, texto}
   const [hintGuardar, setHintGuardar] = useState(() => !localStorage.getItem('obra_guardada_hint'))
 
   const AvisoFirma = () => (
@@ -351,6 +353,61 @@ export default function VistaPublica() {
 
       {/* Capitulos */}
       <div className="max-w-lg mx-auto px-4 space-y-2">
+        {/* ── 🎨 Diseños: el cliente VE su obra antes de que exista ── */}
+        {!data.demo && (
+          <>
+          <Cejilla>Diseños de tu proyecto</Cejilla>
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 mb-2">
+            {disenos === null ? (
+              <button onClick={() => shareAPI.disenos(token).then(r => setDisenos(r.disenos || [])).catch(() => setDisenos([]))}
+                      className="w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-navy-600 hover:bg-slate-50">
+                🎨 Ver los diseños del proyecto
+              </button>
+            ) : disenos.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-2">Aún no hay diseños cargados para este proyecto.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {disenos.map(d => (
+                  <div key={d.id} className="border border-slate-100 rounded-xl overflow-hidden">
+                    <img src={d.imagen_b64} alt={d.titulo} className="w-full h-32 object-cover cursor-zoom-in"
+                         onClick={() => setGaleria({ fotos: disenos.map(x => x.imagen_b64), inicial: disenos.indexOf(d) })} />
+                    <div className="p-2">
+                      <p className="text-[11px] font-semibold text-slate-700 truncate">{d.titulo || 'Diseño'}</p>
+                      {(d.comentarios || []).map((cm, k) => (
+                        <p key={k} className={`text-[10px] mt-1 rounded-lg px-2 py-1 ${cm.autor === 'cliente' ? 'bg-blue-50 text-blue-700' : 'bg-slate-50 text-slate-600'}`}>
+                          <strong>{cm.nombre}:</strong> {cm.texto}
+                        </p>
+                      ))}
+                      <div className="mt-1.5 space-y-1">
+                        <input value={comDiseno[d.id]?.texto || ''} placeholder='Comenta este diseño ("me gusta, pero en gris")'
+                               onChange={e => setComDiseno(prev => ({ ...prev, [d.id]: { ...prev[d.id], texto: e.target.value } }))}
+                               className="w-full text-[10px] border border-slate-200 rounded-lg px-2 py-1.5" />
+                        <div className="flex gap-1">
+                          <input value={comDiseno[d.id]?.nombre || firma.nombre || ''} placeholder="Tu nombre"
+                                 onChange={e => setComDiseno(prev => ({ ...prev, [d.id]: { ...prev[d.id], nombre: e.target.value } }))}
+                                 className="flex-1 text-[10px] border border-slate-200 rounded-lg px-2 py-1.5" />
+                          <button onClick={() => {
+                                    const c2 = comDiseno[d.id] || {}
+                                    const texto = (c2.texto || '').trim()
+                                    if (!texto) return
+                                    shareAPI.comentarDiseno(token, d.id, { nombre: c2.nombre || firma.nombre || '', texto })
+                                      .then(r => {
+                                        setDisenos(prev => prev.map(x => x.id === d.id ? { ...x, comentarios: r.comentarios } : x))
+                                        setComDiseno(prev => ({ ...prev, [d.id]: { ...prev[d.id], texto: '' } }))
+                                      }).catch(() => {})
+                                  }}
+                                  className="text-[10px] font-bold bg-navy-600 text-white rounded-lg px-3">💬 Enviar</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          </>
+        )}
+
         <Cejilla>Tu presupuesto, capítulo por capítulo</Cejilla>
         {Object.entries(data.capitulos || {}).map(([cap, info]) => (
           <div key={cap} className="bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100">

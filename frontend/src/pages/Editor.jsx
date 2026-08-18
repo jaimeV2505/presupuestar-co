@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
          Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
-import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI, insumosAPI } from '../services/api'
+import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI, insumosAPI, disenosAPI } from '../services/api'
 import { comprimirImagen } from '../utils/imagen'
 import InfoTip from '../components/InfoTip'
 
@@ -174,7 +174,10 @@ export default function Editor() {
         setTimeout(() => _enviar(intento + 1), [1500, 4000, 8000][intento])
       } else if (esRed) {
         setSinRed(true)
-        toast.error('Sin conexión — tus cambios se guardarán al volver la señal', { id: 'save-err', duration: 5000 })
+        const offline = typeof navigator !== 'undefined' && navigator.onLine === false
+        toast.error(offline
+          ? 'Sin conexión — tus cambios se guardarán al volver la señal'
+          : 'El servidor tarda en responder — seguiré reintentando tus cambios', { id: 'save-err', duration: 5000 })
         setTimeout(() => _enviar(0), 15000) // sigue intentando en segundo plano
       } else {
         const motivo = e.response?.data?.detail || e.message
@@ -260,6 +263,9 @@ export default function Editor() {
   const [analisisAbierto, setAnalisisAbierto] = useState(null)  // _idx del item expandido
   const [showExplosion, setShowExplosion] = useState(false)     // F2: lista de materiales
   const [rindeIdx, setRindeIdx] = useState(-1)                  // R2: calculadora de rendimiento
+  const [showDisenos, setShowDisenos] = useState(false)         // 🎨 renders/planos para el cliente
+  const [disenos, setDisenos] = useState([])
+  const [comentarioDiseno, setComentarioDiseno] = useState({})  // did -> texto en curso
   const [explosionData, setExplosionData] = useState(null)
   useEffect(() => {
     apusAPI.listar({}).then(r => {
@@ -464,6 +470,19 @@ export default function Editor() {
   // Contenido del panel de herramientas — compartido: sidebar fija (desktop) y drawer (movil)
   const panelHerramientas = (
     <div className="p-3 space-y-1">
+              {!esPublico && (
+                <button onClick={() => {
+                          setShowPanel(false); setShowDisenos(true)
+                          disenosAPI.listar(id).then(r => setDisenos(r.disenos || [])).catch(() => {})
+                        }}
+                        className="w-full flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-50 text-left">
+                  <span className="text-lg">🎨</span>
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-700">Diseños</span>
+                    <span className="block text-[10px] text-slate-400">Renders y planos — tu cliente los ve y comenta</span>
+                  </span>
+                </button>
+              )}
               {!esPublico && eventos?.total_vistas > 0 && (
                 <p className="text-[11px] text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-2">
                   👁 {eventos.total_vistas} vista{eventos.total_vistas !== 1 ? 's' : ''} del cliente
@@ -622,7 +641,7 @@ export default function Editor() {
                 <span className="font-semibold text-navy-600">{p.numero}</span>
                 {' · '}{p.cliente_nombre || 'Sin cliente'}
                 {' · '}{p.actualizado ? new Date(p.actualizado).toLocaleDateString('es-CO') : ''}
-                {' · '}{sinRed ? '⚠️ Sin conexión — reintentando' : guardando ? 'Guardando...' : 'Guardado ✓'}
+                {' · '}{sinRed ? (navigator.onLine === false ? '⚠️ Sin conexión — reintentando' : '⏳ Servidor lento — reintentando') : guardando ? 'Guardando...' : 'Guardado ✓'}
               </p>
             </div>
           </div>
@@ -1275,6 +1294,82 @@ export default function Editor() {
                 📥 Descargar Excel — para llevar a la ferretería
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── 🎨 DISEÑOS: renders/planos que el cliente ve y comenta ── */}
+      {showDisenos && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowDisenos(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-5 max-h-[88vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between">
+              <h3 className="font-black text-slate-800">🎨 Diseños del proyecto
+                <InfoTip texto="Sube renders, planos fotografiados o moodboards (máx 12, se comprimen solos). Tu cliente los ve en su mismo enlace y puede comentar cada uno — tú respondes aquí. Cuando los abra, lo verás en la bitácora: cliente que mira diseños es cliente caliente." />
+              </h3>
+              <button onClick={() => setShowDisenos(false)} className="text-slate-400">✕</button>
+            </div>
+            {!soloLectura && (
+              <label className="mt-3 flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 hover:border-navy-400 rounded-xl py-3 text-sm text-slate-500 cursor-pointer">
+                📤 Subir diseño (JPG/PNG — se comprime solo)
+                <input type="file" accept="image/*" className="hidden"
+                       onChange={e => {
+                         const file = e.target.files?.[0]
+                         if (!file) return
+                         const titulo = window.prompt('Título del diseño (ej: "Render cocina — opción 1"):', '') 
+                         if (titulo === null) return
+                         comprimirImagen(file).then(img =>
+                           disenosAPI.crear(id, { titulo, imagen_b64: img })
+                             .then(d => { setDisenos(prev => [...prev, d]); toast.success('Diseño subido — tu cliente ya lo puede ver 🎨') })
+                             .catch(e2 => toast.error(e2.response?.data?.detail || e2.message))
+                         ).catch(() => toast.error('Imagen no válida'))
+                         e.target.value = ''
+                       }} />
+              </label>
+            )}
+            <div className="mt-3 overflow-y-auto flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {disenos.length === 0 && (
+                <p className="col-span-2 text-xs text-slate-400 text-center py-6">
+                  Sin diseños todavía. El cliente que VE su baño renderizado firma más rápido que el que ve un número.
+                </p>
+              )}
+              {disenos.map(d => (
+                <div key={d.id} className="border border-slate-100 rounded-xl overflow-hidden">
+                  <img src={d.imagen_b64} alt={d.titulo} className="w-full h-36 object-cover" />
+                  <div className="p-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-slate-700 truncate">{d.titulo || 'Diseño'}</p>
+                      {!soloLectura && (
+                        <button onClick={() => {
+                                  if (!window.confirm('¿Eliminar este diseño?')) return
+                                  disenosAPI.eliminar(id, d.id)
+                                    .then(() => setDisenos(prev => prev.filter(x => x.id !== d.id)))
+                                    .catch(e2 => toast.error(e2.response?.data?.detail || e2.message))
+                                }} className="text-slate-300 hover:text-red-400 text-xs">🗑</button>
+                      )}
+                    </div>
+                    {(d.comentarios || []).map((cm, k) => (
+                      <p key={k} className={`text-[10px] mt-1 rounded-lg px-2 py-1 ${cm.autor === 'cliente' ? 'bg-blue-50 text-blue-700' : 'bg-slate-50 text-slate-600'}`}>
+                        <strong>{cm.autor === 'cliente' ? '💬 ' : '↩️ '}{cm.nombre}:</strong> {cm.texto}
+                      </p>
+                    ))}
+                    <div className="flex gap-1 mt-1.5">
+                      <input value={comentarioDiseno[d.id] || ''} placeholder="Responder..."
+                             onChange={e => setComentarioDiseno(prev => ({ ...prev, [d.id]: e.target.value }))}
+                             className="flex-1 text-[10px] border border-slate-200 rounded-lg px-2 py-1" />
+                      <button onClick={() => {
+                                const txt = (comentarioDiseno[d.id] || '').trim()
+                                if (!txt) return
+                                disenosAPI.comentar(id, d.id, txt).then(r => {
+                                  setDisenos(prev => prev.map(x => x.id === d.id ? { ...x, comentarios: r.comentarios } : x))
+                                  setComentarioDiseno(prev => ({ ...prev, [d.id]: '' }))
+                                }).catch(e2 => toast.error(e2.response?.data?.detail || e2.message))
+                              }}
+                              className="text-[10px] font-bold text-navy-600 px-2">↩️</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

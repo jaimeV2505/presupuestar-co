@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const api = axios.create({ baseURL: '/api', timeout: 600000 })
+const api = axios.create({ baseURL: '/api', timeout: 120000  // 120s: si Vercel se cuelga, fallar-y-reintentar > esperar 10 min })
 
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token')
@@ -85,6 +85,8 @@ export const proveedoresAPI = {
 }
 
 export const shareAPI = {
+  disenos: (token) => api.get(`/share/publico/${token}/disenos`).then(r => r.data),
+  comentarDiseno: (token, did, data) => api.post(`/share/publico/${token}/disenos/${did}/comentario`, data).then(r => r.data),
   interactuar: (token, avanceId, data) => api.post(`/share/publico/${token}/avances/${avanceId}/interaccion`, data).then(r => r.data),
   otrosiAprobar: (token, id, firma) => api.post(`/share/publico/${token}/otrosi/${id}/aprobar`, firma).then(r => r.data),
   otrosiRechazar: (token, id, motivo) => api.post(`/share/publico/${token}/otrosi/${id}/rechazar`, { motivo }).then(r => r.data),
@@ -185,6 +187,13 @@ export const preciosAPI = {
   buscar: (params) => api.get('/precios/', { params }).then(r => r.data),
   regiones: () => api.get('/precios/regiones').then(r => r.data),
   stats: () => api.get('/precios/stats').then(r => r.data),
+}
+
+export const disenosAPI = {
+  listar: (pid) => api.get(`/disenos/proyectos/${pid}/disenos`).then(r => r.data),
+  crear: (pid, data) => api.post(`/disenos/proyectos/${pid}/disenos`, data).then(r => r.data),
+  eliminar: (pid, did) => api.delete(`/disenos/proyectos/${pid}/disenos/${did}`).then(r => r.data),
+  comentar: (pid, did, texto) => api.post(`/disenos/proyectos/${pid}/disenos/${did}/comentario`, { texto }).then(r => r.data),
 }
 
 export const exportarAPI = {

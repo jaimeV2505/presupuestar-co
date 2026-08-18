@@ -372,6 +372,10 @@ paso("CANDADO: avance sobre terminado -> 400", r, status=400)
 r = c.post(f"/api/gastos/proyectos/{PID}/gastos",
            json={"descripcion": "gasto postumo", "valor": 1000}, headers=H)
 paso("CANDADO: gasto sobre terminado -> 400", r, status=400)
+# 🎨 DOCTRINA: los disenos son del universo PRIVADO — en publico no existen
+r = c.post(f"/api/disenos/proyectos/{PID}/disenos",
+           json={"titulo": "render", "imagen_b64": "data:image/jpeg;base64,AAAA"}, headers=H)
+paso("CANDADO: disenos en obra publica -> 400 (nada viaja fuera)", r, status=400)
 d = paso("duplicar un TERMINADO si esta permitido (nace borrador editable, con nombre propio)",
          c.post(f"/api/proyectos/{PID}/duplicar", json={"nombre": "Via El Roble FASE 2"}, headers=H))
 assert d.get("estado") == "borrador" and d.get("sector") == "publico", d

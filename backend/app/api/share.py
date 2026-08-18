@@ -1251,3 +1251,74 @@ def interactuar(token: str, avance_id: int, req: InteraccionRequest,
                   f"💬 Comentario en {p.numero}",
                   f'{req.nombre or "Tu cliente"}: "{req.valor[:140]}"', p.id)
     return {"ok": True, **_interacciones_de(a.id, db)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🎨 DISENOS — el cliente VE los renders/planos y COMENTA sobre ellos.
+# Lazy (no viajan en el GET principal), guard de sector heredado, y cada
+# apertura queda en la bitacora: "👀 vio los disenos" = cliente caliente.
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _proyecto_por_token_vivo(token: str, db: Session) -> Proyecto:
+    p = db.query(Proyecto).filter(Proyecto.share_token == token).first()
+    if not p or (p.sector or "privado") == "publico":
+        raise HTTPException(404, "Este presupuesto no existe o fue retirado")
+    return p
+
+
+@router.get("/publico/{token}/disenos")
+def disenos_publico(token: str, db: Session = Depends(get_db)):
+    from app.db import Diseno
+    p = _proyecto_por_token_vivo(token, db)
+    ds = (db.query(Diseno).filter(Diseno.proyecto_id == p.id)
+          .order_by(Diseno.creado.asc()).all())
+    # bitacora comercial: maximo un "vio_disenos" por hora (sin spam)
+    if ds:
+        from datetime import timedelta
+        hace_1h = datetime.now(timezone.utc) - timedelta(hours=1)
+        reciente = (db.query(EventoShare)
+                    .filter(EventoShare.proyecto_id == p.id, EventoShare.tipo == "vio_disenos",
+                            EventoShare.creado >= hace_1h).first())
+        if not reciente:
+            db.add(EventoShare(proyecto_id=p.id, tipo="vio_disenos"))
+            db.commit()
+    def _hilo(d):
+        try:
+            return json.loads(d.comentarios_json or "[]")
+        except ValueError:
+            return []
+    return {"disenos": [{"id": d.id, "titulo": d.titulo, "imagen_b64": d.imagen_b64,
+                         "comentarios": _hilo(d)} for d in ds]}
+
+
+class ComentarioClienteRequest(BaseModel):
+    nombre: str = ""
+    texto: str
+
+
+@router.post("/publico/{token}/disenos/{did}/comentario")
+def comentar_diseno_publico(token: str, did: int, req: ComentarioClienteRequest,
+                            db: Session = Depends(get_db)):
+    from app.db import Diseno, Notificacion
+    p = _proyecto_por_token_vivo(token, db)
+    d = db.query(Diseno).filter(Diseno.id == did, Diseno.proyecto_id == p.id).first()
+    if not d:
+        raise HTTPException(404, "Diseno no encontrado")
+    texto = (req.texto or "").strip()[:500]
+    if not texto:
+        raise HTTPException(400, "Escribe tu comentario")
+    try:
+        hilo = json.loads(d.comentarios_json or "[]")
+    except ValueError:
+        hilo = []
+    if len(hilo) >= 20:
+        raise HTTPException(400, "Este diseno ya tiene el hilo lleno — comentalo por WhatsApp")
+    nombre = (req.nombre or "Tu cliente").strip()[:80]
+    hilo.append({"autor": "cliente", "nombre": nombre, "texto": texto,
+                 "fecha": datetime.now(timezone.utc).isoformat()})
+    d.comentarios_json = json.dumps(hilo, ensure_ascii=False)
+    db.add(Notificacion(user_id=p.user_id, proyecto_id=p.id, tipo="info",
+                        titulo=f"💬 {nombre} comento un diseno",
+                        cuerpo=f"«{texto[:120]}» — en {p.nombre[:60]}"))
+    db.commit()
+    return {"ok": True, "comentarios": hilo}

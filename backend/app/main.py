@@ -24,7 +24,7 @@ init_db()
 logger.info("Base de datos inicializada")
 
 # Routers core del nuevo producto
-from app.api import auth, proyectos, share, precios, exportar, avances, pagos, soporte, notificaciones, gastos, cuentas, clientes, onboarding, wompi, respaldo, otrosies, apus, proveedores, insumos
+from app.api import auth, proyectos, share, precios, exportar, avances, pagos, soporte, notificaciones, gastos, cuentas, clientes, onboarding, wompi, respaldo, otrosies, apus, proveedores, insumos, disenos
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(proyectos.router, prefix="/api/proyectos", tags=["proyectos"])
 app.include_router(share.router, prefix="/api/share", tags=["share"])
@@ -40,6 +40,7 @@ app.include_router(wompi.router, prefix="/api/wompi", tags=["wompi"])
 app.include_router(respaldo.router, prefix="/api/respaldo", tags=["respaldo"])
 app.include_router(apus.router, prefix="/api/apus", tags=["apus"])
 app.include_router(insumos.router, prefix="/api/insumos", tags=["insumos"])
+app.include_router(disenos.router, prefix="/api/disenos", tags=["disenos"])
 app.include_router(proveedores.router, prefix="/api/proveedores", tags=["proveedores"])
 app.include_router(otrosies.router, prefix="/api/otrosies", tags=["otrosies"])
 

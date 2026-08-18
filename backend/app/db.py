@@ -296,6 +296,20 @@ class MensajeSoporte(Base):
     creado = Column(DateTime, default=utcnow)
 
 
+class Diseno(Base):
+    """🎨 Disenos del proyecto (SOLO universo privado): renders, planos
+    fotografiados, moodboards. El cliente los ve en su enlace y comenta.
+    Comentarios como hilo JSON: [{autor: cliente|contratista, nombre, texto, fecha}]."""
+    __tablename__ = "disenos"
+    id = Column(Integer, primary_key=True)
+    proyecto_id = Column(Integer, ForeignKey("proyectos.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    titulo = Column(String(120), default="")
+    imagen_b64 = Column(Text, nullable=False)           # comprimida en el cliente (~200-300KB)
+    comentarios_json = Column(Text, default="[]")       # hilo cliente <-> contratista
+    creado = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 class Notificacion(Base):
     __tablename__ = "notificaciones"
     id = Column(Integer, primary_key=True)

@@ -114,6 +114,40 @@ paso("anexo de APUs detallados (PDF) con descuento visible", r)
 assert r.content[:4] == b"%PDF", "el anexo de APUs no es un PDF"
 PASOS.append("descuento prorrateado exacto + incidencias + anexo de APUs")
 TOKEN = d["share_token"]
+
+print("═══ ACTO 2.5: LOS DISENOS (el cliente VE su obra y COMENTA) ═══")
+_IMG = "data:image/jpeg;base64," + "D" * 5000
+d = paso("subir diseno 1 (render cocina)", c.post(f"/api/disenos/proyectos/{PID}/disenos",
+         json={"titulo": "Render cocina — opcion 1", "imagen_b64": _IMG}, headers=H))
+DIS1 = d["id"]
+paso("subir diseno 2 (plano bano)", c.post(f"/api/disenos/proyectos/{PID}/disenos",
+     json={"titulo": "Plano bano", "imagen_b64": _IMG}, headers=H))
+r = c.post(f"/api/disenos/proyectos/{PID}/disenos",
+           json={"titulo": "gigante", "imagen_b64": "data:image/jpeg;base64," + "X" * 960_000}, headers=H)
+paso("CANDADO: imagen >700KB -> 400", r, status=400)
+r = c.post(f"/api/disenos/proyectos/{PID}/disenos",
+           json={"titulo": "no-imagen", "imagen_b64": "data:application/pdf;base64,AAAA"}, headers=H)
+paso("CANDADO: solo imagenes (PDF -> 400)", r, status=400)
+# el CLIENTE los ve por su token (lazy) y queda en la bitacora
+d = paso("el cliente abre los disenos", c.get(f"/api/share/publico/{TOKEN}/disenos"))
+assert len(d["disenos"]) == 2 and d["disenos"][0]["titulo"].startswith("Render")
+d = paso("el cliente COMENTA un diseno", c.post(
+    f"/api/share/publico/{TOKEN}/disenos/{DIS1}/comentario",
+    json={"nombre": "Dona Prueba", "texto": "Me gusta, pero el meson en gris"}))
+assert d["comentarios"][0]["autor"] == "cliente" and "gris" in d["comentarios"][0]["texto"]
+d = paso("el contratista RESPONDE en el hilo", c.post(
+    f"/api/disenos/proyectos/{PID}/disenos/{DIS1}/comentario",
+    json={"texto": "Listo, lo cotizo en gris humo"}, headers=H))
+assert len(d["comentarios"]) == 2 and d["comentarios"][1]["autor"] == "contratista"
+# la notificacion del comentario llego al dueno
+d = paso("notificacion del comentario", c.get("/api/notificaciones", headers=H))
+assert any("comento un diseno" in (n.get("titulo") or "") for n in d["notificaciones"]), d["notificaciones"][:3]
+# y la bitacora registro que el cliente miro
+d = paso("bitacora comercial", c.get(f"/api/share/proyectos/{PID}/eventos", headers=H))
+_tipos = [e.get("tipo") for e in d.get("eventos", [])]
+assert "vio_disenos" in _tipos, f"falta vio_disenos en bitacora: {_tipos}"
+PASOS.append("disenos: subir con topes, cliente ve+comenta, hilo bidireccional, notificacion y bitacora")
+
 TOTAL = round(d["totales"]["total"])
 print(f"     total del contrato: ${TOTAL:,}")
 
@@ -262,6 +296,9 @@ print("  ✓ cuenta pdf_publico: genera"); PASOS.append("cuenta.pdf")
 d = paso("liberar retegarantia", c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H))
 r = c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H)
 paso("CANDADO: retegarantia UNA sola vez -> 400", r, status=400)
+r = c.post(f"/api/disenos/proyectos/{PID}/disenos",
+           json={"titulo": "postumo", "imagen_b64": "data:image/jpeg;base64,AAAA"}, headers=H)
+paso("CANDADO: subir diseno a terminado -> 400 (solo lectura)", r, status=400)
 paso("encuesta 5 estrellas", c.post(f"/api/share/publico/{TOKEN}/encuesta",
      json={"estrellas": 5, "recomendaria": True, "comentario": "Excelente y transparente"}))
 

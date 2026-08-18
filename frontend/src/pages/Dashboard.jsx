@@ -331,13 +331,13 @@ export default function Dashboard() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-bold text-navy-500 bg-navy-50 px-1.5 py-0.5 rounded">{p.es_demo ? '🎓 EJEMPLO' : p.numero}</span>
-                        <h3 className="font-semibold text-slate-800">{p.nombre}</h3>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.txt}</span>
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.sector === 'publico' ? 'bg-violet-100 text-violet-700' : 'bg-sky-50 text-sky-600'}`}
                               title={p.sector === 'publico' ? 'Contrato de obra pública — entidad estatal' : 'Obra privada — cliente con enlace'}>
                           {p.sector === 'publico' ? '🏛️ Pública' : '🏠 Privada'}
                         </span>
+                        <span className="text-[10px] font-bold text-navy-500 bg-navy-50 px-1.5 py-0.5 rounded">{p.es_demo ? '🎓 EJEMPLO' : p.numero}</span>
+                        <h3 className="font-semibold text-slate-800">{p.nombre}</h3>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.txt}</span>
                       </div>
                       <p className="text-sm text-slate-400 mt-0.5">
                         {p.cliente_nombre && `${p.cliente_nombre} · `}
