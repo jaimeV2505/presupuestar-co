@@ -479,7 +479,7 @@ export default function Editor() {
                         }}
                         className="w-full flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-50 text-left">
                   <span className="text-lg">🎨</span>
-                  <span data-testid="total-obra">
+                  <span>
                     <span data-testid="menu-disenos" className="block text-sm font-semibold text-slate-700">Diseños</span>
                     <span className="block text-[10px] text-slate-400">Renders y planos — tu cliente los ve y comenta</span>
                   </span>
@@ -1461,7 +1461,7 @@ export default function Editor() {
             </div>
             <div className="text-right shrink-0">
               <p className="text-[10px] text-blue-200 uppercase tracking-wide">Total</p>
-              <p className="text-xl font-black">{COP(totales.total)}</p>
+              <p data-testid="total-obra" className="text-xl font-black">{COP(totales.total)}</p>
             </div>
           </div>
         </div>

@@ -27,7 +27,8 @@ test('el maestro: del recetario al Excel, en el celular', async ({ page }) => {
   await page.getByText('Pañete 1:4 muros interiores').first().click()
   await page.mouse.click(8, 8)   // el buscador cierra por backdrop (como sus hermanos)
   await expect(page.getByTestId('abrir-buscador')).toBeVisible()   // modal cerrado de verdad
-  await expect(page.getByText('Pañete 1:4 muros interiores').first()).toBeVisible()
+  // el item quedo en la tabla: el TOTAL de la obra ya respira el pañete
+  await expect(totalObra).toContainText('22.524', { timeout: 15_000 })
   const totalAntes = await totalObra.textContent()
 
   // 4) abrir el ANALISIS 🔬 y subir el precio del cemento a SU precio
