@@ -37,5 +37,19 @@ if huerfanas or fantasmas:
     for t in sorted(fantasmas):
         print(f"  ❌ MODELOS respalda '{t}' que ya no existe en db.py")
     sys.exit(1)
+# ── SEGUNDA LEY: toda tabla hija de proyecto debe estar en la CASCADA del DELETE ──
+# (la misma serpiente mordio dos veces: Diseno falto en el backup Y en la cascada)
+hijas = set(re.findall(r'class (\w+)\(Base\):(?:(?!class ).)*?proyecto_id = Column\(Integer, ForeignKey', db, re.S))
+proy = open(os.path.join(RAIZ, "backend", "app", "api", "proyectos.py"), encoding="utf-8").read()
+m2 = re.search(r"def eliminar\(.*?for Modelo in \(([^)]+)\)", proy, re.S)
+en_cascada = {x.strip() for x in m2.group(1).split(",")} if m2 else set()
+faltantes = hijas - en_cascada - {"Proyecto"}
+if faltantes:
+    print("CANDADO DE LA CASCADA EN ROJO:")
+    for t_ in sorted(faltantes):
+        print(f"  ❌ el modelo '{t_}' tiene proyecto_id pero NO esta en la cascada del DELETE — "
+              f"borrar un proyecto con esos hijos revienta con 500 en Postgres (FK violation).")
+    sys.exit(1)
 print(f"OK backup: {len(respaldadas)}/{len(todas)} tablas viajan; "
       f"excluidas a proposito: {sorted(EXCLUIDAS)} — GROOT renace completo")
+print(f"OK cascada: {len(hijas)} tablas hijas de proyecto, todas en el DELETE — el 500 es imposible")
