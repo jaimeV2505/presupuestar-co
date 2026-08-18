@@ -37,9 +37,9 @@ export default defineConfig({
       timeout: 60_000,
       env: {
         DATABASE_URL: `sqlite:///${DB}`,
-        JWT_SECRET: 'robot-ui-secreto-de-prueba-0123456789abcdef',
+        JWT_SECRET: 'robot-ui-secreto-de-prueba-0123456789abcdef', // gitleaks:allow
         ADMIN_EMAILS: 'robot@ui.test',
-        WOMPI_EVENTS_SECRET: 'robot-ui-eventos',
+        WOMPI_EVENTS_SECRET: 'robot-ui-eventos', // gitleaks:allow
       },
     },
     {

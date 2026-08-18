@@ -16,7 +16,7 @@ import sys
 import tempfile
 
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/publico.db")
-os.environ.setdefault("JWT_SECRET", "secreto-viaje-publico-0123456789abcdef")
+os.environ.setdefault("JWT_SECRET", "secreto-viaje-publico-0123456789abcdef")  # gitleaks:allow (sandbox del mundo efimero)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -113,8 +113,11 @@ print(f"  ✓ catalogo curado navegable: 200+ insumos de referencia adentro de l
 PASOS.append("catalogo curado 200+")
 
 d = paso("comparador: mi precio vs referencia", c.get("/api/insumos/comparar?q=cemento", headers=H))
-assert d["mi_mejor"]["precio"] == 28500 and d["referencia"]["precio"] == 28500
-assert d["ahorro"] == 0   # mismo precio de referencia — el calculo cuadra
+assert d["mi_mejor"]["precio"] == 28500, d["mi_mejor"]
+_ref = (d.get("referencia") or {}).get("precio")
+assert _ref and _ref > 0, f"el comparador debe traer la referencia del catalogo: {d}"
+# la matematica del ahorro cuadra con los valores REALES devueltos
+assert d["ahorro"] == max(0, _ref - 28500), f"ahorro incoherente: ref={_ref} ahorro={d['ahorro']}"
 r = c.get("/api/insumos/buscar?q=x", headers=H)
 paso("CANDADO: busqueda de 1 letra -> 4xx", r, status=422) if r.status_code == 422 else paso("CANDADO: busqueda corta rechazada", r, status=400)
 

@@ -21,11 +21,11 @@ import tempfile
 
 # ── Entorno de prueba ANTES de importar la app ──
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/viaje.db")
-os.environ.setdefault("JWT_SECRET", "secreto-de-prueba-viaje-completo-0123456789")
+os.environ.setdefault("JWT_SECRET", "secreto-de-prueba-viaje-completo-0123456789")  # gitleaks:allow (sandbox del mundo efimero)
 os.environ.setdefault("ADMIN_EMAILS", "maestro@viaje.test")   # el viajero ES admin (para respaldo)
-os.environ.setdefault("WOMPI_EVENTS_SECRET", "secreto-eventos-viaje")
-os.environ.setdefault("WOMPI_PUBLIC_KEY", "pub_test_viaje_0123456789")
-os.environ.setdefault("WOMPI_INTEGRITY_SECRET", "test_integrity_viaje_0123456789")
+os.environ.setdefault("WOMPI_EVENTS_SECRET", "secreto-eventos-viaje")  # gitleaks:allow (sandbox del mundo efimero)
+os.environ.setdefault("WOMPI_PUBLIC_KEY", "pub_test_viaje_0123456789")  # gitleaks:allow (sandbox del mundo efimero)
+os.environ.setdefault("WOMPI_INTEGRITY_SECRET", "test_integrity_viaje_0123456789")  # gitleaks:allow (sandbox del mundo efimero)
 os.environ.pop("RESEND_API_KEY", None)   # sin emails reales en pruebas
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
