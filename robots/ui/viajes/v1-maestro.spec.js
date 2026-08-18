@@ -25,7 +25,8 @@ test('el maestro: del recetario al Excel, en el celular', async ({ page }) => {
 
   // 3) agregar el pañete y cerrar el buscador
   await page.getByText('Pañete 1:4 muros interiores').first().click()
-  await page.keyboard.press('Escape')
+  await page.mouse.click(8, 8)   // el buscador cierra por backdrop (como sus hermanos)
+  await expect(page.getByTestId('abrir-buscador')).toBeVisible()   // modal cerrado de verdad
   await expect(page.getByText('Pañete 1:4 muros interiores').first()).toBeVisible()
   const totalAntes = await totalObra.textContent()
 
