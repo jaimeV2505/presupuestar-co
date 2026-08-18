@@ -179,6 +179,16 @@ function MockActas() {
     </div>
   )
 }
+
+const DETALLE_HERRAMIENTA = [
+  { titulo: 'El precio es TUYO, no de una tabla', puntos: ['Edita cemento, arena y M.O. con los precios de TU ferretería', 'Recalcula en el servidor y ⚡ aplica al ítem en un clic', 'El desglose queda guardado — tu propuesta 100% sustentada'] },
+  { titulo: 'Tu primer presupuesto, en minutos', puntos: ['16 recetas de arranque: pañete, mampostería, enchape…', 'Cada una editable en el 🔬 con tus precios', 'Siembras una vez, cotizas para siempre'] },
+  { titulo: 'Negocia sin regalar la obra', puntos: ['Descuento prorrateado ítem por ítem', 'El precio de lista queda guardado — sabes cuánto cediste', 'El cliente ve un solo número limpio'] },
+  { titulo: 'El render que cierra la venta', puntos: ['Sube diseños y planos al proyecto', 'Tu cliente los ve desde su enlace y comenta', 'Cada comentario te llega como notificación'] },
+  { titulo: 'Sabes dónde está la plata del proyecto', puntos: ['Incidencia por capítulos en un vistazo', 'Detecta el capítulo que se comió el presupuesto', 'Decide dónde negociar y dónde no'] },
+  { titulo: 'Compra lo que la obra necesita', puntos: ['Explosión de insumos con desperdicio incluido', 'Cruzada con los precios de TUS proveedores', 'La lista de compras del maestro, lista para la ferretería'] },
+  { titulo: 'La plata de la obra, a peso', puntos: ['Anticipo, cortes, retegarantía y deducciones de ley', 'El neto que calculas es el neto que llega', 'Cartera por edades con semáforo'] },
+]
 const MOCKS_DOCK = [MockAnalisis, MockRecetario, MockDescuento, MockDisenos, MockIncidencia, MockExplosion, MockActas]
 
 // ── EL DOCK: las herramientas que se magnifican ──
@@ -325,9 +335,22 @@ function Marquee() {
 function DockShowcase() {
   const [sel, setSel] = useState(0)
   const Mock = MOCKS_DOCK[sel]
+  const det = DETALLE_HERRAMIENTA[sel]
   return (
-    <div className="max-w-2xl mx-auto mt-10">
-      <div className="bg-white rounded-2xl shadow-2xl shadow-navy-900/50 border border-slate-200 overflow-hidden text-left">
+    <div className="max-w-5xl mx-auto mt-10 grid lg:grid-cols-5 gap-6 items-start text-left">
+      <div key={'d' + sel} className="lg:col-span-2 lg:pt-6 animate-[aparecer_.35s_ease-out]">
+        <p className="text-[10px] font-black tracking-widest text-amber-400">{HERRAMIENTAS[sel].e} {HERRAMIENTAS[sel].t.toUpperCase()}</p>
+        <h3 className="text-xl font-black mt-2 leading-snug">{det.titulo}</h3>
+        <ul className="mt-4 space-y-2.5">
+          {det.puntos.map(p => (
+            <li key={p} className="flex items-start gap-2 text-sm text-navy-200">
+              <span className="text-amber-400 mt-0.5">✓</span>{p}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="lg:col-span-3">
+        <div className="bg-white rounded-2xl shadow-2xl shadow-navy-900/50 border border-slate-200 overflow-hidden text-left">
         <div className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
           <span className="w-2.5 h-2.5 rounded-full bg-red-300" />
           <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
@@ -338,7 +361,8 @@ function DockShowcase() {
           <Mock />
         </div>
       </div>
-      <div className="mt-6 pb-4"><Dock sel={sel} setSel={setSel} /></div>
+        <div className="mt-6 pb-4"><Dock sel={sel} setSel={setSel} /></div>
+      </div>
     </div>
   )
 }
@@ -381,6 +405,84 @@ function SeccionSeguimiento() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+
+function Telefono({ children }) {
+  return (
+    <div className="relative w-[230px] bg-navy-900 rounded-[2rem] p-2 border-4 border-navy-700 shadow-2xl shadow-navy-900/60">
+      <div className="absolute top-3.5 left-1/2 -translate-x-1/2 w-16 h-1.5 bg-navy-700 rounded-full" />
+      <div className="bg-white rounded-[1.55rem] pt-6 pb-4 px-3 min-h-[340px]">{children}</div>
+    </div>
+  )
+}
+function SeccionEmbudo() {
+  const [ref, visto] = useEnVista()
+  return (
+    <section ref={ref} className="py-20 px-5 bg-gradient-to-b from-navy-800 to-navy-900">
+      <div className="max-w-6xl mx-auto text-center">
+        <p className="text-[10px] font-black tracking-widest text-amber-400">EL EMBUDO — DE LA COTIZACIÓN A LA FIRMA</p>
+        <h2 className="text-2xl sm:text-3xl font-black mt-2">Tu cliente firma sin descargar nada</h2>
+        <p className="text-navy-300 mt-2 text-sm max-w-xl mx-auto">Le envías UN enlace. Esto es exactamente lo que ve en su celular — y la firma cierra el negocio.</p>
+        <div className="mt-12 grid md:grid-cols-3 gap-8 items-start">
+          {/* PASO 1: cotizas */}
+          <div style={{ transitionDelay: '0ms' }}
+               className={`transition-all duration-700 ${visto ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <p className="text-sm font-black text-navy-200 mb-4"><span className="text-amber-400">1.</span> Cotizas en minutos</p>
+            <div className="bg-white rounded-2xl p-4 text-left text-slate-700 shadow-xl mx-auto max-w-[250px]">
+              <p className="text-[10px] font-bold text-slate-400">COT-2026-0007 · Apto 501</p>
+              {[['Pañete 1:4 muros', '$2.402.400'], ['Enchape piso', '$1.870.000'], ['Pintura general', '$1.200.000']].map(([t, v]) => (
+                <div key={t} className="flex justify-between text-[11px] py-1 border-b border-slate-100">
+                  <span>{t}</span><strong>{v}</strong>
+                </div>
+              ))}
+              <div className="flex justify-between mt-2 pt-1 text-sm font-black">
+                <span>TOTAL</span><span className="text-navy-600">$6.510.548</span>
+              </div>
+              <div className="mt-3 text-center text-[10px] font-bold bg-emerald-500 text-white rounded-lg py-1.5">📤 Compartir con el cliente</div>
+            </div>
+          </div>
+          {/* PASO 2: el telefono del cliente */}
+          <div style={{ transitionDelay: '350ms' }}
+               className={`flex flex-col items-center transition-all duration-700 ${visto ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <p className="text-sm font-black text-navy-200 mb-4"><span className="text-amber-400">2.</span> Tu cliente lo ve así</p>
+            <Telefono>
+              <p className="text-[9px] font-bold text-slate-400 text-center">presupuestar-co.app/p/f_NX…</p>
+              <p className="text-sm font-black text-slate-800 text-center mt-1">Apto 501</p>
+              <p className="text-center text-lg font-black text-navy-600">$6.510.548</p>
+              <div className="mt-2 bg-slate-50 rounded-xl p-2 text-[9px] text-slate-500">
+                ✓ 3 ítems con precios claros<br />✓ AIU e IVA a la vista<br />✓ Contrato de obra incluido
+              </div>
+              <div className="mt-2 h-12 rounded-xl bg-gradient-to-br from-rose-200 to-orange-100 flex items-end p-1">
+                <span className="text-[8px] bg-white/90 rounded px-1 font-bold text-slate-500">🎨 Render sala</span>
+              </div>
+              <div className="mt-3 text-center text-[10px] font-black bg-emerald-500 text-white rounded-xl py-2 shadow-lg shadow-emerald-500/40 animate-pulse">
+                ✍️ Aceptar y firmar
+              </div>
+              <p className="text-[8px] text-slate-400 text-center mt-1.5">Firma electrónica — Ley 527 de 1999</p>
+            </Telefono>
+          </div>
+          {/* PASO 3: firma y arranca */}
+          <div style={{ transitionDelay: '700ms' }}
+               className={`transition-all duration-700 ${visto ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <p className="text-sm font-black text-navy-200 mb-4"><span className="text-amber-400">3.</span> Firma — y la obra arranca</p>
+            <div className="bg-white rounded-2xl p-4 text-left text-slate-700 shadow-xl mx-auto max-w-[250px]">
+              <p className="text-[10px] font-bold text-slate-400">CONTRATO DE EJECUCIÓN DE OBRA</p>
+              <div className="bg-slate-50 rounded-xl p-2 mt-2">
+                <FirmaViva activa={visto} />
+                <p className="text-[10px] font-bold text-right text-slate-600">María F. López · C.C. ***2333</p>
+              </div>
+              <div className="mt-3 flex items-center gap-1.5 text-[10px]">
+                <span className="bg-emerald-100 text-emerald-700 font-black rounded-full px-2 py-0.5">✓ ACEPTADO</span>
+                <span className="text-slate-400">evidencia guardada</span>
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2.5">Y se activan: avances de obra, gastos, actas de cobro y anticipo. La plataforma trabaja hasta que cobras.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -453,6 +555,9 @@ export default function Landing() {
       </header>
 
       <Marquee />
+
+      {/* EL EMBUDO */}
+      <SeccionEmbudo />
 
       {/* EL DOCK 2.0: showcase con pantalla viva */}
       <section className="py-20 px-5 text-center">
@@ -604,6 +709,46 @@ export default function Landing() {
         </div>
       </section>
 
+
+      {/* LOS PLANES */}
+      <section className="py-20 px-5 bg-navy-900">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-2xl sm:text-3xl font-black">Empieza gratis. Crece cuando la obra crezca.</h2>
+          <div className="mt-10 grid md:grid-cols-2 gap-6 text-left">
+            <div className="bg-navy-800/70 border border-navy-600 rounded-3xl p-7">
+              <p className="text-[10px] font-black tracking-widest text-navy-300">GRATIS</p>
+              <p className="text-4xl font-black mt-2">$0 <span className="text-sm font-medium text-navy-300">/ siempre</span></p>
+              <p className="text-[12px] text-navy-300 mt-1">Para cotizar tus primeras obras</p>
+              <ul className="mt-5 space-y-2.5 text-sm text-navy-100">
+                <li>✓ <strong>3 presupuestos al mes</strong> con TODO el poder</li>
+                <li>✓ APUs, análisis 🔬, recetario y constructor</li>
+                <li>✓ Enlace del cliente + firma electrónica</li>
+                <li>✓ Excel del formato oficial y anexo PDF</li>
+                <li>✓ Avances, gastos, actas y cartera</li>
+              </ul>
+              <Link to="/registro" className="block mt-6 text-center border border-navy-500 rounded-2xl py-3 text-sm font-bold hover:bg-navy-700 transition">
+                Crear cuenta gratis
+              </Link>
+            </div>
+            <div className="relative bg-white text-slate-800 rounded-3xl p-7 shadow-2xl shadow-amber-500/10 ring-2 ring-amber-400">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 cta-brillo text-navy-900 text-[10px] font-black rounded-full px-4 py-1">PARA EL QUE COTIZA EN SERIO</span>
+              <p className="text-[10px] font-black tracking-widest text-amber-600">⭐ PRO</p>
+              <p className="text-4xl font-black mt-2">$79.000 <span className="text-sm font-medium text-slate-400">COP / mes</span></p>
+              <p className="text-[12px] text-slate-500 mt-1">Menos que un bulto de cemento a la semana</p>
+              <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
+                <li>✓ <strong>Presupuestos ILIMITADOS</strong></li>
+                <li>✓ Todo lo del plan gratis, sin techo</li>
+                <li>✓ Duplica y usa plantillas sin contar cupos</li>
+                <li>✓ Pago seguro con Wompi (PSE, tarjeta, Nequi)</li>
+                <li>✓ Cancela cuando quieras</li>
+              </ul>
+              <Link to="/registro" className="cta-brillo block mt-6 text-center text-navy-900 rounded-2xl py-3 text-sm font-black hover:scale-[1.02] transition">
+                Empezar — el primer mes se paga solo
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
       {/* CTA FINAL */}
       <section className="py-24 px-5 text-center bg-gradient-to-b from-navy-900 to-navy-800 grid-plano">
         <h2 className="text-3xl sm:text-4xl font-black">Tu próxima obra empieza aquí</h2>
