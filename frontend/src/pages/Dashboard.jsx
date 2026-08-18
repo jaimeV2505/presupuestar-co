@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { pedirTexto, confirmarDialogo } from '../components/Dialogo'
 import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2, LifeBuoy, Camera, X, Bell, TrendingUp, Users } from 'lucide-react'
 import { proyectosAPI, pagosAPI, soporteAPI, notificacionesAPI, clientesAPI, onboardingAPI } from '../services/api'
 import { comprimirImagen } from '../utils/imagen'
@@ -85,8 +86,9 @@ export default function Dashboard() {
 
   const duplicar = async (proy, e) => {
     e.stopPropagation()
-    const nombre = window.prompt('Nombre para la copia (la copia es 100% independiente del original):',
-                                 `${proy.nombre} (copia)`)
+    const nombre = await pedirTexto({ titulo: '📄 Duplicar proyecto',
+      mensaje: 'La copia es 100% independiente del original.',
+      valorInicial: `${proy.nombre} (copia)`, confirmar: 'Crear copia' })
     if (nombre === null) return   // canceló
     try {
       const c = await proyectosAPI.duplicar(proy.id, { nombre: nombre.trim() })
@@ -97,7 +99,9 @@ export default function Dashboard() {
 
   const eliminar = async (id, e) => {
     e.stopPropagation()
-    if (!confirm('¿Eliminar este presupuesto? No se puede deshacer.')) return
+    if (!(await confirmarDialogo({ titulo: '¿Eliminar este presupuesto?',
+      mensaje: 'Se borra con toda su historia (avances, cuentas, bitácora). No se puede deshacer.',
+      peligro: true, confirmar: 'Eliminar todo' }))) return
     try {
       await proyectosAPI.eliminar(id)
       toast.success('Eliminado')

@@ -31,6 +31,15 @@ function verificarJsPuro(ruta) {
 
 function verificar(ruta) {
   let src = readFileSync(ruta, 'utf8')
+  // ── REGLA DE LA CASA: dialogos nativos PROHIBIDOS (usa components/Dialogo) ──
+  // Nace de la auditoria del 18/8/2026: 26 prompt/confirm/alert migrados.
+  if (!ruta.endsWith('components/Dialogo.jsx')) {
+    const nativo = src.match(/window\.(prompt|confirm|alert)\(|(^|[^.\w])(confirm|alert|prompt)\(/m)
+    if (nativo) {
+      const linea = src.slice(0, nativo.index).split('\n').length
+      return `❌ ${ruta}: linea ${linea} usa un dialogo NATIVO del navegador (${nativo[0].trim()}) — usa pedirTexto/confirmarDialogo de components/Dialogo o toast`
+    }
+  }
   src = src.replace(/'(?:[^'\\\n]|\\.)*'/g, m => m.replace(/[^\n]/g, ' '))
            .replace(/"(?:[^"\\\n]|\\.)*"/g, m => m.replace(/[^\n]/g, ' '))
            .replace(/`(?:[^`\\]|\\.)*`/g, m => m.replace(/[^\n]/g, ' '))

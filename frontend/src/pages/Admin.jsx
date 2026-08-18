@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { confirmarDialogo } from '../components/Dialogo'
 import { ArrowLeft, Crown, Check, X, RefreshCw } from 'lucide-react'
 import { pagosAPI, soporteAPI } from '../services/api'
 
@@ -29,7 +30,7 @@ export default function Admin() {
   useEffect(() => { cargar() }, [])
 
   const aprobar = async (s) => {
-    if (!confirm(`¿Activar Pro por 30 días para ${s.usuario.email}?`)) return
+    if (!(await confirmarDialogo({ titulo: '⭐ ¿Activar Pro por 30 días?', mensaje: `Para ${s.usuario.email}`, confirmar: 'Activar Pro' }))) return
     try {
       const r = await pagosAPI.adminAprobar({ solicitud_id: s.id, dias: 30 })
       toast.success(`Pro activo para ${r.usuario} hasta ${r.vence}`)
@@ -38,7 +39,7 @@ export default function Admin() {
   }
 
   const rechazar = async (s) => {
-    if (!confirm(`¿Rechazar la solicitud de ${s.usuario.email}?`)) return
+    if (!(await confirmarDialogo({ titulo: '¿Rechazar la solicitud?', mensaje: `De ${s.usuario.email}`, peligro: true, confirmar: 'Rechazar' }))) return
     try {
       await pagosAPI.adminRechazar({ solicitud_id: s.id })
       toast.success('Rechazada')

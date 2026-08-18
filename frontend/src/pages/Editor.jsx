@@ -6,6 +6,7 @@ import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
 import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI, insumosAPI, disenosAPI } from '../services/api'
 import { comprimirImagen } from '../utils/imagen'
 import InfoTip from '../components/InfoTip'
+import { pedirTexto, confirmarDialogo } from '../components/Dialogo'
 
 const COP = (v) => '$' + Math.round(v || 0).toLocaleString('es-CO')
 
@@ -545,7 +546,9 @@ export default function Editor() {
                   <p className="text-[9px] text-slate-400 uppercase font-bold px-1 pt-2">Cierre</p>
                   {esPublico && p.estado !== 'terminado' && (
                     <button onClick={async () => {
-                              if (!confirm('¿Terminar el contrato?\n\n• El proyecto pasa a TERMINADO\n• Podrás liberar la retegarantía acumulada\n• La bitácora del Seguimiento queda como historial')) return
+                              if (!(await confirmarDialogo({ titulo: '🏁 ¿Terminar el contrato?',
+                                mensaje: '• El proyecto pasa a TERMINADO\n• Podrás liberar la retegarantía acumulada\n• La bitácora del Seguimiento queda como historial',
+                                confirmar: 'Terminar contrato' }))) return
                               try {
                                 const d = await proyectosAPI.terminar(id)
                                 setP(d); setShowPanel(false)
@@ -560,7 +563,9 @@ export default function Editor() {
                   )}
                   {!esPublico && p.estado === 'aceptado' && (
                     <button onClick={async () => {
-                              if (!confirm('¿Solicitar la entrega de la obra?\n\n• Tu cliente verá: "El contratista reporta la obra terminada"\n• Al confirmar, firmará el Acta de Entrega\n• Si hay pendientes, te los reporta y la obra continúa')) return
+                              if (!(await confirmarDialogo({ titulo: '📦 ¿Solicitar la entrega de la obra?',
+                                mensaje: '• Tu cliente verá: "El contratista reporta la obra terminada"\n• Al confirmar, firmará el Acta de Entrega\n• Si hay pendientes, te los reporta y la obra continúa',
+                                confirmar: 'Solicitar entrega' }))) return
                               try {
                                 const d = await proyectosAPI.actualizar(id, { estado: 'entrega_solicitada' })
                                 setP(d); setShowPanel(false)
@@ -782,8 +787,9 @@ export default function Editor() {
               Para una obra nueva con este mismo presupuesto, duplícalo.
             </p>
             <button onClick={async () => {
-                      const nombre = window.prompt('Nombre para la copia (100% independiente del original):',
-                                                   `${p.nombre} (copia)`)
+                      const nombre = await pedirTexto({ titulo: '📄 Duplicar proyecto',
+                        mensaje: 'La copia es 100% independiente del original.',
+                        valorInicial: `${p.nombre} (copia)`, confirmar: 'Crear copia' })
                       if (nombre === null) return
                       try {
                         const copia = await proyectosAPI.duplicar(id, { nombre: nombre.trim() })
@@ -1312,10 +1318,11 @@ export default function Editor() {
               <label className="mt-3 flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 hover:border-navy-400 rounded-xl py-3 text-sm text-slate-500 cursor-pointer">
                 📤 Subir diseño (JPG/PNG — se comprime solo)
                 <input type="file" accept="image/*" className="hidden"
-                       onChange={e => {
+                       onChange={async e => {
                          const file = e.target.files?.[0]
                          if (!file) return
-                         const titulo = window.prompt('Título del diseño (ej: "Render cocina — opción 1"):', '') 
+                         const titulo = await pedirTexto({ titulo: '🎨 Título del diseño',
+                           placeholder: 'Ej: Render cocina — opción 1', confirmar: 'Subir diseño' })
                          if (titulo === null) return
                          comprimirImagen(file).then(img =>
                            disenosAPI.crear(id, { titulo, imagen_b64: img })
@@ -1343,8 +1350,9 @@ export default function Editor() {
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-semibold text-slate-700 truncate">{d.titulo || 'Diseño'}</p>
                       {!soloLectura && (
-                        <button onClick={() => {
-                                  if (!window.confirm('¿Eliminar este diseño?')) return
+                        <button onClick={async () => {
+                                  if (!(await confirmarDialogo({ titulo: '¿Eliminar este diseño?',
+                                    mensaje: 'Tu cliente dejará de verlo en su enlace.', peligro: true, confirmar: 'Eliminar' }))) return
                                   disenosAPI.eliminar(id, d.id)
                                     .then(() => setDisenos(prev => prev.filter(x => x.id !== d.id)))
                                     .catch(e2 => toast.error(e2.response?.data?.detail || e2.message))
@@ -1884,7 +1892,7 @@ export default function Editor() {
                       <p className="text-sm font-medium text-slate-700">{pr.nombre}</p>
                       <p className="text-[10px] text-slate-400">{pr.n_precios} precio{pr.n_precios !== 1 ? 's' : ''} capturado{pr.n_precios !== 1 ? 's' : ''}</p>
                     </button>
-                    <button onClick={async () => { if (confirm('¿Eliminar proveedor y sus precios?')) { await proveedoresAPI.eliminar(pr.id); cargarProveedores() } }}
+                    <button onClick={async () => { if (await confirmarDialogo({ titulo: '¿Eliminar proveedor?', mensaje: 'Se borran también sus precios guardados.', peligro: true, confirmar: 'Eliminar' })) { await proveedoresAPI.eliminar(pr.id); cargarProveedores() } }}
                             className="text-slate-300 hover:text-red-400 text-sm px-2">×</button>
                   </div>
                 ))}
@@ -2104,7 +2112,7 @@ export default function Editor() {
                         <button onClick={() => setAbonando({ cuenta: c, monto: '', nota: '' })}
                                 className="text-[10px] font-bold text-emerald-700 border border-emerald-300 rounded-lg px-2 py-1">＋ Abono</button>
                         <button onClick={async () => {
-                                  if (!confirm('¿Eliminar esta cuenta de cobro?')) return
+                                  if (!(await confirmarDialogo({ titulo: '¿Eliminar esta cuenta de cobro?', peligro: true, confirmar: 'Eliminar' }))) return
                                   await cuentasAPI.eliminar(c.id)
                                   cuentasAPI.listar(id).then(setCobrosData)
                                 }}
@@ -2396,7 +2404,7 @@ export default function Editor() {
                   </div>
                   <p className="text-xs font-bold text-slate-700 shrink-0">{COP(g.valor)}</p>
                   <button onClick={async () => {
-                            if (!confirm('¿Eliminar este gasto?')) return
+                            if (!(await confirmarDialogo({ titulo: '¿Eliminar este gasto?', peligro: true, confirmar: 'Eliminar' }))) return
                             await gastosAPI.eliminar(id, g.id)
                             gastosAPI.listar(id).then(setGastosData)
                           }}
@@ -2558,8 +2566,10 @@ export default function Editor() {
                           setAvances(prev => [a, ...prev])
                           setNuevoAvance({ titulo: '', descripcion: '', fotos: [] })
                           toast.success(`Avance publicado: ${a.porcentaje}% = ${COP(a.valor_ejecutado)}`)
-                          setTimeout(() => {
-                            if (confirm('¿Avisar al cliente por WhatsApp del nuevo avance?')) {
+                          setTimeout(async () => {
+                            if (await confirmarDialogo({ titulo: '📲 ¿Avisar al cliente por WhatsApp?',
+                              mensaje: 'Se abrirá WhatsApp con el mensaje del avance listo para enviar.',
+                              confirmar: 'Abrir WhatsApp' })) {
                               avisarCliente(`Hola! Publiqué el avance de tu obra "${p.nombre}": ${a.porcentaje}% completado (${COP(a.valor_ejecutado)} ejecutados) 🏗️ Míralo aquí:`)
                             }
                           }, 600)
@@ -2583,7 +2593,7 @@ export default function Editor() {
                       <p className="text-[10px] text-slate-400">{a.fecha} · {a.porcentaje}% · <span className="text-emerald-600 font-medium">{COP(a.valor_ejecutado)}</span></p>
                     </div>
                     <button onClick={async () => {
-                              if (!confirm('¿Eliminar este avance?')) return
+                              if (!(await confirmarDialogo({ titulo: '¿Eliminar este avance?', mensaje: 'Se recalcula el acumulado de la obra.', peligro: true, confirmar: 'Eliminar' }))) return
                               await avancesAPI.eliminar(id, a.id)
                               setAvances(prev => prev.filter(x => x.id !== a.id))
                             }}

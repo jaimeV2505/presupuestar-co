@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { CheckCircle2, ChevronDown, ChevronUp, Phone, Building2 } from 'lucide-react'
 import { shareAPI } from '../services/api'
+import toast from 'react-hot-toast'
+import { confirmarDialogo } from '../components/Dialogo'
 import InfoTip from '../components/InfoTip'
 import Lightbox from '../components/Lightbox'
 import { comprimirImagen } from '../utils/imagen'
@@ -136,11 +138,11 @@ export default function VistaPublica() {
   }, [token])
 
   const rechazar = async () => {
-    if (!confirm('¿Deseas rechazar este presupuesto? El contratista será notificado.')) return
+    if (!(await confirmarDialogo({ titulo: '¿Rechazar este presupuesto?', mensaje: 'El contratista será notificado.', peligro: true, confirmar: 'Rechazar' }))) return
     try {
       await shareAPI.rechazar(token)
       setRechazado(true)
-    } catch (e) { alert(e.message) }
+    } catch (e) { toast.error(e.message) }
   }
 
   const aceptar = () => {
@@ -150,14 +152,14 @@ export default function VistaPublica() {
   }
 
   const confirmarFirma = async () => {
-    if (firma.nombre.trim().length < 5) { alert('Escribe tu nombre completo'); return }
+    if (firma.nombre.trim().length < 5) { toast.error('Escribe tu nombre completo'); return }
     setAceptando(true)
     try {
       const res = await shareAPI.aceptar(token, firma)
       setAceptado(true)
       setShowFirma(false)
       setFirmaInfo({ nombre: res.firmado_por, fecha: new Date(res.fecha).toLocaleString('es-CO') })
-    } catch (e) { alert(e.message) }
+    } catch (e) { toast.error(e.message) }
     finally { setAceptando(false) }
   }
 
@@ -180,12 +182,12 @@ export default function VistaPublica() {
   if (data.terminado) {
     const yaRespondida = data.encuesta_respondida || encuestaEnviada
     const enviarEncuesta = async () => {
-      if (encuesta.estrellas < 1) { alert('Selecciona una calificación de 1 a 5 estrellas'); return }
+      if (encuesta.estrellas < 1) { toast.error('Selecciona una calificación de 1 a 5 estrellas'); return }
       setEnviandoEncuesta(true)
       try {
         await shareAPI.encuesta(token, encuesta)
         setEncuestaEnviada(true)
-      } catch (e) { alert(e.message) }
+      } catch (e) { toast.error(e.message) }
       finally { setEnviandoEncuesta(false) }
     }
     return (
@@ -862,13 +864,13 @@ export default function VistaPublica() {
               <button onClick={() => setShowEntrega(false)}
                       className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm">Cancelar</button>
               <button onClick={async () => {
-                        if (firma.nombre.trim().length < 5) { alert('Escribe tu nombre completo'); return }
+                        if (firma.nombre.trim().length < 5) { toast.error('Escribe tu nombre completo'); return }
                         try {
                           await shareAPI.confirmarEntrega(token, firma)
                           setEntregaConfirmada(true)
                           setShowEntrega(false)
                           window.location.reload()
-                        } catch (e) { alert(e.message) }
+                        } catch (e) { toast.error(e.message) }
                       }}
                       className="flex-[2] py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold">
                 Firmar acta de entrega
@@ -890,13 +892,13 @@ export default function VistaPublica() {
               <button onClick={() => setShowPendientes(false)}
                       className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm">Cancelar</button>
               <button onClick={async () => {
-                        if (pendientesTxt.trim().length < 5) { alert('Describe los pendientes'); return }
+                        if (pendientesTxt.trim().length < 5) { toast.error('Describe los pendientes'); return }
                         try {
                           await shareAPI.reportarPendientes(token, pendientesTxt)
                           setShowPendientes(false)
-                          alert('Reportado. El contratista continuará la obra.')
+                          toast.success('Reportado — el contratista continuará la obra 👷')
                           window.location.reload()
-                        } catch (e) { alert(e.message) }
+                        } catch (e) { toast.error(e.message) }
                       }}
                       className="flex-[2] py-2.5 rounded-xl bg-amber-500 text-white text-sm font-bold">
                 Enviar al contratista
@@ -985,7 +987,7 @@ export default function VistaPublica() {
                              onChange={e => {
                                const file = e.target.files?.[0]
                                if (!file) return
-                               if (file.size > 400 * 1024) { alert('Máximo 400KB'); return }
+                               if (file.size > 400 * 1024) { toast.error('La imagen supera 400KB — usa una más liviana'); return }
                                comprimirImagen(file, 800, 0.8).then(img => setFirma(f => ({ ...f, firma_imagen: img }))).catch(() => toast.error('Imagen no valida'))
                              }} />
                     </label>
