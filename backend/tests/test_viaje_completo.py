@@ -129,6 +129,10 @@ paso("CANDADO: imagen >700KB -> 400", r, status=400)
 r = c.post(f"/api/disenos/proyectos/{PID}/disenos",
            json={"titulo": "no-imagen", "imagen_b64": "data:application/pdf;base64,AAAA"}, headers=H)
 paso("CANDADO: solo imagenes (PDF -> 400)", r, status=400)
+# el token NACE al compartir — sin enlace no hay cliente que mire
+d = paso("compartir (nace el enlace del cliente)", c.post(f"/api/share/proyectos/{PID}/compartir", headers=H))
+TOKEN = d.get("token") or (d.get("url") or "").split("/p/")[-1] or d.get("share_token")
+assert TOKEN and TOKEN != "None", f"compartir no devolvio token: {d}"
 # el CLIENTE los ve por su token (lazy) y queda en la bitacora
 d = paso("el cliente abre los disenos", c.get(f"/api/share/publico/{TOKEN}/disenos"))
 assert len(d["disenos"]) == 2 and d["disenos"][0]["titulo"].startswith("Render")
