@@ -47,3 +47,17 @@ export async function sesion(page, token, usuario) {
 export const PNG_1x1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
   'base64')
+
+// El panel Herramientas: en movil es un boton (visible); en desktop es sidebar fija.
+// Y el panel se monta 2 veces (sidebar+modal) -> siempre .first() en sus entradas.
+export async function abrirHerramientas(page) {
+  const btn = page.getByTestId('btn-herramientas')
+  if (await btn.isVisible().catch(() => false)) await btn.click()
+}
+
+// El modal de bienvenida (onboarding) intercepta clicks en el primer login:
+// elegir un oficio lo cierra.
+export async function cerrarBienvenida(page) {
+  const b = page.getByTestId('bienvenida-maestro')
+  if (await b.isVisible().catch(() => false)) await b.click()
+}

@@ -258,6 +258,7 @@ export default function Editor() {
 
   const esPublico = p?.sector === 'publico'
   const soloLectura = p?.estado === 'terminado'   // 🔒 terminado: solo vista, duplicar para reutilizar
+  const selladoUI = soloLectura || ['aceptado', 'entrega_solicitada'].includes(p?.estado)  // la tabla firmada no se teclea
 
   // ── F1: visibilidad del ANÁLISIS del ítem (desglose de Mis APUs) ────────
   const [desgloses, setDesgloses] = useState({ porId: {}, porCodigo: {} })
@@ -597,7 +598,7 @@ export default function Editor() {
 
               <p className="text-[9px] text-slate-400 uppercase font-bold px-1 pt-2">Exportar</p>
               <div className="flex gap-2 px-1">
-                <button onClick={() => { setShowPanel(false); exportar('excel') }}
+                <button data-testid="btn-export-excel" onClick={() => { setShowPanel(false); exportar('excel') }}
                         className="flex-1 flex items-center justify-center gap-1.5 border border-slate-200 rounded-xl py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50">
                   <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
                 </button>
@@ -878,14 +879,14 @@ export default function Editor() {
                         </button>
                       )}
                       <div className="text-right">
-                        <input type="number" step="any" min="0" value={it.cantidad}
+                        <input type="number" disabled={selladoUI} step="any" min="0" value={it.cantidad}
                                onChange={e => actualizarItem(it._idx, 'cantidad', e.target.value)}
                                className="w-20 text-right text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:border-navy-400 outline-none" />
                         <p className="text-[10px] text-slate-400 mt-0.5 text-center">{it.unidad}</p>
                       </div>
                       <span className="text-slate-300">×</span>
                       <div className="text-right">
-                        <input type="number" step="any" min="0" value={it.precio_unitario}
+                        <input type="number" disabled={selladoUI} step="any" min="0" value={it.precio_unitario}
                                onChange={e => actualizarItem(it._idx, 'precio_unitario', e.target.value)}
                                className="w-28 text-right text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:border-navy-400 outline-none" />
                         <p className="text-[10px] text-slate-400 mt-0.5 text-center">precio unit.</p>
@@ -927,28 +928,28 @@ export default function Editor() {
                               <div key={k} className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-600 items-center">
                                 <span className="col-span-5 truncate" title={ins.nombre}>{ins.nombre}</span>
                                 <span>{ins.unidad}</span>
-                                <input type="number" step="any" min="0" value={ins.cantidad} onChange={e => _upd('insumo', k, 'cantidad', e.target.value)} className={_in} />
-                                <input type="number" step="any" min="0" max="50" value={ins.desperdicio_pct || 0} onChange={e => _upd('insumo', k, 'desperdicio_pct', e.target.value)} className={_in} />
-                                <input type="number" step="any" min="0" value={ins.precio} onChange={e => _upd('insumo', k, 'precio', e.target.value)} className={`${_in} col-span-2`} />
+                                <input type="number" disabled={soloLectura} step="any" min="0" value={ins.cantidad} onChange={e => _upd('insumo', k, 'cantidad', e.target.value)} className={_in} />
+                                <input type="number" disabled={soloLectura} step="any" min="0" max="50" value={ins.desperdicio_pct || 0} onChange={e => _upd('insumo', k, 'desperdicio_pct', e.target.value)} className={_in} />
+                                <input type="number" disabled={soloLectura} step="any" min="0" value={ins.precio} onChange={e => _upd('insumo', k, 'precio', e.target.value)} className={`${_in} col-span-2`} />
                                 <span className="col-span-2 text-right">{COP(_num2(ins.cantidad) * _num2(ins.precio) * (1 + _num2(ins.desperdicio_pct) / 100))}</span>
                               </div>
                             ))}
                             <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700 items-center">
                               <span className="col-span-8">2. Mano de obra (por {it.unidad})</span>
-                              <input type="number" step="any" min="0" value={anEdit.mano_obra} onChange={e => _upd(null, null, 'mano_obra', e.target.value)} className={`${_in} col-span-2`} />
+                              <input type="number" disabled={soloLectura} step="any" min="0" value={anEdit.mano_obra} onChange={e => _upd(null, null, 'mano_obra', e.target.value)} className={`${_in} col-span-2`} />
                               <span className="col-span-2 text-right">{COP(_num2(anEdit.mano_obra))}</span>
                             </div>
                             <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700 items-center">
                               <span className="col-span-8">3. Herramienta menor — <strong>% de la MO</strong> (0-30)</span>
                               <div className="col-span-2 flex items-center gap-0.5">
-                                <input type="number" step="any" min="0" max="30" value={anEdit.herramienta_pct} onChange={e => _upd(null, null, 'herramienta_pct', e.target.value)} className={_in} />
+                                <input type="number" disabled={soloLectura} step="any" min="0" max="30" value={anEdit.herramienta_pct} onChange={e => _upd(null, null, 'herramienta_pct', e.target.value)} className={_in} />
                                 <span className="text-violet-500 font-bold">%</span>
                               </div>
                               <span className="col-span-2 text-right">{COP(_num2(anEdit.mano_obra) * _num2(anEdit.herramienta_pct) / 100)}</span>
                             </div>
                             <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-50 text-slate-700 items-center">
                               <span className="col-span-8">4. Transporte (por {it.unidad}) 🚚</span>
-                              <input type="number" step="any" min="0" value={anEdit.transporte || 0} onChange={e => _upd(null, null, 'transporte', e.target.value)} className={`${_in} col-span-2`} />
+                              <input type="number" disabled={soloLectura} step="any" min="0" value={anEdit.transporte || 0} onChange={e => _upd(null, null, 'transporte', e.target.value)} className={`${_in} col-span-2`} />
                               <span className="col-span-2 text-right">{COP(_num2(anEdit.transporte))}</span>
                             </div>
                             <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-200 bg-violet-100 font-black text-violet-800">
@@ -986,7 +987,7 @@ export default function Editor() {
                       <div className="flex items-end gap-2 flex-wrap pt-2">
                         <div>
                           <label className="text-[10px] text-blue-600 font-medium block mb-0.5"># Elementos</label>
-                          <input type="number" step="1" min="1" placeholder="1"
+                          <input type="number" disabled={soloLectura} step="1" min="1" placeholder="1"
                                  value={it.calc?.n ?? ''}
                                  onChange={e => actualizarCalc(it._idx, 'n', e.target.value)}
                                  className="w-20 text-sm border border-blue-200 rounded-lg px-2 py-1.5 bg-white outline-none focus:border-blue-400" />
@@ -994,7 +995,7 @@ export default function Editor() {
                         <span className="text-blue-300 pb-2">×</span>
                         <div>
                           <label className="text-[10px] text-blue-600 font-medium block mb-0.5">Largo (m)</label>
-                          <input type="number" step="any" min="0" placeholder="0.00"
+                          <input type="number" disabled={soloLectura} step="any" min="0" placeholder="0.00"
                                  value={it.calc?.largo ?? ''}
                                  onChange={e => actualizarCalc(it._idx, 'largo', e.target.value)}
                                  className="w-24 text-sm border border-blue-200 rounded-lg px-2 py-1.5 bg-white outline-none focus:border-blue-400" />
@@ -1004,7 +1005,7 @@ export default function Editor() {
                             <span className="text-blue-300 pb-2">×</span>
                             <div>
                               <label className="text-[10px] text-blue-600 font-medium block mb-0.5">{tipoCalc(it.unidad) === 'area' ? 'Ancho/Alto (m)' : 'Ancho (m)'}</label>
-                              <input type="number" step="any" min="0" placeholder="0.00"
+                              <input type="number" disabled={soloLectura} step="any" min="0" placeholder="0.00"
                                      value={it.calc?.ancho ?? ''}
                                      onChange={e => actualizarCalc(it._idx, 'ancho', e.target.value)}
                                      className="w-24 text-sm border border-blue-200 rounded-lg px-2 py-1.5 bg-white outline-none focus:border-blue-400" />
@@ -1016,7 +1017,7 @@ export default function Editor() {
                             <span className="text-blue-300 pb-2">×</span>
                             <div>
                               <label className="text-[10px] text-blue-600 font-medium block mb-0.5">Alto (m)</label>
-                              <input type="number" step="any" min="0" placeholder="0.00"
+                              <input type="number" disabled={soloLectura} step="any" min="0" placeholder="0.00"
                                      value={it.calc?.alto ?? ''}
                                      onChange={e => actualizarCalc(it._idx, 'alto', e.target.value)}
                                      className="w-24 text-sm border border-blue-200 rounded-lg px-2 py-1.5 bg-white outline-none focus:border-blue-400" />
@@ -1058,7 +1059,7 @@ export default function Editor() {
                   {[['admin', 'Administración'], ['imprevistos', 'Imprevistos'], ['utilidad', 'Utilidad']].map(([k, lbl]) => (
                     <div key={k}>
                       <label className="text-[11px] text-slate-400 block mb-1">{lbl} %</label>
-                      <input type="number" step="0.5" min="0" max="50" value={aiu[k]}
+                      <input type="number" disabled={soloLectura} step="0.5" min="0" max="50" value={aiu[k]}
                              onChange={e => setAiuYGuardar({ ...aiu, [k]: parseFloat(e.target.value) || 0 })}
                              className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-2 focus:border-navy-400 outline-none" />
                     </div>
@@ -1095,13 +1096,13 @@ export default function Editor() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <label className="text-[10px] text-slate-400 block mb-1">Plazo (días hábiles)</label>
-                <input type="number" min="1" max="720" className="input !py-2 text-sm"
+                <input type="number" disabled={soloLectura} min="1" max="720" className="input !py-2 text-sm"
                        value={contrato.plazo_dias}
                        onChange={e => setContratoYGuardar({ ...contrato, plazo_dias: parseInt(e.target.value) || 45 })} />
               </div>
               <div>
                 <label className="text-[10px] text-slate-400 block mb-1">Anticipo %</label>
-                <input type="number" min="0" max="90" step="5" className="input !py-2 text-sm"
+                <input type="number" disabled={soloLectura} min="0" max="90" step="5" className="input !py-2 text-sm"
                        value={contrato.anticipo_pct}
                        onChange={e => setContratoYGuardar({ ...contrato, anticipo_pct: parseFloat(e.target.value) || 0 })} />
               </div>
@@ -1159,7 +1160,7 @@ export default function Editor() {
                   <div className="flex gap-1.5">
                     <input className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5" value={dd.nombre}
                            onChange={e => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x) })} />
-                    <input type="number" min="0" max="25" className={`w-16 text-xs border rounded-lg px-2 py-1.5 ${alerta ? 'border-amber-400 bg-amber-50' : 'border-slate-200'}`} value={dd.pct}
+                    <input type="number" disabled={soloLectura} min="0" max="25" className={`w-16 text-xs border rounded-lg px-2 py-1.5 ${alerta ? 'border-amber-400 bg-amber-50' : 'border-slate-200'}`} value={dd.pct}
                            onChange={e => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.map((x, j) => j === i ? { ...x, pct: Math.max(0, Math.min(25, parseFloat(e.target.value) || 0)) } : x) })} />
                     <button onClick={() => setContratoYGuardar({ ...contrato, deducciones: contrato.deducciones.filter((_, j) => j !== i) })}
                             className="text-slate-300 hover:text-red-400 px-1">×</button>
@@ -1409,7 +1410,7 @@ export default function Editor() {
               <div className="mt-3">
                 <label className="text-xs font-semibold text-slate-500">¿Qué % le rebajas al costo directo?</label>
                 <div className="flex gap-2 mt-1.5">
-                  <input type="number" min="0.1" max="30" step="0.1" data-testid="input-descuento" value={descuentoPct}
+                  <input type="number" disabled={soloLectura} min="0.1" max="30" step="0.1" data-testid="input-descuento" value={descuentoPct}
                          onChange={e => setDescuentoPct(e.target.value)} placeholder="Ej: 5"
                          className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm" />
                   <span className="self-center text-sm text-slate-400">%</span>
@@ -1489,7 +1490,7 @@ export default function Editor() {
                 {fuenteApu === 'mios' && (
                   <>
                   <button onClick={() => { setShowConstructor(true); setPreviewComp(null); setConstruyendo({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5, transporte: '' }) }}
-                          className="text-xs font-bold px-3 py-1.5 rounded-lg bg-navy-600 text-white ml-auto">
+                          data-testid="btn-abrir-constructor" className="text-xs font-bold px-3 py-1.5 rounded-lg bg-navy-600 text-white ml-auto">
                     + Construir APU
                   </button>
                   <button onClick={() => { insumosAPI.catalogo().then(setCatalogo).catch(() => {}); setShowCatalogo(true) }}
@@ -1588,20 +1589,20 @@ export default function Editor() {
               <input className="w-20 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="unidad"
                      value={construyendo.unidad} onChange={e => setConstruyendo(c => ({ ...c, unidad: e.target.value }))} />
               <div className="flex-1 min-w-[180px] flex items-center gap-1">
-                <input type="number" className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="Mano de obra por unidad ($)"
+                <input type="number" disabled={soloLectura} className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="Mano de obra por unidad ($)"
                        value={construyendo.mano_obra} onChange={e => setConstruyendo(c => ({ ...c, mano_obra: e.target.value }))} />
                 <InfoTip texto="Lo que le pagas a la cuadrilla por hacer 1 unidad (1 m², 1 m³...). Va en PESOS. Tip: jornal con prestaciones ÷ rendimiento del día = MO por unidad." />
               </div>
             </div>
             <div className="flex flex-wrap gap-2 mb-3">
               <div className="flex items-center gap-1">
-                <input type="number" min="0" max="30" className="w-20 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="herr %"
+                <input type="number" disabled={soloLectura} min="0" max="30" className="w-20 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="herr %"
                        value={construyendo.herramienta_pct} onChange={e => setConstruyendo(c => ({ ...c, herramienta_pct: Math.max(0, Math.min(30, parseFloat(e.target.value) || 0)) }))} />
                 <span className="text-xs font-bold text-slate-400">%</span>
                 <InfoTip texto="Herramienta menor: desgaste de palas, baldes, taladro. Es un PORCENTAJE de la mano de obra (práctica estándar 3-10%, máx 30). NO va en pesos — si lo tuyo es un flete, ese es el campo de transporte 🚚." />
               </div>
               <div className="flex-1 min-w-[160px] flex items-center gap-1">
-                <input type="number" min="0" className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="🚚 Transporte por unidad ($)"
+                <input type="number" disabled={soloLectura} min="0" className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" placeholder="🚚 Transporte por unidad ($)"
                        value={construyendo.transporte} onChange={e => setConstruyendo(c => ({ ...c, transporte: e.target.value }))} />
                 <InfoTip texto="Flete o acarreo por unidad del APU — el 4to componente del formato oficial que exigen las entidades. Va en PESOS por unidad. Si no aplica, déjalo en 0 y no cambia nada." />
               </div>
@@ -1637,14 +1638,14 @@ export default function Editor() {
                     </div>
                   )}
                 </div>
-                <input type="number" className="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="cant" value={ins.cantidad}
+                <input type="number" disabled={soloLectura} className="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="cant" value={ins.cantidad}
                        onChange={e => setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, cantidad: e.target.value } : x) }))} />
                 <button onClick={() => setRindeIdx(rindeIdx === i ? -1 : i)}
                         className={`text-[9px] font-bold rounded-lg px-1.5 transition ${rindeIdx === i ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
                         title="¿No sabes la cantidad? Dime cuánto te RINDE y yo hago la división">
                   ⇄rinde
                 </button>
-                <input type="number" className="w-24 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="precio" value={ins.precio}
+                <input type="number" disabled={soloLectura} className="w-24 text-xs border border-slate-200 rounded-lg px-2 py-1.5" placeholder="precio" value={ins.precio}
                        onChange={e => setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, precio: e.target.value } : x) }))} />
                 <button onClick={() => setConstruyendo(c => ({ ...c, insumos: c.insumos.filter((_, j) => j !== i) }))}
                         className="text-slate-300 hover:text-red-400 px-1">×</button>
@@ -1652,7 +1653,7 @@ export default function Editor() {
               {rindeIdx === i && (
                 <div className="flex items-center gap-1.5 mb-1.5 ml-2 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1.5 text-[11px] text-blue-700">
                   <span>1 {ins.unidad || 'un'} me rinde</span>
-                  <input type="number" step="any" min="0.01" autoFocus placeholder="3"
+                  <input type="number" disabled={soloLectura} step="any" min="0.01" autoFocus placeholder="3"
                          className="w-16 text-xs border border-blue-200 rounded-lg px-2 py-1 bg-white text-center"
                          onChange={e => {
                            const r = parseFloat(e.target.value)
@@ -1925,7 +1926,7 @@ export default function Editor() {
                          value={nuevoPrecio.insumo} onChange={e => setNuevoPrecio(n => ({ ...n, insumo: e.target.value }))} />
                   <input className="w-14 text-xs border border-slate-200 rounded-lg px-2 py-2" placeholder="un"
                          value={nuevoPrecio.unidad} onChange={e => setNuevoPrecio(n => ({ ...n, unidad: e.target.value }))} />
-                  <input type="number" className="w-24 text-xs border border-slate-200 rounded-lg px-2 py-2" placeholder="precio"
+                  <input type="number" disabled={soloLectura} className="w-24 text-xs border border-slate-200 rounded-lg px-2 py-2" placeholder="precio"
                          value={nuevoPrecio.precio} onChange={e => setNuevoPrecio(n => ({ ...n, precio: e.target.value }))} />
                   <button onClick={async () => {
                             try {
@@ -2355,7 +2356,7 @@ export default function Editor() {
                        onChange={e => setNuevoGasto(g => ({ ...g, descripcion: e.target.value }))} />
               </div>
               <div className="flex gap-2 items-center">
-                <input type="number" className="input !py-2 text-xs flex-1" placeholder="Valor $"
+                <input type="number" disabled={soloLectura} className="input !py-2 text-xs flex-1" placeholder="Valor $"
                        value={nuevoGasto.valor}
                        onChange={e => setNuevoGasto(g => ({ ...g, valor: e.target.value }))} />
                 <label className="text-[10px] text-navy-600 border border-navy-200 rounded-lg px-2.5 py-2 cursor-pointer whitespace-nowrap">
@@ -2498,7 +2499,7 @@ export default function Editor() {
                         <p className="text-[11px] text-slate-600 leading-snug truncate">{it.descripcion}</p>
                         <p className="text-[10px] text-slate-400">{COP(valorItem)}</p>
                       </div>
-                      <input type="number" min="0" max="100" step="5" value={pct}
+                      <input type="number" disabled={soloLectura} min="0" max="100" step="5" value={pct}
                              onChange={e => setAvanceItems(m => ({ ...m, [it.id]: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) }))}
                              className="w-16 text-right text-xs border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-emerald-400" />
                       <span className="text-[10px] text-slate-400 w-4">%</span>

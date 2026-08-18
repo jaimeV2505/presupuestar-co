@@ -156,6 +156,8 @@ _tipos = [e.get("tipo") for e in d.get("eventos", [])]
 assert "vio_disenos" in _tipos, f"falta vio_disenos en bitacora: {_tipos}"
 PASOS.append("disenos: subir con topes, cliente ve+comenta, hilo bidireccional, notificacion y bitacora")
 
+# el acto de los disenos piso la variable d — refrescar el proyecto
+d = paso("proyecto tras los disenos (totales frescos)", c.get(f"/api/proyectos/{PID}", headers=H))
 TOTAL = round(d["totales"]["total"])
 print(f"     total del contrato: ${TOTAL:,}")
 
