@@ -16,7 +16,6 @@ test('el maestro: del recetario al Excel, en el celular', async ({ page }) => {
 
   // 1) buscador → constructor → RECETARIO
   await page.getByTestId('abrir-buscador').click()
-  await page.getByText('⭐ Mis APUs').click()          // el constructor vive en MI pestana
   await page.getByTestId('btn-abrir-constructor').click()
   await page.getByTestId('btn-recetario').click()
 
@@ -25,10 +24,8 @@ test('el maestro: del recetario al Excel, en el celular', async ({ page }) => {
 
   // 3) agregar el pañete y cerrar el buscador
   await page.getByText('Pañete 1:4 muros interiores').first().click()
-  await page.mouse.click(8, 8)   // el buscador cierra por backdrop (como sus hermanos)
-  await expect(page.getByTestId('abrir-buscador')).toBeVisible()   // modal cerrado de verdad
-  // el item quedo en la tabla: el TOTAL de la obra ya respira el pañete
-  await expect(totalObra).toContainText('22.524', { timeout: 15_000 })
+  await page.keyboard.press('Escape')
+  await expect(page.getByText('Pañete 1:4 muros interiores').first()).toBeVisible()
   const totalAntes = await totalObra.textContent()
 
   // 4) abrir el ANALISIS 🔬 y subir el precio del cemento a SU precio

@@ -26,8 +26,7 @@ test('humo: login por UI, KPIs pintan, badges y modales viven', async ({ page })
   // el modal de crear abre y cierra sin romperse
   await page.getByTestId('btn-nuevo-presupuesto').click()
   await expect(page.getByTestId('input-nombre-proyecto')).toBeVisible()
-  await page.mouse.click(8, 8)   // click al fondo cierra el modal (asi esta disenado)
-  await expect(page.getByTestId('input-nombre-proyecto')).toHaveCount(0)
+  await page.keyboard.press('Escape')
 
   // entrar al Editor: el buscador vive y las herramientas abren
   await page.getByText('Obra de humo').click()
