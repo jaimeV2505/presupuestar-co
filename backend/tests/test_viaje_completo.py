@@ -344,6 +344,10 @@ r = c.get(f"/api/cuentas/publico/{TOKEN}/{CID}.pdf")
 assert r.status_code == 200 and r.headers.get("content-type", "").startswith("application/pdf")
 print("  ✓ cuenta pdf_publico: genera"); PASOS.append("cuenta.pdf")
 d = paso("liberar retegarantia", c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H))
+# la liberacion cuadra A PESO: neto == Σ retenciones de todas las actas
+_cuentas_all = c.get(f"/api/cuentas/proyectos/{PID}/cuentas", headers=H).json()
+_sum_rete = sum(x.get("retencion") or 0 for x in _cuentas_all if x.get("tipo") != "retegarantia")
+assert d["neto"] == _sum_rete and _sum_rete > 0, f"rete liberada != Σ retenciones: {d['neto']} vs {_sum_rete}"
 r = c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H)
 paso("CANDADO: retegarantia UNA sola vez -> 400", r, status=400)
 r = c.post(f"/api/disenos/proyectos/{PID}/disenos",
