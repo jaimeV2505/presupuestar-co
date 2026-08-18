@@ -51,7 +51,8 @@ def paso(nombre, resp, status=200, contiene=None):
 
 
 print("═══ ACTO 0: EL CONTRATISTA LLEGA ═══")
-r = c.post("/api/auth/registro", json={"email": "maestro@viaje.test", "password": "Obra2026segura"})
+r = c.post("/api/auth/registro", json={"nombre": "Maestro Viajero", "email": "maestro@viaje.test",
+                                        "password": "Obra2026segura", "ciudad": "bogota"})
 d = paso("registro", r, contiene=["token"])
 H = {"Authorization": f"Bearer {d['token']}"}
 r = c.post("/api/auth/login", json={"email": "maestro@viaje.test", "password": "Obra2026segura"})

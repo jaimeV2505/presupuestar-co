@@ -43,7 +43,8 @@ def paso(nombre, resp, status=200, contiene=None):
 
 print("═══ ACTO 0: EL INGENIERO Y SU CONTRATO ESTATAL ═══")
 d = paso("registro", c.post("/api/auth/registro",
-         json={"email": "ing@publico.test", "password": "ObraPublica2026"}))
+         json={"nombre": "Ing Publico", "email": "ing@publico.test",
+               "password": "ObraPublica2026", "ciudad": "bogota"}))
 H = {"Authorization": f"Bearer {d['token']}"}
 
 d = paso("crear proyecto PUBLICO (entidad + contrato)", c.post("/api/proyectos", json={

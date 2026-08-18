@@ -30,7 +30,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'uvicorn app.main:app --host 127.0.0.1 --port 8000',
+      command: 'python -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
       cwd: '../../backend',
       url: 'http://127.0.0.1:8000/api/health',
       reuseExistingServer: !process.env.CI,
