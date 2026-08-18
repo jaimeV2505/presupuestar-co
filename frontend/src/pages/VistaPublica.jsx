@@ -1017,7 +1017,7 @@ export default function VistaPublica() {
                 Cancelar
               </button>
               <AvisoFirma />
-              <button onClick={confirmarFirma} disabled={aceptando || !leido}
+              <button data-testid="btn-confirmar-firma" onClick={confirmarFirma} disabled={aceptando || !leido}
                       className="flex-[2] py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold disabled:opacity-40">
                 {aceptando ? 'Firmando...' : 'Firmar contrato'}
               </button>
@@ -1037,7 +1037,7 @@ export default function VistaPublica() {
                 <Phone className="w-4 h-4" /> Preguntar
               </a>
             )}
-            <button onClick={aceptar} disabled={aceptando}
+            <button data-testid="btn-aceptar" onClick={aceptar} disabled={aceptando}
                     className="flex items-center justify-center gap-2 flex-[2] py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-white text-sm font-bold shadow-lg shadow-emerald-500/30 transition disabled:opacity-50">
               <CheckCircle2 className="w-4 h-4" />
               {aceptando ? 'Confirmando...' : 'Aceptar presupuesto'}

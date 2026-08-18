@@ -250,7 +250,7 @@ export default function Dashboard() {
                   { id: 'remodelador', emoji: '🏠', label: 'Remodelador' },
                   { id: 'contratista', emoji: '🏗️', label: 'Contratista general' },
                 ].map(t => (
-                  <button key={t.id}
+                  <button key={t.id} data-testid={`bienvenida-${t.id}`}
                           onClick={() => { onboardingAPI.tipo(t.id).catch(() => {}); setOnb(o => ({ ...o, tipo: t.id })) }}
                           className="border-2 border-slate-100 hover:border-navy-400 rounded-xl p-3 transition">
                     <span className="text-2xl">{t.emoji}</span>

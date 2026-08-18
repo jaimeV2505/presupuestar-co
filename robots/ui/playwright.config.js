@@ -30,20 +30,21 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'python -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
+      // Mac dice python3; el CI dice python
+      command: (process.env.CI ? 'python' : 'python3') + ' -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
       cwd: '../../backend',
       url: 'http://127.0.0.1:8000/api/health',
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
       env: {
         DATABASE_URL: `sqlite:///${DB}`,
-        JWT_SECRET: 'robot-ui-secreto-de-prueba-0123456789abcdef',
+        JWT_SECRET: 'robot-ui-secreto-de-prueba-0123456789abcdef', // gitleaks:allow
         ADMIN_EMAILS: 'robot@ui.test',
-        WOMPI_EVENTS_SECRET: 'robot-ui-eventos',
+        WOMPI_EVENTS_SECRET: 'robot-ui-eventos', // gitleaks:allow
       },
     },
     {
-      command: 'npm run preview',
+      command: './node_modules/.bin/vite preview',  // el symlink .bin: npm SIEMPRE lo crea, sin PATH ni shims
       cwd: '../../frontend',
       url: 'http://127.0.0.1:4173',
       reuseExistingServer: !process.env.CI,
