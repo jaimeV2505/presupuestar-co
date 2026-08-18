@@ -1,0 +1,57 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# ROBOT UI — el hermano de SHIELD que prueba lo que solo un navegador ve.
+# SHIELD vigila que el sistema CALCULE bien; este robot vigila que el humano
+# PUEDA USARLO. Mundo efimero (uvicorn+sqlite / vite preview), evidencias en
+# video. MODO REPORTE las primeras semanas (no bloquea el deploy):
+# cuando gane confianza, quitar `continue-on-error` y sera juez.
+# ═══════════════════════════════════════════════════════════════════════════
+name: 🤖 Robot UI (Playwright)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  viajes-de-ui:
+    runs-on: ubuntu-latest
+    continue-on-error: true        # MODO REPORTE — ascender a juez tras 2 semanas
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+
+      - name: "1) backend: dependencias"
+        run: pip install -r requirements.txt
+
+      - name: "2) frontend: build REAL de Vite (el mismo de Vercel)"
+        working-directory: frontend
+        run: |
+          npm install
+          npm run build
+
+      - name: "3) robot: playwright + navegador"
+        working-directory: robots/ui
+        run: |
+          npm install
+          npx playwright install chromium --with-deps
+
+      - name: "4) LOS VIAJES (el mundo se levanta y se evapora solo)"
+        working-directory: robots/ui
+        run: npx playwright test
+        env:
+          CI: "true"
+
+      - name: "5) evidencias (screenshots, videos, traces) — SIEMPRE"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: robot-ui-evidencias
+          path: |
+            robots/ui/playwright-report/
+            robots/ui/test-results/
+          retention-days: 14
