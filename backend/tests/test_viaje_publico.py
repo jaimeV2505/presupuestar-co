@@ -343,8 +343,13 @@ print("═══ ACTO 3.9: NADA VIAJA FUERA (la doctrina del publico) ═══"
 d2p = paso("proyecto privado auxiliar", c.post("/api/proyectos", json={
     "nombre": "Legado privado", "cliente_nombre": "Cliente X", "region": "bogota"}, headers=H))
 PID2 = d2p["id"]
+# el guard "sin items no se comparte" es de la casa — el auxiliar necesita su item
+paso("item para el auxiliar", c.put(f"/api/proyectos/{PID2}", json={"items": [
+    {"id": "aux1", "capitulo": "GENERAL", "descripcion": "Item auxiliar",
+     "unidad": "un", "cantidad": 1, "precio_unitario": 100000}]}, headers=H))
 d2p = paso("compartirlo (aun privado)", c.post(f"/api/share/proyectos/{PID2}/compartir", headers=H))
-TOKEN_LEGADO = d2p["token"]
+TOKEN_LEGADO = d2p.get("share_token") or d2p.get("token")
+assert TOKEN_LEGADO, f"compartir sin token: {d2p}"
 paso("cambiarlo a publico (antes de firma se puede)", c.put(f"/api/proyectos/{PID2}",
      json={"sector": "publico", "entidad_nombre": "Entidad Y"}, headers=H))
 r = c.get(f"/api/share/publico/{TOKEN_LEGADO}")
