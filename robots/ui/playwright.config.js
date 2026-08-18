@@ -30,7 +30,8 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'python -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
+      // Mac dice python3; el CI dice python
+      command: (process.env.CI ? 'python' : 'python3') + ' -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
       cwd: '../../backend',
       url: 'http://127.0.0.1:8000/api/health',
       reuseExistingServer: !process.env.CI,
@@ -43,7 +44,7 @@ export default defineConfig({
       },
     },
     {
-      command: 'npm run preview',
+      command: './node_modules/.bin/vite preview',  // el symlink .bin: npm SIEMPRE lo crea, sin PATH ni shims
       cwd: '../../frontend',
       url: 'http://127.0.0.1:4173',
       reuseExistingServer: !process.env.CI,

@@ -368,11 +368,9 @@ PASOS.append("tokens legados de publicos rechazados (GET + POST + token limpio)"
 
 print("═══ ACTO 4: LIQUIDACION DEL CONTRATO ═══")
 # Duplicar un contrato publico conserva sector, entidad y condiciones (bug R3 cazado)
-d = paso("duplicar el contrato publico", c.post(f"/api/proyectos/{PID}/duplicar", headers=H))
-assert d.get("sector") == "publico", "la copia perdio el sector publico"
-assert d.get("contrato_numero") == "OP-2026-0457", "la copia perdio el numero de contrato"
-PID_COPIA = d["id"]
-paso("borrar la copia (limpieza)", c.delete(f"/api/proyectos/{PID_COPIA}", headers=H))
+# (el duplicar de "limpieza" se elimino: gastaba un cupo del plan gratis que
+# nuestro propio candado "borrar NO reembolsa" jamas devuelve — y la duplicacion
+# real se prueba abajo con el TERMINADO, que es el caso que importa)
 
 paso("terminar y liquidar (endpoint dedicado, un clic)",
      c.post(f"/api/proyectos/{PID}/terminar", headers=H))
