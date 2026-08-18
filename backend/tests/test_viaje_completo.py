@@ -21,9 +21,11 @@ import tempfile
 
 # ── Entorno de prueba ANTES de importar la app ──
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/viaje.db")
-os.environ.setdefault("JWT_SECRET", "secreto-de-prueba-viaje-completo-0123456789")
+os.environ.setdefault("JWT_SECRET", "secreto-de-prueba-viaje-completo-0123456789")  # gitleaks:allow (sandbox del mundo efimero)
 os.environ.setdefault("ADMIN_EMAILS", "maestro@viaje.test")   # el viajero ES admin (para respaldo)
-os.environ.setdefault("WOMPI_EVENTS_SECRET", "secreto-eventos-viaje")
+os.environ.setdefault("WOMPI_EVENTS_SECRET", "secreto-eventos-viaje")  # gitleaks:allow (sandbox del mundo efimero)
+os.environ.setdefault("WOMPI_PUBLIC_KEY", "pub_test_viaje_0123456789")  # gitleaks:allow (sandbox del mundo efimero)
+os.environ.setdefault("WOMPI_INTEGRITY_SECRET", "test_integrity_viaje_0123456789")  # gitleaks:allow (sandbox del mundo efimero)
 os.environ.pop("RESEND_API_KEY", None)   # sin emails reales en pruebas
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -389,6 +391,22 @@ assert vence_1 == vence_2, f"el replay EXTENDIO el plan: {vence_1} -> {vence_2}"
 print("  ✓ wompi: replay del webhook es no-op — sin doble activacion")
 PASOS.append("wompi idempotente")
 
+# 🗑️ LA CASCADA COMPLETA: borrar un proyecto CON hijos (el 500 de prod, vigilado)
+d = paso("proyecto sacrificial con hijos", c.post("/api/proyectos", json={
+    "nombre": "Para borrar con hijos", "cliente_nombre": "Cliente Y", "region": "bogota"}, headers=H))
+PID_SAC = d["id"]
+c.put(f"/api/proyectos/{PID_SAC}", json={"items": [{"id": "s1", "capitulo": "GEN",
+    "descripcion": "Item sacrificial", "unidad": "un", "cantidad": 1, "precio_unitario": 50000}]}, headers=H)
+c.post(f"/api/share/proyectos/{PID_SAC}/compartir", headers=H)   # hijo: evento share
+import base64 as _b64
+_png = _b64.b64encode(bytes.fromhex("89504e470d0a1a0a0000000d494844520000000100000001080600000"
+    "01f15c4890000000d49444154789c62f8cfc0f01f00050001ff2f8a35a90000000049454e44ae426082")).decode()
+c.post(f"/api/disenos/proyectos/{PID_SAC}/disenos", json={
+    "titulo": "Render sacrificial", "imagen": f"data:image/png;base64,{_png}"}, headers=H)  # hijo: diseno
+paso("CANDADO: borrar con hijos -> la cascada barre TODO (el 500 de prod, extinto)",
+     c.delete(f"/api/proyectos/{PID_SAC}", headers=H))
+
+
 # 5.3 RESPALDO COHERENTE: el backup contiene lo que esta sesion creo
 r = c.get("/api/respaldo/completo", headers=H)
 assert r.status_code == 200, f"backup fallo: {r.status_code} {r.text[:200]}"
@@ -400,6 +418,7 @@ for tabla, minimo in [("usuarios", 1), ("proyectos", 1), ("cuentas_cobro", 2),
     assert len(bk.get(tabla, [])) >= minimo, f"backup incompleto: {tabla} tiene {len(bk.get(tabla, []))} < {minimo}"
 # 5.3c EL RESPALDO ES TOTAL: las 19 tablas restaurables viajan (la biblioteca,
 # los proveedores y el soporte incluidos) — GROOT jamas renace mutilado
+assert len(bk.get("disenos", [])) >= 2, "los DISENOS no viajan en el backup (se perderian en un restore)"
 for tabla in ["apus_usuario", "proveedores", "precios_proveedor",
               "tickets_soporte", "mensajes_soporte", "solicitudes_pro",
               "gastos", "encuestas", "notificaciones", "pagos_wompi"]:
