@@ -169,7 +169,7 @@ PASOS.append("recetario semilla: 16 recetas, panete 22.524 exacto, idempotente")
 
 print("═══ ACTO 1.9: EL LADRON (ownership cruzado) ═══")
 d2 = paso("registro del intruso", c.post("/api/auth/registro",
-          json={"email": "intruso@publico.test", "password": "Intruso2026x"}))
+          json={"nombre": "Usuario Robot", "ciudad": "bogota", "email": "intruso@publico.test", "password": "Intruso2026x"}))
 H2 = {"Authorization": f"Bearer {d2['token']}"}
 r = c.put(f"/api/apus/{APU_MANUAL}", json={"descripcion": "hackeado", "precio": 1}, headers=H2)
 paso("CANDADO: editar APU ajeno -> 404", r, status=404)
