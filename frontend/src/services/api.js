@@ -1,6 +1,7 @@
 import axios from 'axios'
 
-const api = axios.create({ baseURL: '/api', timeout: 120000  // 120s: si Vercel se cuelga, fallar-y-reintentar > esperar 10 min })
+// timeout 120s: si Vercel se cuelga, fallar-y-reintentar > esperar 10 min
+const api = axios.create({ baseURL: '/api', timeout: 120000 })
 
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token')

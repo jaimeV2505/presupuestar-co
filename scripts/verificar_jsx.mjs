@@ -6,10 +6,28 @@
 // Uso:  node scripts/verificar_jsx.mjs            (todos los .jsx de src)
 // Nace del incidente del panel ⇄rinde (16/8/2026).
 // ═══════════════════════════════════════════════════════════════════════════
-import { readFileSync, readdirSync, statSync } from 'fs'
+import { readFileSync, readdirSync, statSync, copyFileSync, mkdtempSync } from 'fs'
 import { join } from 'path'
+import { tmpdir } from 'os'
+import { execFileSync } from 'child_process'
 
 const VOID = new Set(['input', 'br', 'img', 'hr', 'textarea', 'meta', 'link'])
+
+// ── .js puros: el parser REAL de Node (node --check sobre copia .mjs) ──────
+// Nace del incidente api.js (18/8/2026): un comentario // se trago el cierre
+// de axios.create y rompio el build. Los .jsx no se pueden parsear asi (JSX),
+// pero los .js si — y con el parser de verdad, no heuristicas.
+function verificarJsPuro(ruta) {
+  const tmp = join(mkdtempSync(join(tmpdir(), 'vjs-')), 'x.mjs')
+  copyFileSync(ruta, tmp)
+  try {
+    execFileSync('node', ['--check', tmp], { stdio: 'pipe' })
+    return null
+  } catch (e) {
+    const msg = (e.stderr || e.stdout || '').toString().split('\n').slice(0, 4).join(' | ')
+    return `❌ ${ruta}: sintaxis JS invalida → ${msg}`
+  }
+}
 
 function verificar(ruta) {
   let src = readFileSync(ruta, 'utf8')
@@ -58,16 +76,17 @@ function jsxDe(dir) {
   for (const f of readdirSync(dir)) {
     const p = join(dir, f)
     if (statSync(p).isDirectory()) out.push(...jsxDe(p))
-    else if (f.endsWith('.jsx')) out.push(p)
+    else if (f.endsWith('.jsx') || f.endsWith('.js')) out.push(p)
   }
   return out
 }
 
 const objetivos = process.argv[2] ? [process.argv[2]] : jsxDe('frontend/src')
 let rotos = 0
+let njsx = 0, njs = 0
 for (const f of objetivos) {
-  const err = verificar(f)
+  const err = f.endsWith('.js') ? (njs++, verificarJsPuro(f)) : (njsx++, verificar(f))
   if (err) { console.log(err); rotos++ }
 }
-if (rotos) { console.log(`\n${rotos} archivo(s) con tags rotos — esbuild va a reventar`); process.exit(1) }
-console.log(`OK: ${objetivos.length} .jsx con tags balanceados`)
+if (rotos) { console.log(`\n${rotos} archivo(s) rotos — el build de Vite va a reventar`); process.exit(1) }
+console.log(`OK: ${njsx} .jsx con tags balanceados + ${njs} .js con sintaxis validada por Node`)
