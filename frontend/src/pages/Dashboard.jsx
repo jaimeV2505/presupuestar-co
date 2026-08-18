@@ -245,7 +245,7 @@ export default function Dashboard() {
               </div>
             )}
             {kpiAbierto !== null && kpiAbierto !== 'cartera' && metricas.desglose && (() => {
-              const titulos = ['💰 Quien compone lo cotizado', '✅ Quien te dio lo ganado', '💵 De donde sale tu utilidad', '📈 Los enviados: quien gano y quien no']
+              const titulos = ['💰 Quien compone lo cotizado', '✅ Quien te dio lo ganado', '💵 Tu utilidad: la prometida y la que quedo', '📈 Los enviados: quien gano y quien no']
               const lista = kpiAbierto === 3 ? (metricas.desglose.enviados || [])
                 : [metricas.desglose.cotizado, metricas.desglose.ganado, metricas.desglose.utilidad][kpiAbierto] || []
               const max = Math.max(1, ...lista.map(x => x.valor || 0))
@@ -254,7 +254,49 @@ export default function Dashboard() {
                 <div data-testid="kpi-detalle" className="mt-2 bg-white rounded-xl border border-navy-200 p-3">
                   <p className="text-[11px] font-bold text-slate-500 mb-2">{titulos[kpiAbierto]}</p>
                   {lista.length === 0 && <p className="text-[11px] text-slate-400">Todavía no hay proyectos aquí.</p>}
-                  <div className="space-y-1.5">
+                  {kpiAbierto === 2 && (() => {
+                    const ejec = lista.filter(x => x.tipo !== 'terminado')
+                    const term = lista.filter(x => x.tipo === 'terminado')
+                    const fila = (x, esReal) => (
+                      <div key={x.id} className="flex items-center gap-2 text-[11px]">
+                        <span className="shrink-0">{x.sector === 'publico' ? '🏛️' : '🏠'}</span>
+                        <span className="flex-1 truncate text-slate-600 font-medium">{x.nombre}</span>
+                        {esReal && x.real !== null && x.real !== undefined ? (
+                          <>
+                            <span className="text-slate-400 line-through tabular-nums">{COP(x.proyectada)}</span>
+                            <span className="font-bold tabular-nums text-slate-700">→ {COP(x.real)}</span>
+                            <span className={`w-24 text-right font-bold ${x.delta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                              {x.delta >= 0 ? '+' : ''}{COP(x.delta)}
+                            </span>
+                          </>
+                        ) : esReal ? (
+                          <>
+                            <span className="font-bold tabular-nums text-slate-700">{COP(x.proyectada)}</span>
+                            <span className="w-40 text-right text-[10px] text-amber-600">registra gastos para ver la real</span>
+                          </>
+                        ) : (
+                          <span className="font-bold tabular-nums text-slate-700">{COP(x.valor)}</span>
+                        )}
+                      </div>
+                    )
+                    return (
+                      <div className="space-y-3">
+                        {ejec.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-navy-500 mb-1">🏗️ PROYECTADA — en ejecución (la plata que esperas)</p>
+                            <div className="space-y-1.5">{ejec.slice(0, 6).map(x => fila(x, false))}</div>
+                          </div>
+                        )}
+                        {term.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-emerald-600 mb-1">🏁 REALIZADA — obras terminadas (la plata que quedó)</p>
+                            <div className="space-y-1.5">{term.slice(0, 6).map(x => fila(x, true))}</div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                  {kpiAbierto !== 2 && <div className="space-y-1.5">
                     {lista.slice(0, 8).map(x => (
                       <div key={x.id} className="flex items-center gap-2 text-[11px]">
                         <span className="shrink-0">{x.sector === 'publico' ? '🏛️' : '🏠'}</span>
@@ -274,8 +316,8 @@ export default function Dashboard() {
                         )}
                       </div>
                     ))}
-                  </div>
-                  {lista.length > 8 && <p className="text-[10px] text-slate-400 mt-1.5">y {lista.length - 8} más…</p>}
+                  </div>}
+                  {kpiAbierto !== 2 && lista.length > 8 && <p className="text-[10px] text-slate-400 mt-1.5">y {lista.length - 8} más…</p>}
                 </div>
               )
             })()}

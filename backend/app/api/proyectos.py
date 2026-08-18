@@ -156,6 +156,13 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
     en_borrador_valor = 0
     # el desglose: DONDE VIVE cada numero (para las tarjetas que se abren)
     det_cotizado, det_ganado, det_utilidad, det_enviados = [], [], [], []
+    # los gastos reales por proyecto: la otra mitad de la utilidad
+    from app.db import Gasto as _G
+    _gastos_por_p = {}
+    if _ids:
+        for _g in db.query(_G).filter(_G.proyecto_id.in_(_ids)).all():
+            _gastos_por_p[_g.proyecto_id] = _gastos_por_p.get(_g.proyecto_id, 0) + (_g.valor or 0)
+    utilidad_realizada = 0
     for p in proyectos:
         items = json.loads(p.items_json or "[]")
         aiu = json.loads(p.aiu_json or "{}")
@@ -180,9 +187,19 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
             det_ganado.append({"id": p.id, "nombre": p.nombre, "sector": p.sector or "privado",
                                "valor": valor_real})
             _u = t["utilidad_valor"] + _ads_util.get(p.id, 0)
-            if _u > 0:
+            if p.estado == "terminado":
+                # 🏁 REALIZADA: contrato completo - gastos reales registrados
+                _gas = _gastos_por_p.get(p.id, 0)
+                _real = (valor_real - _gas) if _gas > 0 else None   # sin gastos: no inventamos
+                if _real is not None:
+                    utilidad_realizada += _real
                 det_utilidad.append({"id": p.id, "nombre": p.nombre, "sector": p.sector or "privado",
-                                     "valor": _u})
+                                     "tipo": "terminado", "valor": _real if _real is not None else _u,
+                                     "proyectada": _u, "gastos": _gas, "real": _real,
+                                     "delta": (_real - _u) if _real is not None else None})
+            elif _u > 0:
+                det_utilidad.append({"id": p.id, "nombre": p.nombre, "sector": p.sector or "privado",
+                                     "tipo": "ejecucion", "valor": _u, "proyectada": _u})
         if p.estado in ("aceptado", "entrega_solicitada"):
             en_ejecucion_valor += valor_real
             en_ejecucion_n += 1
@@ -221,6 +238,7 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
             "utilidad": sorted(det_utilidad, key=lambda x: -x["valor"]),
             "enviados": det_enviados,
             "cartera": det_cartera,
+            "utilidad_realizada": utilidad_realizada,
         },
         "total_cotizado": total_cotizado,
         "total_ganado": total_ganado,

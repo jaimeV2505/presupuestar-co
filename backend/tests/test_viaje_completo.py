@@ -37,6 +37,7 @@ c = TestClient(app)
 PASOS = []
 
 
+
 def paso(nombre, resp, status=200, contiene=None):
     ok = resp.status_code == status
     cuerpo = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
@@ -259,6 +260,11 @@ assert _cta.get("estado") == "pagada", "el abono exacto debia cerrar la cuenta"
 assert _cta.get("fecha_pago"), "cuenta cerrada por abono SIN fecha_pago (la a/o volvio)"
 paso("ya me pagaron (idempotente sobre pagada)", c.post(f"/api/cuentas/{CID}/pagada", headers=H))
 
+# 💸 UN GASTO REAL de la obra (para que la utilidad REALIZADA tenga con que calcularse)
+paso("registrar gasto real de la obra", c.post(f"/api/gastos/proyectos/{PID}/gastos",
+     json={"descripcion": "Cemento y arena de la semana", "categoria": "materiales",
+           "valor": 500_000}, headers=H))
+
 print("═══ ACTO 3.5: EL ADICIONAL (otrosi) ═══")
 d = paso("proponer otrosi", c.post("/api/otrosies", json={
     "proyecto_id": PID, "motivo": "La clienta pidio ademas el meson",
@@ -316,6 +322,17 @@ paso("el cliente confirma (acta bilateral)", c.post(f"/api/share/publico/{TOKEN}
      json={"nombre": "Dona Prueba", "documento": "51222333", "firma_imagen": ""}))
 r = c.get(f"/api/share/publico/{TOKEN}/acta.pdf")
 paso("acta.pdf descargable", r)
+_mm2 = paso("metricas tras el cierre (las dos verdades)", c.get("/api/proyectos/metricas", headers=H))
+# 🏁 LAS DOS VERDADES DE LA UTILIDAD: la realizada = contrato - gastos, A PESO
+_du = [x for x in (_mm2.get("desglose") or {}).get("utilidad", []) if x["id"] == PID]
+assert _du and _du[0]["tipo"] == "terminado", f"el terminado debe estar en el desglose: {_du}"
+assert _du[0]["gastos"] == 500_000
+assert _du[0]["real"] == _mm2["total_ganado"] - 500_000, \
+    f"realizada incoherente: real={_du[0]['real']} vs ganado-gastos={_mm2['total_ganado']-500_000}"
+assert _du[0]["delta"] == _du[0]["real"] - _du[0]["proyectada"]
+assert (_mm2.get("desglose") or {}).get("utilidad_realizada") == _du[0]["real"]
+PASOS.append("utilidad en dos verdades: proyectada vs REALIZADA (contrato - gastos) a peso")
+
 r = c.get(f"/api/share/publico/{TOKEN}/contrato.pdf")
 assert r.status_code == 200 and r.headers.get("content-type", "").startswith("application/pdf")
 assert r.headers.get("Cache-Control", "").startswith("public"), "el contrato firmado debe cachearse"
