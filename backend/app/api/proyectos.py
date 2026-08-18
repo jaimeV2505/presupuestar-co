@@ -23,7 +23,12 @@ def _mes_actual() -> str:
 
 def _verificar_limite(user: Usuario, db: Session):
     """Plan gratis: limite de 3 presupuestos al mes. Pro: ilimitado."""
-    if user.plan != "gratis":
+    # auditoria pre-live: el Pro VENCIDO vuelve a ser gratis (plan_vence manda)
+    ahora = datetime.now(timezone.utc).replace(tzinfo=None)
+    es_pro_vigente = user.plan == "pro" and (user.plan_vence is None or user.plan_vence >= ahora)
+    if es_pro_vigente:
+        return
+    if user.plan not in ("gratis", "pro"):   # cortesias/admin pasan; el pro VENCIDO cae a la puerta
         return
     mes = _mes_actual()
     if user.mes_actual != mes:
@@ -398,6 +403,15 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
     if req.notas is not None: p.notas = req.notas[:2000]
 
     if req.items is not None:
+        # ── SANEO DEL SERVIDOR (auditoria pre-live): la UI limita, el server MANDA ──
+        if len(req.items) > 800:
+            raise HTTPException(400, "Maximo 800 items por presupuesto")
+        for _it in req.items:
+            if isinstance(_it, dict):
+                _it["cantidad"] = max(0, min(float(_it.get("cantidad") or 0), 10_000_000))
+                _it["precio_unitario"] = max(0, min(float(_it.get("precio_unitario") or 0), 50_000_000_000))
+                if isinstance(_it.get("descripcion"), str):
+                    _it["descripcion"] = _it["descripcion"][:300]
         if p.estado in ("aceptado", "entrega_solicitada", "terminado"):
             raise HTTPException(400, "Este presupuesto ya fue firmado — para cambios, duplica el proyecto")
         items_validos = validar_items(req.items)
@@ -447,11 +461,11 @@ def eliminar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sess
         raise HTTPException(404, "Proyecto no encontrado")
     # CASCADA COMPLETA en orden de dependencias (Postgres exige el orden; sqlite lo agradece)
     from app.db import (Abono, CuentaCobro, InteraccionCliente, Encuesta,
-                        Gasto, Otrosi, Avance, Notificacion)
+                        Gasto, Otrosi, Avance, Notificacion, Diseno)
     ids_cuentas = [c_.id for c_ in db.query(CuentaCobro.id).filter(CuentaCobro.proyecto_id == p.id).all()]
     if ids_cuentas:
         db.query(Abono).filter(Abono.cuenta_id.in_(ids_cuentas)).delete(synchronize_session=False)
-    for Modelo in (InteraccionCliente, EventoShare, Encuesta, Gasto, Otrosi, Avance, CuentaCobro, Notificacion):
+    for Modelo in (InteraccionCliente, EventoShare, Encuesta, Gasto, Otrosi, Avance, CuentaCobro, Notificacion, Diseno):
         db.query(Modelo).filter(Modelo.proyecto_id == p.id).delete(synchronize_session=False)
     db.delete(p)
     db.commit()

@@ -479,7 +479,7 @@ export default function Editor() {
                         }}
                         className="w-full flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-50 text-left">
                   <span className="text-lg">🎨</span>
-                  <span data-testid="total-obra">
+                  <span>
                     <span data-testid="menu-disenos" className="block text-sm font-semibold text-slate-700">Diseños</span>
                     <span className="block text-[10px] text-slate-400">Renders y planos — tu cliente los ve y comenta</span>
                   </span>
@@ -1108,7 +1108,7 @@ export default function Editor() {
               </div>
               <div>
                 <label className="text-[10px] text-slate-400 uppercase font-semibold">Retegarantía % <span className="normal-case">(opcional)</span></label>
-                <input className="input !py-2" type="number" min="0" max="20"
+                <input disabled={soloLectura} className="input !py-2" type="number" min="0" max="20"
                        value={contrato.retegarantia_pct || 0}
                        onChange={e => setContratoYGuardar({ ...contrato, retegarantia_pct: Math.max(0, Math.min(20, parseFloat(e.target.value) || 0)) })} />
               </div>
@@ -1461,7 +1461,7 @@ export default function Editor() {
             </div>
             <div className="text-right shrink-0">
               <p className="text-[10px] text-blue-200 uppercase tracking-wide">Total</p>
-              <p className="text-xl font-black">{COP(totales.total)}</p>
+              <p data-testid="total-obra" className="text-xl font-black">{COP(totales.total)}</p>
             </div>
           </div>
         </div>
@@ -1572,6 +1572,10 @@ export default function Editor() {
                         setQ('')
                         setFuenteApu('mios')
                         setShowBuscador(true)
+                        // refresco EXPLICITO: si ya estabas parado en Mis APUs, el effect
+                        // no re-dispara y verias la lista congelada (bug cazado por el robot)
+                        apusAPI.listar({ sector: esPublico ? 'publico' : 'privado' })
+                          .then(rr => setMisApus(rr.items || [])).catch(() => {})
                         apusAPI.listar({}).then(r2 => {
                           const porId = {}, porCodigo = {}, codigoAId = {}
                           for (const a of (r2.items || [])) if (a.desglose?.insumos?.length) { porId[a.id] = a.desglose; if (a.codigo) { porCodigo[a.codigo] = a.desglose; codigoAId[a.codigo] = a.id } }
@@ -2136,7 +2140,7 @@ export default function Editor() {
             <p className="text-[11px] text-slate-400 mb-3">
               Saldo pendiente: <strong className="text-slate-600">{COP(abonando.cuenta.neto - (abonando.cuenta.abonado || 0))}</strong>
             </p>
-            <input className="input mb-2" type="number" placeholder="Monto del abono *" autoFocus
+            <input disabled={soloLectura} className="input mb-2" type="number" placeholder="Monto del abono *" autoFocus
                    value={abonando.monto}
                    onChange={e => setAbonando(a => ({ ...a, monto: e.target.value }))} />
             <input className="input mb-3" placeholder="Nota (ej: Nequi viernes)" maxLength={150}
@@ -2252,9 +2256,9 @@ export default function Editor() {
                            onChange={e => setOtItems(rows => rows.map((r, j) => j === i ? { ...r, descripcion: e.target.value } : r))} />
                     <input className="input !py-1.5 text-[11px] !w-14" placeholder="und" value={row.unidad}
                            onChange={e => setOtItems(rows => rows.map((r, j) => j === i ? { ...r, unidad: e.target.value } : r))} />
-                    <input className="input !py-1.5 text-[11px] !w-14 text-right" type="number" placeholder="cant" value={row.cantidad}
+                    <input disabled={soloLectura} className="input !py-1.5 text-[11px] !w-14 text-right" type="number" placeholder="cant" value={row.cantidad}
                            onChange={e => setOtItems(rows => rows.map((r, j) => j === i ? { ...r, cantidad: e.target.value } : r))} />
-                    <input className="input !py-1.5 text-[11px] !w-24 text-right" type="number" placeholder="$ unit" value={row.precio_unitario}
+                    <input disabled={soloLectura} className="input !py-1.5 text-[11px] !w-24 text-right" type="number" placeholder="$ unit" value={row.precio_unitario}
                            onChange={e => setOtItems(rows => rows.map((r, j) => j === i ? { ...r, precio_unitario: e.target.value } : r))} />
                     <button onClick={() => setOtItems(rows => rows.length > 1 ? rows.filter((_, j) => j !== i) : rows)}
                             className="text-slate-300 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>

@@ -2,7 +2,7 @@
 """Base de datos SQLite — simple, confiable, cero configuracion."""
 import os
 import logging
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, Boolean
+from sqlalchemy import create_engine, Column, Integer, BigInteger, String, Text, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from datetime import datetime, timezone
 
@@ -16,7 +16,24 @@ if DATABASE_URL:
     url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     if url.startswith("postgresql://") and "+psycopg2" not in url:
         url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
-    engine = create_engine(url, pool_pre_ping=True, pool_size=2, max_overflow=3)
+    # ── LA TORMENTA DE CONEXIONES (18/8/2026) ──
+    # Cura 1: AUTO-POOLER de Neon — miles de clientes serverless -> pocas
+    # conexiones reales via PgBouncer. Desactivable con DB_DIRECT=1.
+    if "neon.tech" in url and "-pooler" not in url and not os.environ.get("DB_DIRECT"):
+        try:
+            pre, resto = url.split("@", 1)
+            host_fin = resto.find("/")
+            partes = resto[:host_fin].split(".", 1)
+            url = f"{pre}@{partes[0]}-pooler.{partes[1]}{resto[host_fin:]}"
+            logger.info("Neon: entrando por el POOLER")
+        except Exception:
+            logger.warning("auto-pooler: URL no reconocida, sigo directo")
+    # Cura 2: en Vercel nadie retiene conexiones (NullPool + PgBouncer)
+    if os.environ.get("VERCEL"):
+        from sqlalchemy.pool import NullPool
+        engine = create_engine(url, poolclass=NullPool, pool_pre_ping=True)
+    else:
+        engine = create_engine(url, pool_pre_ping=True, pool_size=2, max_overflow=3)
     ES_POSTGRES = True
 else:
     DB_PATH = os.environ.get("DB_PATH", "/app/data_db/presupuestar.db")
@@ -27,6 +44,18 @@ else:
         pool_pre_ping=True,
     )
     ES_POSTGRES = False
+
+# sqlite trae las FOREIGN KEYS apagadas por defecto — despertarlas para que el
+# mundo de pruebas defienda la integridad IGUAL que Postgres. (Va DESPUES y
+# APARTE del if/else: la leccion del 18/8 — una inyeccion a mitad de un if/else
+# creo un segundo engine sqlite en Vercel y tumbo produccion entera.)
+if engine.url.get_backend_name() == "sqlite":
+    from sqlalchemy import event as _ev
+
+    @_ev.listens_for(engine, "connect")
+    def _fk_on(dbapi_con, _):
+        dbapi_con.execute("PRAGMA foreign_keys=ON")
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -153,7 +182,7 @@ class Gasto(Base):
     proyecto_id = Column(Integer, ForeignKey("proyectos.id"), nullable=False, index=True)
     categoria = Column(String(30), default="materiales")  # materiales|nomina|transporte|herramienta|otros
     descripcion = Column(String(300), nullable=False)
-    valor = Column(Integer, nullable=False)
+    valor = Column(BigInteger, nullable=False)
     foto_b64 = Column(Text, default="")   # recibo/factura (opcional)
     creado = Column(DateTime, default=utcnow)
 
@@ -166,12 +195,12 @@ class CuentaCobro(Base):
     avance_id = Column(Integer, nullable=True)         # corte que sustenta el cobro
     numero = Column(String(20), default="")            # CC-2026-0001 consecutivo por usuario
     concepto = Column(Text, default="")
-    valor_corte = Column(Integer, default=0)           # ejecutado de este corte
+    valor_corte = Column(BigInteger, default=0)           # ejecutado de este corte
     anticipo_pct = Column(Integer, default=0)          # % amortizado (del contrato)
-    amortizacion = Column(Integer, default=0)
-    neto = Column(Integer, default=0)                  # a cobrar
-    retencion = Column(Integer, default=0)       # retegarantia del corte
-    deducciones = Column(Integer, default=0)     # total deducciones de ley (obra publica)
+    amortizacion = Column(BigInteger, default=0)
+    neto = Column(BigInteger, default=0)                  # a cobrar
+    retencion = Column(BigInteger, default=0)       # retegarantia del corte
+    deducciones = Column(BigInteger, default=0)     # total deducciones de ley (obra publica)
     deducciones_json = Column(Text, default="")  # detalle [{nombre, pct, valor}]
     tipo = Column(String(15), default="corte")    # corte | retegarantia
     estado = Column(String(20), default="enviada")     # enviada | pagada
@@ -184,7 +213,7 @@ class PagoWompi(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     referencia = Column(String(80), unique=True, nullable=False, index=True)
-    monto_centavos = Column(Integer, nullable=False)
+    monto_centavos = Column(BigInteger, nullable=False)
     estado = Column(String(20), default="creado")  # creado | APPROVED | DECLINED | VOIDED | ERROR
     transaction_id = Column(String(80), default="")
     medio = Column(String(40), default="")          # CARD | NEQUI | PSE | BANCOLOMBIA_TRANSFER...
@@ -211,7 +240,7 @@ class ApuUsuario(Base):
     codigo = Column(String(30), default="")            # codigo propio (ej: "MI-001")
     descripcion = Column(String(300), nullable=False)
     unidad = Column(String(15), default="un")
-    precio = Column(Integer, default=0)                # COP
+    precio = Column(BigInteger, default=0)                # COP
     sector_tag = Column(String(10), default="ambos")   # privado | publico | ambos
     region = Column(String(30), default="")
     origen_base = Column(String(30), default="")       # codigo del APU base si nacio de "Duplicar"
@@ -241,7 +270,7 @@ class PrecioProveedor(Base):
     user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     insumo = Column(String(160), nullable=False)
     unidad = Column(String(15), default="un")
-    precio = Column(Integer, default=0)
+    precio = Column(BigInteger, default=0)
     capturado = Column(DateTime, default=utcnow, onupdate=utcnow)
 
 
@@ -263,7 +292,7 @@ class Abono(Base):
     __tablename__ = "abonos"
     id = Column(Integer, primary_key=True)
     cuenta_id = Column(Integer, ForeignKey("cuentas_cobro.id"), nullable=False, index=True)
-    monto = Column(Integer, nullable=False)
+    monto = Column(BigInteger, nullable=False)
     nota = Column(String(150), default="")
     creado = Column(DateTime, default=utcnow)
 
@@ -329,7 +358,7 @@ class Avance(Base):
     titulo = Column(String(160), nullable=False)
     descripcion = Column(Text, default="")
     porcentaje = Column(Integer, default=0)        # avance ponderado por valor 0-100
-    valor_ejecutado = Column(Integer, default=0)   # $ ejecutado segun % por actividad
+    valor_ejecutado = Column(BigInteger, default=0)   # $ ejecutado segun % por actividad
     items_json = Column(Text, default="[]")        # detalle por actividad: [{id, descripcion, valor_item, pct, valor_ejec}]
     fotos_json = Column(Text, default="[]")        # lista de fotos base64 (max 3)
     creado = Column(DateTime, default=utcnow)
@@ -376,6 +405,16 @@ def init_db():
                     "ALTER TABLE cuentas_cobro ADD COLUMN IF NOT EXISTS deducciones_json TEXT DEFAULT ''",
                     "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS detalle TEXT DEFAULT ''",
                     "ALTER TABLE otrosies ADD COLUMN IF NOT EXISTS ip_firma VARCHAR(45) DEFAULT ''",
+                    "ALTER TABLE avances ALTER COLUMN valor_ejecutado TYPE BIGINT",
+                    "ALTER TABLE cuentas_cobro ALTER COLUMN valor_corte TYPE BIGINT",
+                    "ALTER TABLE cuentas_cobro ALTER COLUMN neto TYPE BIGINT",
+                    "ALTER TABLE cuentas_cobro ALTER COLUMN deducciones TYPE BIGINT",
+                    "ALTER TABLE cuentas_cobro ALTER COLUMN retencion TYPE BIGINT",
+                    "ALTER TABLE cuentas_cobro ALTER COLUMN amortizacion TYPE BIGINT",
+                    "ALTER TABLE abonos ALTER COLUMN monto_centavos TYPE BIGINT",
+                    "ALTER TABLE otrosies ALTER COLUMN valor TYPE BIGINT",
+                    "ALTER TABLE gastos ALTER COLUMN valor TYPE BIGINT",
+                    "ALTER TABLE precios_proveedor ALTER COLUMN precio TYPE BIGINT",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
