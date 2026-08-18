@@ -224,9 +224,9 @@ export default function Dashboard() {
             </div>
             {kpiAbierto === 'cartera' && metricas.desglose && (
               <div data-testid="cartera-detalle" className="mt-2 bg-white rounded-xl border border-amber-200 p-3">
-                <p className="text-[11px] font-bold text-slate-500 mb-2">💰 Tu cartera: cada acta enviada sin pagar — la más vieja arriba</p>
+                <p className="text-[11px] font-bold text-slate-500 mb-2">💰 Cartera por edades — actas radicadas pendientes de pago (la más antigua arriba)</p>
                 {(metricas.desglose.cartera || []).length === 0 && (
-                  <p className="text-[11px] text-emerald-600 font-medium">✓ Cartera limpia — todo lo enviado está pagado.</p>
+                  <p className="text-[11px] text-emerald-600 font-medium">✓ Cartera al día — sin actas pendientes de pago.</p>
                 )}
                 <div className="space-y-1.5">
                   {(metricas.desglose.cartera || []).slice(0, 10).map(x => (
@@ -245,7 +245,7 @@ export default function Dashboard() {
               </div>
             )}
             {kpiAbierto !== null && kpiAbierto !== 'cartera' && metricas.desglose && (() => {
-              const titulos = ['💰 Quien compone lo cotizado', '✅ Quien te dio lo ganado', '💵 Tu utilidad: la prometida y la que quedo', '📈 Los enviados: quien gano y quien no']
+              const titulos = ['💰 Composición del valor cotizado', '✅ Contratos adjudicados', '💵 Margen de obra: proyectado vs ejecutado', '📈 Ofertas presentadas y su estado']
               const lista = kpiAbierto === 3 ? (metricas.desglose.enviados || [])
                 : [metricas.desglose.cotizado, metricas.desglose.ganado, metricas.desglose.utilidad][kpiAbierto] || []
               const max = Math.max(1, ...lista.map(x => x.valor || 0))
@@ -272,7 +272,7 @@ export default function Dashboard() {
                         ) : esReal ? (
                           <>
                             <span className="font-bold tabular-nums text-slate-700">{COP(x.proyectada)}</span>
-                            <span className="w-40 text-right text-[10px] text-amber-600">registra gastos para ver la real</span>
+                            <span className="w-40 text-right text-[10px] text-amber-600">registra costos para el margen ejecutado</span>
                           </>
                         ) : (
                           <span className="font-bold tabular-nums text-slate-700">{COP(x.valor)}</span>
@@ -283,13 +283,13 @@ export default function Dashboard() {
                       <div className="space-y-3">
                         {ejec.length > 0 && (
                           <div>
-                            <p className="text-[10px] font-bold text-navy-500 mb-1">🏗️ PROYECTADA — en ejecución (la plata que esperas)</p>
+                            <p className="text-[10px] font-bold text-navy-500 mb-1">🏗️ MARGEN PROYECTADO — contratos en ejecución</p>
                             <div className="space-y-1.5">{ejec.slice(0, 6).map(x => fila(x, false))}</div>
                           </div>
                         )}
                         {term.length > 0 && (
                           <div>
-                            <p className="text-[10px] font-bold text-emerald-600 mb-1">🏁 REALIZADA — obras terminadas (la plata que quedó)</p>
+                            <p className="text-[10px] font-bold text-emerald-600 mb-1">🏁 MARGEN EJECUTADO — obras liquidadas (contrato − costos reales)</p>
                             <div className="space-y-1.5">{term.slice(0, 6).map(x => fila(x, true))}</div>
                           </div>
                         )}
@@ -303,7 +303,7 @@ export default function Dashboard() {
                         <span className="w-32 sm:w-44 truncate text-slate-600 font-medium">{x.nombre}</span>
                         {kpiAbierto === 3 ? (
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${x.gano ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                            {x.gano ? '✓ ganado' : x.estado}
+                            {x.gano ? '✓ adjudicado' : x.estado}
                           </span>
                         ) : (
                           <>

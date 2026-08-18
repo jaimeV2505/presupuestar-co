@@ -4,6 +4,7 @@ Mezcla: MIS proveedores (mis precios negociados, primero) + base curada de
 referencia (+ fuentes externas cuando existan). Cada precio viaja con su
 fuente y su fecha — jamas como verdad absoluta."""
 from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.db import get_db, Usuario, Proveedor, PrecioProveedor
 from app.api.auth import usuario_actual
@@ -28,6 +29,8 @@ def _buscar_nucleo(q: str, user: Usuario, db: Session):
         "fuente": "mi_proveedor", "nombre": pp.insumo, "unidad": pp.unidad,
         "precio": pp.precio,
         "fecha": pp.capturado.strftime("%d/%m/%Y") if pp.capturado else "",
+        "edad_dias": (datetime.now(timezone.utc).replace(tzinfo=None) - pp.capturado.replace(tzinfo=None)).days if pp.capturado else None,
+        "precio_viejo": bool(pp.capturado and (datetime.now(timezone.utc).replace(tzinfo=None) - pp.capturado.replace(tzinfo=None)).days > 180),
         "detalle": prov.nombre,
     } for pp, prov in mios]
 

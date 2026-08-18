@@ -236,6 +236,40 @@ def registrar_abono(cid: int, req: AbonoRequest,
     return {"ok": True, "cuenta": _cc_out(c, db)}
 
 
+@router.post("/proyectos/{pid}/anticipo")
+def acta_de_anticipo(pid: int, user: Usuario = Depends(usuario_actual),
+                     db: Session = Depends(get_db)):
+    """El anticipo recibido ENTRA al flujo de caja: acta tipo 'anticipo'.
+
+    Sin esto, el anticipo solo existia como amortizacion — invisible en la
+    cartera y en lo cobrado. Auditoria de la economia, 18/8/2026."""
+    p = _proyecto(pid, user, db)
+    if p.estado not in ("aceptado", "entrega_solicitada", "terminado"):
+        raise HTTPException(400, "El anticipo se factura con el contrato firmado o sellado")
+    contrato = json.loads(p.contrato_json or "{}")
+    pct = float(contrato.get("anticipo_pct") or 0)
+    if pct <= 0:
+        raise HTTPException(400, "Este contrato no pacto anticipo")
+    cuentas = db.query(CuentaCobro).filter(CuentaCobro.proyecto_id == p.id).all()
+    if any(x.tipo == "anticipo" for x in cuentas):
+        raise HTTPException(400, "El anticipo ya fue facturado en este proyecto")
+    from app.services.calculo_presupuesto import calcular_totales as _ct2
+    items = json.loads(p.items_json or "[]")
+    aiu = json.loads(p.aiu_json or "{}")
+    t = _ct2(items, aiu)
+    valor = round(t["total"] * pct / 100)
+    cc = CuentaCobro(
+        user_id=user.id, proyecto_id=p.id, numero=_numero_cc(user, db),
+        avance_id=None, valor_corte=valor, anticipo_pct=0, amortizacion=0,
+        retencion=0, deducciones=0, neto=valor, tipo="anticipo",
+        concepto=f"Acta de anticipo — {pct:g}% del contrato",
+    )
+    db.add(cc); db.commit(); db.refresh(cc)
+    logger.info("Anticipo facturado: %s $%s proyecto %s", cc.numero, f"{valor:,}", p.id)
+    return {"id": cc.id, "numero": cc.numero, "neto": cc.neto, "tipo": cc.tipo,
+            "concepto": cc.concepto, "estado": cc.estado}
+
+
 @router.post("/proyectos/{pid}/retegarantia")
 def cobrar_retegarantia(pid: int, user: Usuario = Depends(usuario_actual),
                         db: Session = Depends(get_db)):

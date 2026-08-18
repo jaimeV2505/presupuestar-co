@@ -310,3 +310,17 @@ assert _r0["precio_unitario"] == 22524 and _r0["transporte"] == 0
 assert _cp([], 1000, 0, transporte=-500)["precio_unitario"] == 1000
 
 print("OK transporte en el APU: 24.024 exacto + retro-compatible a peso")
+
+# ═══ FAMILIA 9: EL REGIMEN DE IVA — las 4 posiciones fiscales, a peso ═══
+_it = [{"cantidad": 10, "precio_unitario": 100_000}]
+_r1 = calcular_totales(_it, {"aplicar": False})                          # no responsable
+assert _r1["iva"] == 0 and _r1["total"] == 1_000_000
+_r2 = calcular_totales(_it, {"aplicar": False, "con_iva": True})         # responsable sin AIU
+assert _r2["iva"] == 190_000 and _r2["total"] == 1_190_000, _r2
+_r3 = calcular_totales(_it, {"aplicar": True, "admin": 10, "imprevistos": 5,
+                             "utilidad": 5, "iva_sobre_utilidad": True}) # 462-1
+assert _r3["iva"] == round(1_000_000*0.05*0.19) == 9_500
+_r4 = calcular_totales(_it, {"aplicar": True, "admin": 10, "imprevistos": 5,
+                             "utilidad": 5, "iva_sobre_utilidad": False})
+assert _r4["iva"] == round(1_200_000*0.19) == 228_000
+print("OK regimen IVA: no-responsable / 19% total / 462-1 utilidad / base+AIU — los 4 a peso")

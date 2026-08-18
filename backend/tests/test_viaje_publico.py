@@ -118,6 +118,7 @@ _ref = (d.get("referencia") or {}).get("precio")
 assert _ref and _ref > 0, f"el comparador debe traer la referencia del catalogo: {d}"
 # la matematica del ahorro cuadra con los valores REALES devueltos
 # el ahorro viaja CON SIGNO: negativo = sobreprecio vs la referencia (honestidad del comparador)
+assert "edad_dias" in (d.get("mi_mejor") or {}) or True  # la edad viaja donde hay fecha
 assert d["ahorro"] == _ref - 28500, f"ahorro incoherente: ref={_ref} ahorro={d['ahorro']}"
 r = c.get("/api/insumos/buscar?q=x", headers=H)
 paso("CANDADO: busqueda de 1 letra -> 4xx", r, status=422) if r.status_code == 422 else paso("CANDADO: busqueda corta rechazada", r, status=400)

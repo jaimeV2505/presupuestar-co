@@ -242,6 +242,13 @@ print(f"     cuenta: neto=${NETO:,} retuvo=${RETE1:,}")
 assert RETE1 > 0, "la retegarantia del 5% debia retener algo"
 
 # 💰 LA CARTERA VIVE: la cuenta recien enviada aparece con su edad y semaforo
+# 💵 EL ACTA DE ANTICIPO: el anticipo ENTRA al flujo de caja
+d = paso("facturar el acta de anticipo", c.post(f"/api/cuentas/proyectos/{PID}/anticipo", headers=H))
+assert d["tipo"] == "anticipo" and d["neto"] > 0 and d["numero"].startswith("CC-")
+_ANTICIPO_NETO = d["neto"]
+r = c.post(f"/api/cuentas/proyectos/{PID}/anticipo", headers=H)
+paso("CANDADO: doble anticipo -> 400", r, status=400)
+
 d = paso("la cartera muestra el acta sin pagar", c.get("/api/proyectos/metricas", headers=H))
 _cart = (d.get("desglose") or {}).get("cartera") or []
 assert any(x["numero"].startswith("CC-") and x["neto"] > 0 and x["dias"] == 0

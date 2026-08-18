@@ -155,6 +155,7 @@ export const clientesAPI = {
 }
 
 export const cuentasAPI = {
+  anticipo: (pid) => post(`/cuentas/proyectos/${pid}/anticipo`),
   abonar: (cid, monto, nota) => api.post(`/cuentas/${cid}/abonos`, { monto, nota }).then(r => r.data),
   retegarantia: (pid) => api.post(`/cuentas/proyectos/${pid}/retegarantia`).then(r => r.data),
   listar: (pid) => api.get(`/cuentas/proyectos/${pid}/cuentas`).then(r => r.data),

@@ -136,12 +136,12 @@ export default function Editor() {
     const base = sub + a + i + u
     const iva = aiuAct.aplicar
       ? (aiuAct.iva_sobre_utilidad ? Math.round(u * 0.19) : Math.round(base * 0.19))
-      : 0
+      : (aiuAct.con_iva ? Math.round(sub * 0.19) : 0)
     return {
       subtotal_directo: sub, admin_valor: a, imprevistos_valor: i, utilidad_valor: u,
       aiu_total: a + i + u, base_con_aiu: base, iva, total: base + iva, num_items: itemsAct.length,
       capitulos, subtotal_lista: subLista, descuento_valor, descuento_pct,
-      regimen_iva: aiuAct.iva_sobre_utilidad ? 'IVA 19% solo sobre utilidad (Art. 462-1 ET)' : 'IVA 19% sobre base + AIU',
+      regimen_iva: aiuAct.aplicar ? (aiuAct.iva_sobre_utilidad ? 'IVA 19% solo sobre utilidad (Art. 462-1 ET)' : 'IVA 19% sobre base + AIU') : (aiuAct.con_iva ? 'IVA 19% sobre el total' : 'Sin IVA'),
     }
   }, [])
 
@@ -744,7 +744,7 @@ export default function Editor() {
             {p.pendientes_reportados.map((pd, i) => (
               <div key={i} className="text-sm text-slate-700 bg-white rounded-xl px-3 py-2 mb-1.5 ring-1 ring-amber-100">
                 “{pd.detalle}”
-                <span className="block text-[10px] text-slate-400 mt-0.5">{pd.fecha}</span>
+                <span className="block text-[10px] text-slate-400 mt-0.5">{pd.fecha}{pd.precio_viejo && <strong className="text-amber-600 ml-1">⚠ hace {Math.round(pd.edad_dias / 30)} meses — actualízalo</strong>}</span>
               </div>
             ))}
             <p className="text-[11px] text-amber-600">Resuélvelos, registra el avance y vuelve a solicitar la entrega 🤝</p>
@@ -1074,6 +1074,14 @@ export default function Editor() {
                   </span>
                 </label>
               </>
+            )}
+            {!aiu.aplicar && (
+              <label className="flex items-start gap-2 mt-2 text-[11px] text-slate-600 cursor-pointer">
+                <input type="checkbox" data-testid="check-con-iva" className="mt-0.5" checked={!!aiu.con_iva}
+                       onChange={e2 => setAiuYGuardar({ ...aiu, con_iva: e2.target.checked })} />
+                <span><strong className="text-slate-700">Responsable de IVA</strong> — factura 19% sobre el total del presupuesto.
+                  Déjalo apagado si no eres responsable de IVA (régimen simple / persona natural).</span>
+              </label>
             )}
           </div>
         )}
@@ -1636,7 +1644,7 @@ export default function Editor() {
                                 className="w-full flex items-center justify-between px-2 py-1.5 text-[10px] hover:bg-slate-50 text-left">
                           <span className="text-slate-600 truncate">{s.fuente === 'mi_proveedor' ? '🏪 ' : '📖 '}{s.nombre}</span>
                           <span className="font-bold text-slate-700 tabular-nums shrink-0 ml-2">{COP(s.precio)}
-                            <span className="font-normal text-slate-300 ml-1">{s.fuente === 'mi_proveedor' ? s.detalle : s.fecha}</span></span>
+                            <span className="font-normal text-slate-300 ml-1">{s.fuente === 'mi_proveedor' ? s.detalle : s.fecha}</span>{s.precio_viejo && <span className="text-amber-600 font-bold ml-1">⚠ precio de hace {Math.round(s.edad_dias / 30)} meses</span>}</span>
                         </button>
                       ))}
                     </div>
@@ -1953,6 +1961,19 @@ export default function Editor() {
           <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-slate-800">💵 {esPublico ? 'Actas parciales de obra' : 'Cuentas de cobro'}</h3>
+              {(contrato.anticipo_pct > 0) && !(cobrosData?.cuentas || cobrosData || []).some?.(x => x.tipo === 'anticipo') && (
+                <button data-testid="btn-acta-anticipo"
+                        onClick={async () => {
+                          try {
+                            const r = await cuentasAPI.anticipo(id)
+                            toast.success(`Acta de anticipo ${r.numero}: ${COP(r.neto)}`)
+                            cuentasAPI.listar(id).then(setCobrosData).catch(() => {})
+                          } catch (err) { toast.error(err.message) }
+                        }}
+                        className="text-[11px] font-bold border border-emerald-300 text-emerald-700 rounded-lg px-2.5 py-1 hover:bg-emerald-50">
+                  💵 Facturar anticipo ({contrato.anticipo_pct}%)
+                </button>
+              )}
               <button onClick={() => setShowCobros(false)} className="text-slate-400 text-lg">×</button>
             </div>
 
