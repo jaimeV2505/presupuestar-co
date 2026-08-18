@@ -210,12 +210,12 @@ r = c.post(f"/api/share/proyectos/{PID}/compartir", headers=H)
 paso("CANDADO ESTRELLA: obra publica NO comparte -> 400", r, status=400,
      ) if r.status_code == 400 else paso("candado publico", r, status=400)
 
-# ADICIONAL ANTES DE CUALQUIER FIRMA: en publico se permite (no hay cliente que firme)
-d_pre = paso("adicional en borrador (publico lo permite)", c.post("/api/otrosies", json={
+# 🔒 DOCTRINA: el adicional exige el SELLO — antes, el presupuesto se edita directo
+r = c.post("/api/otrosies", json={
     "proyecto_id": PID, "motivo": "Ajuste previo al inicio",
     "items": [{"id": "pre1", "descripcion": "Señalizacion preventiva", "unidad": "un",
-               "cantidad": 10, "precio_unitario": 45000}]}, headers=H))
-paso("y se aprueba internamente", c.post(f"/api/otrosies/{d_pre['id']}/aprobar-interno", headers=H))
+               "cantidad": 10, "precio_unitario": 45000}]}, headers=H)
+paso("CANDADO: adicional ANTES del sello -> 400 (edita el presupuesto directo)", r, status=400)
 
 print("═══ ACTO 3: EJECUCION — EL PRIMER AVANCE SELLA EL CONTRATO ═══")
 d = paso("proyecto sigue en borrador", c.get(f"/api/proyectos/{PID}", headers=H))
@@ -231,6 +231,13 @@ r = c.put(f"/api/proyectos/{PID}", json={"items": [
     {"id": "hack", "descripcion": "cambiar presupuesto oficial", "unidad": "un",
      "cantidad": 1, "precio_unitario": 1}]}, headers=H)
 paso("CANDADO: presupuesto oficial sellado (items -> 400)", r, status=400)
+
+# Ahora SI: el adicional post-sello (la via legitima de los cambios)
+d_pre = paso("adicional post-sello (la via correcta)", c.post("/api/otrosies", json={
+    "proyecto_id": PID, "motivo": "Ajuste previo al inicio",
+    "items": [{"id": "pre1", "descripcion": "Señalizacion preventiva", "unidad": "un",
+               "cantidad": 10, "precio_unitario": 45000}]}, headers=H))
+paso("y se aprueba internamente", c.post(f"/api/otrosies/{d_pre['id']}/aprobar-interno", headers=H))
 r = c.post("/api/exportar/apus-pdf", json={"proyecto_id": PID}, headers=H)
 paso("ANEXO DE PROPUESTA: APUs detallados en PDF", r)
 assert r.content[:4] == b"%PDF", "el anexo de APUs no es un PDF"
