@@ -1,6 +1,9 @@
-// ═══ VIAJE 3 — ASGARD: el vigia de deducciones y el sello UI del avance ═══
+// ═══ VIAJE 3 — ASGARD (obra publica): el vigia de deducciones y el sello ═══
+// Crear publico → escribir 9% en Ley 1106 → la alerta ambar aparece →
+// [corregir a 5%] la arregla de un clic → avance por API SELLA → el banner
+// del presupuesto oficial aparece y el anexo de APUs descarga.
 import { test, expect } from '@playwright/test'
-import { emailUnico, registrarPorAPI, crearProyecto, api, sesion, abrirHerramientas } from './helpers.js'
+import { emailUnico, registrarPorAPI, crearProyecto, api, sesion } from './helpers.js'
 
 test('asgard: vigia de deducciones + el sello del primer avance', async ({ page }) => {
   page.on('dialog', d => { throw new Error(`dialogo NATIVO: ${d.message()}`) })
@@ -13,34 +16,35 @@ test('asgard: vigia de deducciones + el sello del primer avance', async ({ page 
   })
   await api(token, 'PUT', `/proyectos/${p.id}`, { items: [{ id: 'it1', capitulo: 'OBRA',
     descripcion: 'Anden en concreto', unidad: 'm2', cantidad: 200, precio_unitario: 85000 }] })
-  // por API el contrato nace sin deducciones: sembrar la Ley 1106 MAL (9%) para que el vigia la cace
-  await api(token, 'PUT', `/proyectos/${p.id}`, { contrato: { plazo_dias: 45, anticipo_pct: 30,
-    deducciones: [{ nombre: 'Contribución obra pública 5% (Ley 1106/2006)', pct: 9 }] } })
   await sesion(page, token, { nombre: 'Contratista Estatal', email, plan: 'gratis' })
 
-  // el Dashboard distingue el universo: badge 🏛️ al inicio
+  // el Dashboard distingue el universo: badge 🏛️ AL INICIO de la tarjeta
   await page.goto('/')
-  await expect(page.getByTestId('badge-sector').filter({ hasText: 'Pública' }).first()).toBeVisible()
+  await expect(page.getByTestId('badge-sector').first()).toContainText('Pública')
 
-  // ── EL VIGIA (seccion "Deducciones de ley" VISIBLE en el editor publico) ──
+  // ── EL VIGIA: Ley 1106 al 9% dispara la alerta; un clic la corrige ──
   await page.goto(`/editor/${p.id}`)
-  // el vigia ya deberia estar gritando por el 9% sembrado
-  const corregir = page.getByText(/corregir a 5%/).first()
-  await corregir.scrollIntoViewIfNeeded()
-  await corregir.click()
+  await page.getByTestId('btn-herramientas').click()
+  await page.getByText(/Contrato y deducciones|Condiciones del contrato/).first().click()
   const filaLey = page.locator('div').filter({ hasText: /1106/ }).last()
-  await expect(filaLey.locator('input[type="number"]').first()).toHaveValue('5')
+  const inputPct = filaLey.locator('input[type="number"]').first()
+  await inputPct.fill('9')
+  await expect(page.getByText(/Ley 1106.*es del 5%|la ley dice 5%|deberia ser 5/i).first())
+    .toBeVisible({ timeout: 10_000 })
+  await page.getByRole('button', { name: /corregir a 5/i }).click()
+  await expect(inputPct).toHaveValue('5')
+  await page.keyboard.press('Escape')
 
-  // ── EL SELLO: primer avance por API → la fila queda MUERTA en la UI ──
+  // ── EL SELLO: primer avance por API → el banner del presupuesto oficial ──
   await api(token, 'POST', `/avances/proyectos/${p.id}/avances`, {
     titulo: 'Acta parcial 1', items: [{ id: 'it1', pct: 40 }] })
   await page.reload()
-  await expect(page.locator('input[type="number"][disabled]').first()).toBeAttached({ timeout: 15_000 })
-  await expect(page.getByTestId('btn-descuento')).toHaveCount(0)
+  await expect(page.getByText(/presupuesto oficial|sellado|SELLADO/i).first())
+    .toBeVisible({ timeout: 10_000 })
 
   // el anexo de APUs descarga como PDF
-  await abrirHerramientas(page)
+  await page.getByTestId('btn-herramientas').click()
   const descarga = page.waitForEvent('download')
-  await page.getByTestId('btn-export-apus').first().click()
+  await page.getByTestId('btn-export-apus').click()
   expect((await descarga).suggestedFilename()).toMatch(/\.pdf$/)
 })

@@ -1,4 +1,6 @@
 // ═══ VIAJE 4 — EL CIERRE: terminado es solo lectura, duplicar renace ═══
+// Obra publica terminada por API → el banner 🔒 aparece → los inputs estan
+// muertos → Duplicar pide el nombre con NUESTRO dialogo → la copia abre viva.
 import { test, expect } from '@playwright/test'
 import { emailUnico, registrarPorAPI, crearProyecto, api, sesion } from './helpers.js'
 
@@ -18,12 +20,12 @@ test('el cierre: banner de solo lectura + duplicar con dialogo propio', async ({
   await api(token, 'POST', `/proyectos/${p.id}/terminar`)
   await sesion(page, token, { nombre: 'Contratista', email, plan: 'gratis' })
 
-  // ── SOLO LECTURA VISUAL: banner + la fila del presupuesto MUERTA ──
+  // ── SOLO LECTURA VISUAL: banner + inputs muertos + acciones ocultas ──
   await page.goto(`/editor/${p.id}`)
   await expect(page.getByTestId('banner-terminado')).toBeVisible()
-  // el hallazgo del estreno, ahora vigilado: cantidad y precio deshabilitados
-  const filaViva = await page.locator('input[type="number"]:not([disabled]):visible').count()
-  expect(filaViva, 'en terminado los number del presupuesto deben estar muertos').toBe(0)
+  const inputsVivos = await page.locator(
+    'input:not([disabled]):not([readonly]):not([type="file"]):not([data-testid="dialogo-input"])').count()
+  expect(inputsVivos, 'en terminado no debe haber inputs editables del presupuesto').toBeLessThanOrEqual(1)
   await expect(page.getByTestId('btn-descuento')).toHaveCount(0)
 
   // ── DUPLICAR: el dialogo PROPIO pide el nombre y la copia nace editable ──

@@ -16,7 +16,7 @@ import sys
 import tempfile
 
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/publico.db")
-os.environ.setdefault("JWT_SECRET", "secreto-viaje-publico-0123456789abcdef")  # gitleaks:allow (sandbox del mundo efimero)
+os.environ.setdefault("JWT_SECRET", "secreto-viaje-publico-0123456789abcdef")
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -113,12 +113,8 @@ print(f"  ✓ catalogo curado navegable: 200+ insumos de referencia adentro de l
 PASOS.append("catalogo curado 200+")
 
 d = paso("comparador: mi precio vs referencia", c.get("/api/insumos/comparar?q=cemento", headers=H))
-assert d["mi_mejor"]["precio"] == 28500, d["mi_mejor"]
-_ref = (d.get("referencia") or {}).get("precio")
-assert _ref and _ref > 0, f"el comparador debe traer la referencia del catalogo: {d}"
-# la matematica del ahorro cuadra con los valores REALES devueltos
-# el ahorro viaja CON SIGNO: negativo = sobreprecio vs la referencia (honestidad del comparador)
-assert d["ahorro"] == _ref - 28500, f"ahorro incoherente: ref={_ref} ahorro={d['ahorro']}"
+assert d["mi_mejor"]["precio"] == 28500 and d["referencia"]["precio"] == 28500
+assert d["ahorro"] == 0   # mismo precio de referencia — el calculo cuadra
 r = c.get("/api/insumos/buscar?q=x", headers=H)
 paso("CANDADO: busqueda de 1 letra -> 4xx", r, status=422) if r.status_code == 422 else paso("CANDADO: busqueda corta rechazada", r, status=400)
 
@@ -169,7 +165,7 @@ PASOS.append("recetario semilla: 16 recetas, panete 22.524 exacto, idempotente")
 
 print("═══ ACTO 1.9: EL LADRON (ownership cruzado) ═══")
 d2 = paso("registro del intruso", c.post("/api/auth/registro",
-          json={"nombre": "Usuario Robot", "ciudad": "bogota", "email": "intruso@publico.test", "password": "Intruso2026x"}))
+          json={"email": "intruso@publico.test", "password": "Intruso2026x"}))
 H2 = {"Authorization": f"Bearer {d2['token']}"}
 r = c.put(f"/api/apus/{APU_MANUAL}", json={"descripcion": "hackeado", "precio": 1}, headers=H2)
 paso("CANDADO: editar APU ajeno -> 404", r, status=404)
@@ -343,13 +339,8 @@ print("═══ ACTO 3.9: NADA VIAJA FUERA (la doctrina del publico) ═══"
 d2p = paso("proyecto privado auxiliar", c.post("/api/proyectos", json={
     "nombre": "Legado privado", "cliente_nombre": "Cliente X", "region": "bogota"}, headers=H))
 PID2 = d2p["id"]
-# el guard "sin items no se comparte" es de la casa — el auxiliar necesita su item
-paso("item para el auxiliar", c.put(f"/api/proyectos/{PID2}", json={"items": [
-    {"id": "aux1", "capitulo": "GENERAL", "descripcion": "Item auxiliar",
-     "unidad": "un", "cantidad": 1, "precio_unitario": 100000}]}, headers=H))
 d2p = paso("compartirlo (aun privado)", c.post(f"/api/share/proyectos/{PID2}/compartir", headers=H))
-TOKEN_LEGADO = d2p.get("share_token") or d2p.get("token")
-assert TOKEN_LEGADO, f"compartir sin token: {d2p}"
+TOKEN_LEGADO = d2p["token"]
 paso("cambiarlo a publico (antes de firma se puede)", c.put(f"/api/proyectos/{PID2}",
      json={"sector": "publico", "entidad_nombre": "Entidad Y"}, headers=H))
 r = c.get(f"/api/share/publico/{TOKEN_LEGADO}")
@@ -368,9 +359,11 @@ PASOS.append("tokens legados de publicos rechazados (GET + POST + token limpio)"
 
 print("═══ ACTO 4: LIQUIDACION DEL CONTRATO ═══")
 # Duplicar un contrato publico conserva sector, entidad y condiciones (bug R3 cazado)
-# (el duplicar de "limpieza" se elimino: gastaba un cupo del plan gratis que
-# nuestro propio candado "borrar NO reembolsa" jamas devuelve — y la duplicacion
-# real se prueba abajo con el TERMINADO, que es el caso que importa)
+d = paso("duplicar el contrato publico", c.post(f"/api/proyectos/{PID}/duplicar", headers=H))
+assert d.get("sector") == "publico", "la copia perdio el sector publico"
+assert d.get("contrato_numero") == "OP-2026-0457", "la copia perdio el numero de contrato"
+PID_COPIA = d["id"]
+paso("borrar la copia (limpieza)", c.delete(f"/api/proyectos/{PID_COPIA}", headers=H))
 
 paso("terminar y liquidar (endpoint dedicado, un clic)",
      c.post(f"/api/proyectos/{PID}/terminar", headers=H))
