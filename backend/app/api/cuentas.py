@@ -250,7 +250,6 @@ def cobrar_retegarantia(pid: int, user: Usuario = Depends(usuario_actual),
     if acumulada <= 0:
         raise HTTPException(400, "Este contrato no tuvo retegarantia")
     c = CuentaCobro(
-        user_id=user.id,
         proyecto_id=p.id, numero=_numero_cc(user, db), avance_id=None,
         valor_corte=acumulada, anticipo_pct=0, amortizacion=0,
         retencion=0, neto=acumulada, tipo="retegarantia",

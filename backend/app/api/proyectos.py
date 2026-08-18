@@ -447,11 +447,11 @@ def eliminar(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sess
         raise HTTPException(404, "Proyecto no encontrado")
     # CASCADA COMPLETA en orden de dependencias (Postgres exige el orden; sqlite lo agradece)
     from app.db import (Abono, CuentaCobro, InteraccionCliente, Encuesta,
-                        Gasto, Otrosi, Avance, Notificacion, Diseno)
+                        Gasto, Otrosi, Avance, Notificacion)
     ids_cuentas = [c_.id for c_ in db.query(CuentaCobro.id).filter(CuentaCobro.proyecto_id == p.id).all()]
     if ids_cuentas:
         db.query(Abono).filter(Abono.cuenta_id.in_(ids_cuentas)).delete(synchronize_session=False)
-    for Modelo in (InteraccionCliente, EventoShare, Encuesta, Gasto, Otrosi, Avance, CuentaCobro, Notificacion, Diseno):
+    for Modelo in (InteraccionCliente, EventoShare, Encuesta, Gasto, Otrosi, Avance, CuentaCobro, Notificacion):
         db.query(Modelo).filter(Modelo.proyecto_id == p.id).delete(synchronize_session=False)
     db.delete(p)
     db.commit()
