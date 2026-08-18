@@ -9,6 +9,11 @@ test('humo: login por UI, KPIs pintan, badges y modales viven', async ({ page })
   const token = await registrarPorAPI(email)
   await crearProyecto(token, { nombre: 'Obra de humo' })
 
+  // LA VITRINA: la landing recibe al visitante con su hero vivo
+  await page.goto('/')
+  await expect(page.getByTestId('landing-hero')).toBeVisible()
+  await expect(page.getByText('Crear cuenta gratis').first()).toBeVisible()
+
   // LOGIN COMO HUMANO (el unico viaje que lo hace por UI, a proposito)
   await page.goto('/login')
   await page.getByTestId('auth-email').fill(email)

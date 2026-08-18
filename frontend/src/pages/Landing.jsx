@@ -80,6 +80,107 @@ function ApuVivo() {
   )
 }
 
+
+// ── LOS MINI-MOCKS del showcase: cada herramienta, viva ──
+function MockAnalisis() {
+  return (
+    <div className="text-slate-700">
+      <p className="text-[10px] font-bold text-violet-600 mb-2">🔬 ANÁLISIS — Pañete 1:4 muros</p>
+      {[['Cemento gris', '0.35 bulto', '28.500'], ['Arena lavada', '0.04 m³', '65.000'], ['M. de obra', 'of + ayud', '9.000']].map(([n, c, p]) => (
+        <div key={n} className="flex items-center gap-2 text-[11px] py-1 border-b border-slate-100">
+          <span className="flex-1 font-medium">{n}</span>
+          <span className="text-slate-400">{c}</span>
+          <span className="bg-slate-100 rounded px-1.5 py-0.5 font-mono">${p}</span>
+        </div>
+      ))}
+      <div className="flex gap-2 mt-2.5">
+        <span className="flex-1 text-center text-[10px] font-bold border border-violet-300 text-violet-700 rounded-lg py-1.5">💾 Guardar</span>
+        <span className="flex-1 text-center text-[10px] font-bold bg-violet-600 text-white rounded-lg py-1.5 animate-pulse">⚡ Aplicar al ítem</span>
+      </div>
+    </div>
+  )
+}
+function MockRecetario() {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {['Pañete 1:4', 'Mampostería e=12', 'Estuco + pintura', 'Enchape piso'].map(r => (
+        <div key={r} className="bg-amber-50 border border-amber-200 rounded-xl p-2.5">
+          <p className="text-[11px] font-bold text-slate-700">{r}</p>
+          <p className="text-[9px] text-amber-700">receta lista — ajusta TUS precios</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+function MockDescuento() {
+  return (
+    <div className="text-center py-2">
+      <p className="text-[10px] font-bold text-slate-500">Negociación del cliente</p>
+      <p className="text-lg text-slate-400 line-through mt-1">$3.275.000</p>
+      <p className="text-2xl font-black text-emerald-600">$3.111.250 <span className="text-[11px] bg-emerald-100 rounded-full px-2 py-0.5 align-middle">−5%</span></p>
+      <p className="text-[9px] text-slate-400 mt-1.5">prorrateado ítem por ítem — el precio de lista queda guardado</p>
+    </div>
+  )
+}
+function MockDisenos() {
+  return (
+    <div>
+      <div className="h-16 rounded-xl bg-gradient-to-br from-rose-300 to-orange-200 mb-2 flex items-end p-1.5">
+        <span className="text-[9px] bg-white/90 rounded px-1.5 py-0.5 font-bold text-slate-600">Render sala — opción 1</span>
+      </div>
+      <div className="flex items-start gap-1.5">
+        <span className="text-xs">💬</span>
+        <p className="text-[10px] bg-slate-100 rounded-xl px-2 py-1.5 text-slate-600">"Me gusta, pero en gris" — <strong>tu cliente</strong></p>
+      </div>
+    </div>
+  )
+}
+function MockIncidencia() {
+  return (
+    <div className="space-y-1.5 py-1">
+      {[['ESTRUCTURA', 46, 'bg-navy-500'], ['ACABADOS', 31, 'bg-amber-500'], ['INSTALACIONES', 23, 'bg-emerald-500']].map(([c, p, col]) => (
+        <div key={c} className="flex items-center gap-2 text-[10px]">
+          <span className="w-24 font-bold text-slate-500">{c}</span>
+          <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className={`h-full ${col} rounded-full`} style={{ width: `${p}%` }} />
+          </div>
+          <span className="w-8 text-right font-bold text-slate-600">{p}%</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+function MockExplosion() {
+  return (
+    <div className="text-[11px]">
+      <p className="text-[10px] font-bold text-amber-700 mb-1.5">🧱 LISTA DE COMPRA — 100 m²</p>
+      {[['Cemento gris', '36,75 bultos', '$1.047.375'], ['Arena lavada', '4,2 m³', '$273.000']].map(([n, c, v]) => (
+        <div key={n} className="flex justify-between py-1 border-b border-slate-100">
+          <span className="font-medium text-slate-700">{n}</span><span className="text-slate-500">{c}</span>
+          <span className="font-bold text-slate-700">{v}</span>
+        </div>
+      ))}
+      <p className="text-[9px] text-slate-400 mt-1.5">con desperdicio incluido — lo que compras, no lo que sueñas</p>
+    </div>
+  )
+}
+function MockActas() {
+  return (
+    <div className="text-[11px]">
+      {[['Corte de obra', '$6.227.160', 'text-slate-700'], ['− Amortización', '$1.868.148', 'text-red-500'],
+        ['− Rete + deducciones', '$1.307.703', 'text-red-500']].map(([t, v, c]) => (
+        <div key={t} className="flex justify-between py-0.5"><span className="text-slate-500">{t}</span>
+          <span className={`font-bold ${c}`}>{v}</span></div>
+      ))}
+      <div className="flex justify-between mt-1.5 pt-1.5 border-t-2 border-emerald-200">
+        <span className="font-black text-slate-700">NETO</span>
+        <span className="font-black text-emerald-600">$3.051.309</span>
+      </div>
+    </div>
+  )
+}
+const MOCKS_DOCK = [MockAnalisis, MockRecetario, MockDescuento, MockDisenos, MockIncidencia, MockExplosion, MockActas]
+
 // ── EL DOCK: las herramientas que se magnifican ──
 const HERRAMIENTAS = [
   { e: '🔬', t: 'Análisis unitario', d: 'Edita el APU con TUS precios y ⚡ aplica' },
@@ -90,7 +191,7 @@ const HERRAMIENTAS = [
   { e: '🧱', t: 'Explosión', d: 'Cuántos bultos comprar, con desperdicio' },
   { e: '💵', t: 'Actas', d: 'Anticipo, cortes, rete y deducciones a peso' },
 ]
-function Dock() {
+function Dock({ sel, setSel }) {
   const [cerca, setCerca] = useState(-1)
   return (
     <div className="flex items-end justify-center gap-1.5 sm:gap-2" onMouseLeave={() => setCerca(-1)}>
@@ -99,14 +200,8 @@ function Dock() {
         const esc = d === 0 ? 1.45 : d === 1 ? 1.18 : 1
         return (
           <div key={h.t} className="relative flex flex-col items-center"
-               onMouseEnter={() => setCerca(i)}>
-            {cerca === i && (
-              <div className="absolute bottom-full mb-3 w-48 bg-white rounded-xl shadow-2xl border border-slate-200 p-3 text-center animate-[aparecer_.2s_ease-out] z-10">
-                <p className="text-xs font-bold text-slate-800">{h.t}</p>
-                <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{h.d}</p>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white" />
-              </div>
-            )}
+               onMouseEnter={() => { setCerca(i); setSel(i) }} onClick={() => setSel(i)}>
+            {sel === i && <span className="absolute -bottom-2 w-1 h-1 rounded-full bg-amber-400" />}
             <div style={{ transform: `scale(${esc}) translateY(${d === 0 ? -10 : d === 1 ? -4 : 0}px)` }}
                  className="w-11 h-11 sm:w-13 sm:h-13 bg-white/90 backdrop-blur border border-slate-200 rounded-2xl
                             flex items-center justify-center text-xl sm:text-2xl shadow-lg cursor-pointer
@@ -226,6 +321,72 @@ function Marquee() {
   )
 }
 
+
+function DockShowcase() {
+  const [sel, setSel] = useState(0)
+  const Mock = MOCKS_DOCK[sel]
+  return (
+    <div className="max-w-2xl mx-auto mt-10">
+      <div className="bg-white rounded-2xl shadow-2xl shadow-navy-900/50 border border-slate-200 overflow-hidden text-left">
+        <div className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+          <span className="w-2.5 h-2.5 rounded-full bg-red-300" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
+          <span className="text-[10px] text-slate-400 ml-2 font-medium">{HERRAMIENTAS[sel].e} {HERRAMIENTAS[sel].t} — {HERRAMIENTAS[sel].d}</span>
+        </div>
+        <div key={sel} className="p-5 min-h-[168px] animate-[aparecer_.35s_ease-out]">
+          <Mock />
+        </div>
+      </div>
+      <div className="mt-6 pb-4"><Dock sel={sel} setSel={setSel} /></div>
+    </div>
+  )
+}
+
+
+function SeccionSeguimiento() {
+  const [ref, visto] = useEnVista()
+  const EVENTOS = [
+    { e: '👁️', t: 'María abrió tu presupuesto', d: 'hace 2 minutos', c: 'border-sky-200 bg-sky-50' },
+    { e: '🎨', t: 'Vio los diseños del proyecto', d: 'render sala — opción 1', c: 'border-violet-200 bg-violet-50' },
+    { e: '💬', t: '"Me gusta, pero en gris"', d: 'comentó el diseño — puedes responderle', c: 'border-amber-200 bg-amber-50' },
+    { e: '✍️', t: 'Firmó el contrato', d: 'Ley 527 · evidencia guardada · la obra ARRANCA', c: 'border-emerald-300 bg-emerald-50' },
+  ]
+  return (
+    <section ref={ref} className="py-20 px-5 bg-navy-800">
+      <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <p className="text-[10px] font-black tracking-widest text-sky-400">🏠 OBRA PRIVADA · SEGUIMIENTO</p>
+          <h2 className="text-2xl sm:text-3xl font-black mt-2">Sabes qué hace tu cliente con tu propuesta</h2>
+          <p className="text-navy-200 mt-3 text-sm leading-relaxed max-w-md">
+            Se acabó el "¿ya lo viste?". Cada apertura, cada comentario y cada firma
+            te llega como notificación — y la bitácora comercial guarda la historia completa
+            para tu follow-up.
+          </p>
+          <ul className="mt-5 space-y-2 text-sm text-navy-100">
+            <li>🔔 Notificación cuando lo abre, comenta o firma</li>
+            <li>📔 Bitácora: la historia de cada negociación</li>
+            <li>📈 Tasa de cierre por cliente — a quién sí cotizarle</li>
+          </ul>
+        </div>
+        <div className="space-y-3 max-w-md w-full mx-auto">
+          {EVENTOS.map((ev, i) => (
+            <div key={ev.t} style={{ transitionDelay: `${i * 400}ms` }}
+                 className={`flex items-start gap-3 border rounded-2xl px-4 py-3 text-slate-700 shadow-lg transition-all duration-500
+                             ${ev.c} ${visto ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'}`}>
+              <span className="text-xl">{ev.e}</span>
+              <div>
+                <p className="text-sm font-bold">{ev.t}</p>
+                <p className="text-[11px] text-slate-500">{ev.d}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 // ═══════════════════════════ LA PÁGINA ═══════════════════════════
 export default function Landing() {
   const [refU, vistoU] = useEnVista()
@@ -293,11 +454,11 @@ export default function Landing() {
 
       <Marquee />
 
-      {/* EL DOCK */}
+      {/* EL DOCK 2.0: showcase con pantalla viva */}
       <section className="py-20 px-5 text-center">
         <h2 className="text-2xl sm:text-3xl font-black">Las herramientas de la obra, en un solo lugar</h2>
-        <p className="text-navy-300 mt-2 text-sm">Pasa el mouse — cada una hace el trabajo pesado.</p>
-        <div className="mt-12 pb-6"><Dock /></div>
+        <p className="text-navy-300 mt-2 text-sm">Toca cada herramienta — la pantalla te la muestra viva.</p>
+        <DockShowcase />
       </section>
 
       {/* LOS DOS UNIVERSOS */}
@@ -337,6 +498,46 @@ export default function Landing() {
         </div>
       </section>
 
+
+      {/* EL SEGUIMIENTO DEL CLIENTE — la pelicula */}
+      <SeccionSeguimiento />
+
+      {/* LAS TRES VIAS DEL APU */}
+      <section className="py-20 px-5">
+        <div className="max-w-6xl mx-auto text-center">
+          <h2 className="text-2xl sm:text-3xl font-black">Tu APU, por el camino que quieras</h2>
+          <p className="text-navy-300 mt-2 text-sm">Los tres llegan al mismo lugar: TU precio, con TU realidad.</p>
+          <div className="mt-10 grid md:grid-cols-3 gap-5 text-left">
+            <div className="bg-white rounded-3xl p-5 text-slate-700 shadow-xl hover:-translate-y-1.5 transition-transform duration-300">
+              <p className="text-[10px] font-black tracking-widest text-navy-500">📦 DESDE LA BASE 2026</p>
+              <p className="text-sm font-bold mt-2">2.288 actividades con desglose</p>
+              <div className="mt-3 bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1">
+                <p className="flex justify-between"><span>1.01 Pañete 1:4 muros</span><strong>$22.524</strong></p>
+                <p className="flex justify-between text-slate-400"><span>2.14 Mampostería e=12</span><span>$68.900</span></p>
+                <p className="text-[9px] text-amber-600 font-bold">→ duplícala como TUYA y ajusta precios</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-3xl p-5 text-slate-700 shadow-xl hover:-translate-y-1.5 transition-transform duration-300 ring-2 ring-amber-400/60">
+              <p className="text-[10px] font-black tracking-widest text-amber-600">🧱 EL CONSTRUCTOR</p>
+              <p className="text-sm font-bold mt-2">Desde tus insumos y proveedores</p>
+              <div className="mt-3 bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1">
+                <p className="flex justify-between"><span>Cemento — Ferretería El Éxito</span><strong>$28.500</strong></p>
+                <p className="flex justify-between"><span>+ desperdicio 5% + M.O. + transporte</span><span>—</span></p>
+                <p className="flex justify-between font-black text-emerald-600"><span>Precio compuesto</span><span>$24.024</span></p>
+              </div>
+            </div>
+            <div className="bg-white rounded-3xl p-5 text-slate-700 shadow-xl hover:-translate-y-1.5 transition-transform duration-300">
+              <p className="text-[10px] font-black tracking-widest text-emerald-600">🍳 EL RECETARIO</p>
+              <p className="text-sm font-bold mt-2">16 recetas para arrancar HOY</p>
+              <div className="mt-3 bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1">
+                <p>✓ Pañete, mampostería, estuco, enchape…</p>
+                <p>✓ Cada una editable en el 🔬</p>
+                <p className="text-[9px] text-amber-600 font-bold">→ tu primer presupuesto en minutos</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
       {/* EL ACTA QUE SE LIQUIDA */}
       <section className="py-20 px-5 bg-navy-800">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
@@ -357,6 +558,29 @@ export default function Landing() {
         </div>
       </section>
 
+
+      {/* EL BENTO: todo lo demas que trabaja por ti */}
+      <section className="py-20 px-5 bg-navy-800">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl font-black text-center">Y todo lo demás que trabaja por ti</h2>
+          <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              ['📗', 'Excel del formato oficial', '3 hojas: presupuesto, memoria de cantidades y materiales — como lo pide la entidad'],
+              ['📑', 'Anexo de APUs en PDF', 'La propuesta 100% sustentada, con tu logo'],
+              ['⚖️', 'Comparador de precios', 'Tu proveedor vs la referencia — con el sobreprecio a la vista'],
+              ['🚨', 'Vigía de deducciones', 'Ley 1106 al 9%? Te avisa y lo corrige con un clic'],
+              ['🚦', 'Cartera por edades', 'Cada acta sin pagar con su semáforo 🟢🟠🔴'],
+              ['⚠️', 'Vigía de precios viejos', 'Un precio de hace 8 meses no cotiza una obra de hoy'],
+            ].map(([e2, t, d]) => (
+              <div key={t} className="group bg-navy-700/50 border border-navy-600/60 rounded-2xl p-5 hover:border-amber-500/50 hover:bg-navy-700/80 transition-all duration-300">
+                <span className="text-2xl">{e2}</span>
+                <p className="text-sm font-bold mt-2 group-hover:text-amber-300 transition">{t}</p>
+                <p className="text-[11px] text-navy-300 mt-1 leading-snug">{d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
       {/* LOS ROBOTS */}
       <section className="py-20 px-5">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
