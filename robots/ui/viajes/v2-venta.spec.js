@@ -25,7 +25,7 @@ test('la venta: diseno → enlace → cliente comenta y firma → candado', asyn
   await page.keyboard.press('Escape')
 
   const share = await api(token, 'POST', `/share/proyectos/${p.id}/compartir`)
-  const t = share.token || (share.url || '').split('/p/').pop()
+  const t = share.share_token || (share.ruta_publica || '').split('/p/').pop()
 
   // ── EL CLIENTE (otro navegador): ve, comenta y FIRMA en el pad ──
   const ctx = await browser.newContext()

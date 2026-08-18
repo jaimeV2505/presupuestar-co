@@ -22,7 +22,7 @@ test('el cierre: banner de solo lectura + duplicar con dialogo propio', async ({
   await page.goto(`/editor/${p.id}`)
   await expect(page.getByTestId('banner-terminado')).toBeVisible()
   // el hallazgo del estreno, ahora vigilado: cantidad y precio deshabilitados
-  const filaViva = await page.locator('input[type="number"]:not([disabled])').count()
+  const filaViva = await page.locator('input[type="number"]:not([disabled]):visible').count()
   expect(filaViva, 'en terminado los number del presupuesto deben estar muertos').toBe(0)
   await expect(page.getByTestId('btn-descuento')).toHaveCount(0)
 

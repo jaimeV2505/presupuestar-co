@@ -16,6 +16,7 @@ test('el maestro: del recetario al Excel, en el celular', async ({ page }) => {
 
   // 1) buscador → constructor → RECETARIO
   await page.getByTestId('abrir-buscador').click()
+  await page.getByText('⭐ Mis APUs').click()          // el constructor vive en MI pestana
   await page.getByTestId('btn-abrir-constructor').click()
   await page.getByTestId('btn-recetario').click()
 
