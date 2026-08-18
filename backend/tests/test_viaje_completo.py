@@ -154,6 +154,11 @@ PASOS.append("disenos: subir con topes, cliente ve+comenta, hilo bidireccional, 
 TOTAL = round(d["totales"]["total"])
 print(f"     total del contrato: ${TOTAL:,}")
 
+# 🔒 EL AVANCE ES DEL CONTRATO: sin firma no hay obra que avanzar
+r = c.post(f"/api/avances/proyectos/{PID}/avances",
+           json={"titulo": "avance sin firma", "items": [{"id": "it1", "pct": 50}]}, headers=H)
+paso("CANDADO: avance en privado SIN firma -> 400", r, status=400)
+
 d = paso("compartir devuelve ruta con preview OG", c.post(f"/api/share/proyectos/{PID}/compartir", headers=H),
          contiene=["ruta_preview"])
 
@@ -165,6 +170,10 @@ r = c.put(f"/api/proyectos/{PID}", json={"items": ITEMS[:1]}, headers=H)
 paso("CANDADO: editar tras la firma -> 400", r, status=400)
 r = c.put(f"/api/proyectos/{PID}", json={"estado": "borrador"}, headers=H)
 paso("CANDADO: degradar el estado tras la firma -> 400 (el sello no se retrocede)", r, status=400)
+r = c.put(f"/api/proyectos/{PID}", json={"aiu": {"admin": 30, "imprevistos": 10, "utilidad": 20}}, headers=H)
+paso("CANDADO: el AIU tambien queda sellado con la firma -> 400", r, status=400)
+r = c.put(f"/api/proyectos/{PID}", json={"contrato": {"anticipo_pct": 90, "retegarantia_pct": 0}}, headers=H)
+paso("CANDADO: las condiciones del contrato selladas (rete no se baja a 0) -> 400", r, status=400)
 
 print("═══ ACTO 3: LA OBRA ═══")
 d = paso("avance 40% (it1 100%, it2 ~44%)", c.post(f"/api/avances/proyectos/{PID}/avances", json={
@@ -282,6 +291,10 @@ PASOS.append("pendientes reportados visibles al ing")
 
 paso("solicitar entrega (2do intento, pendientes resueltos)",
      c.put(f"/api/proyectos/{PID}", json={"estado": "entrega_solicitada"}, headers=H))
+r = c.put(f"/api/proyectos/{PID}", json={"aiu": {"admin": 5}}, headers=H)
+paso("CANDADO: AIU sellado tambien en ENTREGA -> 400", r, status=400)
+r = c.put(f"/api/proyectos/{PID}", json={"contrato": {"deducciones": []}}, headers=H)
+paso("CANDADO: deducciones intocables en ENTREGA -> 400", r, status=400)
 paso("el cliente confirma (acta bilateral)", c.post(f"/api/share/publico/{TOKEN}/confirmar-entrega",
      json={"nombre": "Dona Prueba", "documento": "51222333", "firma_imagen": ""}))
 r = c.get(f"/api/share/publico/{TOKEN}/acta.pdf")

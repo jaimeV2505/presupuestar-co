@@ -404,6 +404,9 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
         p.items_json = json.dumps(items_validos, ensure_ascii=False)
 
     if req.contrato is not None:
+        if p.estado in ("aceptado", "entrega_solicitada"):
+            raise HTTPException(400, "Las condiciones del contrato (anticipo, retegarantia, plazo, "
+                                     "deducciones) se pactaron con la firma — cambios via adicionales")
         c = req.contrato
         cfg = {
             "plazo_dias": max(1, min(720, int(c.get("plazo_dias") or 45))),
@@ -421,8 +424,8 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
         p.contrato_json = json.dumps(cfg, ensure_ascii=False)
 
     if req.aiu is not None:
-        if p.estado == "aceptado":
-            raise HTTPException(400, "Este presupuesto ya fue firmado — para cambios, duplica el proyecto")
+        if p.estado in ("aceptado", "entrega_solicitada"):
+            raise HTTPException(400, "El AIU quedo pactado con la firma — cambios via adicionales (otrosi)")
         aiu_limpio = {
             "admin": max(0, min(50, float(req.aiu.get("admin", 15) or 0))),
             "imprevistos": max(0, min(30, float(req.aiu.get("imprevistos", 5) or 0))),

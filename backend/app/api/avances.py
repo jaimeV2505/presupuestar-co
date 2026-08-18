@@ -120,6 +120,9 @@ def crear(proyecto_id: int, req: AvanceCreate,
 
     if p.estado == "terminado":
         raise HTTPException(400, "La obra ya fue entregada — el proyecto es de solo lectura (duplicalo para una obra nueva)")
+    if (p.sector or "privado") != "publico" and p.estado not in ("aceptado", "entrega_solicitada"):
+        raise HTTPException(400, "El avance pertenece al CONTRATO, no a la propuesta — "
+                                 "primero comparte el enlace y espera la firma de tu cliente")
 
     if not req.titulo.strip():
         raise HTTPException(400, "El avance necesita un titulo (ej: 'Corte semana 3')")
