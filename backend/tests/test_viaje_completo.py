@@ -338,6 +338,16 @@ assert _du[0]["real"] == _mm2["total_ganado"] - 500_000, \
     f"realizada incoherente: real={_du[0]['real']} vs ganado-gastos={_mm2['total_ganado']-500_000}"
 assert _du[0]["delta"] == _du[0]["real"] - _du[0]["proyectada"]
 assert (_mm2.get("desglose") or {}).get("utilidad_realizada") == _du[0]["real"]
+# 🎯 PARA HOY: las fuentes son REALES y coherentes con este mundo
+_dg2 = _mm2["desglose"]
+assert "por_responder" in _dg2 and "precios_viejos_n" in _dg2, "faltan las fuentes del PARA HOY"
+assert all(x["dias"] >= 0 and x["id"] for x in _dg2["por_responder"])
+assert all("proyecto_id" in x for x in _dg2["cartera"]), "la cartera sin proyecto_id no puede linkear el cobro"
+# el PID esta terminado CON gastos -> NO debe pedir 'registra costos' (real presente)
+assert _du[0]["real"] is not None
+# y ningun enviado/visto de este mundo es fantasma: cada uno existe de verdad
+for _pr in _dg2["por_responder"]:
+    assert c.get(f"/api/proyectos/{_pr['id']}", headers=H).status_code == 200, "PARA HOY apunta a un proyecto fantasma"
 PASOS.append("utilidad en dos verdades: proyectada vs REALIZADA (contrato - gastos) a peso")
 # 📊 EL ANALISIS cuadra con las metricas: la serie mensual suma lo mismo (partida doble)
 _an = paso("analisis mensual", c.get("/api/proyectos/analisis?meses=12", headers=H))

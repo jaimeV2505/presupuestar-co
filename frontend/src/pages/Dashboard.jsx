@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate , Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { pedirTexto, confirmarDialogo } from '../components/Dialogo'
 import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2, LifeBuoy, Camera, X, Bell, TrendingUp, Users } from 'lucide-react'
@@ -108,6 +108,52 @@ function VistaAnalisis() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+
+function ParaHoy({ metricas }) {
+  const dg = metricas?.desglose || {}
+  const acciones = []
+  // 📞 COBRO: actas con +30 dias (la cartera real, la mas vieja primero)
+  for (const a of (dg.cartera || []).filter(x => x.dias > 30).slice(0, 2)) {
+    acciones.push({ e: '📞', pri: 1, link: `/editor/${a.proyecto_id}`,
+      txt: <>El acta <strong>{a.numero}</strong> de <strong>{a.proyecto}</strong> lleva <strong className="text-red-500">{a.dias} días</strong> sin pago ({COP(a.neto)}) — cóbrala</> })
+  }
+  // 👀 FOLLOW-UP: enviados/vistos con +3 dias sin movimiento (eventos reales)
+  for (const s of (dg.por_responder || []).filter(x => x.dias >= 3).slice(0, 2)) {
+    acciones.push({ e: '👀', pri: 2, link: `/editor/${s.id}`,
+      txt: <><strong>{s.cliente || s.nombre}</strong> {s.estado === 'visto' ? 'vio tu presupuesto' : 'recibió tu presupuesto'} hace <strong>{s.dias} días</strong> y no ha respondido — haz follow-up</> })
+  }
+  // 🏁 MARGEN: terminados sin gastos registrados (del desglose real)
+  for (const u of (dg.utilidad || []).filter(x => x.tipo === 'terminado' && (x.real === null || x.real === undefined)).slice(0, 1)) {
+    acciones.push({ e: '🏁', pri: 3, link: `/editor/${u.id}`,
+      txt: <>Terminaste <strong>{u.nombre}</strong> sin registrar costos — captura los gastos para ver tu margen real</> })
+  }
+  // ⚠️ PRECIOS: el conteo real de precios con +6 meses
+  if ((dg.precios_viejos_n || 0) > 0) {
+    acciones.push({ e: '⚠️', pri: 4, link: null,
+      txt: <><strong>{dg.precios_viejos_n}</strong> {dg.precios_viejos_n === 1 ? 'precio de proveedor tiene' : 'precios de proveedor tienen'} más de 6 meses — actualízalos antes de cotizar</> })
+  }
+  acciones.sort((a, b) => a.pri - b.pri)
+  const lista = acciones.slice(0, 4)
+  return (
+    <div data-testid="para-hoy" className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-4">
+      <p className="text-[10px] font-black tracking-widest text-slate-400 mb-2.5">🎯 PARA HOY</p>
+      {lista.length === 0 ? (
+        <p className="text-sm text-emerald-600 font-medium">✅ Al día — nada urgente hoy. A cotizar la próxima obra.</p>
+      ) : (
+        <div className="space-y-2">
+          {lista.map((a, i) => (
+            <div key={i} className="flex items-start gap-2.5 text-[13px] text-slate-600">
+              <span className="text-base leading-none mt-0.5">{a.e}</span>
+              <span className="flex-1 leading-snug">{a.txt}</span>
+              {a.link && <Link to={a.link} className="shrink-0 text-[11px] font-bold text-navy-600 border border-navy-200 rounded-lg px-2.5 py-1 hover:bg-navy-50 transition">Ir →</Link>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -311,6 +357,7 @@ export default function Dashboard() {
         </div>
         {pestana === 'analisis' && <VistaAnalisis />}
         {pestana === 'inicio' && <>
+        {metricas && <ParaHoy metricas={metricas} />}
         {metricas && metricas.n_presupuestos > 0 && (
           <div className="mb-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">

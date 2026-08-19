@@ -31,6 +31,10 @@ test('humo: login por UI, KPIs pintan, badges y modales viven', async ({ page })
 
   await expect(page.getByTestId('kpi-3')).toContainText('%')
   // las tarjetas se ABREN: donde vive cada numero
+  // 🎯 PARA HOY: el panel vive y habla con datos (o declara el 'al dia')
+  await expect(page.getByTestId('para-hoy')).toBeVisible()
+  await expect(page.getByTestId('para-hoy')).toContainText('PARA HOY')
+
   // la pestaña de ANALISIS: la grafica mensual respira
   await page.getByTestId('tab-analisis').click()
   await expect(page.getByTestId('vista-analisis')).toBeVisible()
@@ -40,6 +44,10 @@ test('humo: login por UI, KPIs pintan, badges y modales viven', async ({ page })
   await page.getByTestId('kpi-0').click()
   await expect(page.getByTestId('kpi-detalle')).toBeVisible()
   await expect(page.getByTestId('kpi-detalle')).toContainText('Obra de humo')
+  // 🎯 PARA HOY: el panel vive y habla con datos (o declara el 'al dia')
+  await expect(page.getByTestId('para-hoy')).toBeVisible()
+  await expect(page.getByTestId('para-hoy')).toContainText('PARA HOY')
+
   // la pestaña de ANALISIS: la grafica mensual respira
   await page.getByTestId('tab-analisis').click()
   await expect(page.getByTestId('vista-analisis')).toBeVisible()

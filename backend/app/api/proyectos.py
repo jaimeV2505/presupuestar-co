@@ -270,6 +270,31 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
             en_ejecucion_n += 1
 
     from app.db import CuentaCobro, Gasto
+    # PARA HOY: los enviados/vistos que esperan respuesta — edad del ultimo evento REAL
+    _pids_espera = [x.id for x in proyectos if x.estado in ("enviado", "visto")]
+    _ultimo_evento = {}
+    if _pids_espera:
+        for ev in db.query(EventoShare).filter(EventoShare.proyecto_id.in_(_pids_espera)).all():
+            f = ev.creado.replace(tzinfo=None) if ev.creado else None
+            if f and (ev.proyecto_id not in _ultimo_evento or f > _ultimo_evento[ev.proyecto_id]):
+                _ultimo_evento[ev.proyecto_id] = f
+    _ahora2 = datetime.now(timezone.utc).replace(tzinfo=None)
+    por_responder = []
+    for x in proyectos:
+        if x.estado not in ("enviado", "visto"):
+            continue
+        base = _ultimo_evento.get(x.id) or (x.creado.replace(tzinfo=None) if x.creado else _ahora2)
+        por_responder.append({"id": x.id, "nombre": x.nombre, "estado": x.estado,
+                              "cliente": (x.cliente_nombre or x.entidad_nombre or "").strip(),
+                              "dias": max(0, (_ahora2 - base).days)})
+    por_responder.sort(key=lambda z: -z["dias"])
+
+    # PARA HOY: precios de proveedor con mas de 180 dias (query real, un COUNT)
+    from app.db import PrecioProveedor as _PP
+    _corte_viejo = _ahora2 - timedelta(days=180)
+    precios_viejos_n = db.query(_PP).filter(_PP.user_id == user.id,
+                                            _PP.capturado < _corte_viejo).count()
+
     ccs = db.query(CuentaCobro).filter(CuentaCobro.user_id == user.id).all()
     cobrado = sum(c.neto for c in ccs if c.estado == "pagada")
     por_cobrar = sum(c.neto for c in ccs if c.estado == "enviada")
@@ -283,7 +308,7 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
         _f = c.creado.replace(tzinfo=None) if c.creado else _hoy
         dias = max(0, (_hoy - _f).days)
         nom, sec = nombres_p.get(c.proyecto_id, ("(proyecto)", "privado"))
-        det_cartera.append({"id": c.id, "numero": c.numero, "proyecto": nom, "sector": sec,
+        det_cartera.append({"id": c.id, "proyecto_id": c.proyecto_id, "numero": c.numero, "proyecto": nom, "sector": sec,
                             "neto": c.neto, "dias": dias,
                             "semaforo": "rojo" if dias > 60 else ("ambar" if dias > 30 else "verde")})
     det_cartera.sort(key=lambda x: -x["dias"])   # la mas vieja ARRIBA: la que duele
@@ -304,6 +329,8 @@ def metricas(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_
             "enviados": det_enviados,
             "cartera": det_cartera,
             "utilidad_realizada": utilidad_realizada,
+            "por_responder": por_responder,
+            "precios_viejos_n": precios_viejos_n,
         },
         "total_cotizado": total_cotizado,
         "total_ganado": total_ganado,
