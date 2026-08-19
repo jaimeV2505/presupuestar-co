@@ -76,3 +76,12 @@ if errores:
         print(" ", e)
     sys.exit(1)
 print(f"OK universo: {len(todos)} jsx todos vivos, paginas de App existen, robots con musculo")
+
+# ── el timeout del cliente HTTP cubre el cold start (la leccion del autosave) ──
+_api = open(os.path.join(RAIZ, "frontend", "src", "services", "api.js"), encoding="utf-8").read()
+import re as _re
+_m = _re.search(r"timeout:\s*(\d+)", _api)
+assert _m and int(_m.group(1)) >= 30000, (
+    "el timeout de axios debe ser >= 30000ms: Neon dormido + lambda fria tardan 8-15s "
+    "y un timeout corto grita 'el servidor no responde' cuando solo estaba despertando")
+print("OK timeout: axios espera el cold start (>=30s) — el autosave no grita en falso")
