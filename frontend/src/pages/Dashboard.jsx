@@ -18,12 +18,107 @@ const ESTADO_BADGE = {
   entrega_solicitada: { txt: '🤝 Por confirmar', cls: 'bg-violet-100 text-violet-700' },
 }
 
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts'
+
+const COLORES_UNI = { privado: '#3D70A9', publico: '#B8860B' }
+
+function VistaAnalisis() {
+  const [datos, setDatos] = useState(null)
+  const [meses, setMeses] = useState(6)
+  const [uni, setUni] = useState('todos')
+  useEffect(() => {
+    proyectosAPI.analisis(meses, uni).then(setDatos).catch(() => setDatos({ serie_mensual: [], universos: {}, top_clientes: [] }))
+  }, [meses, uni])
+  if (!datos) return <p className="text-sm text-slate-400 py-10 text-center">Cargando análisis…</p>
+  const serie = (datos.serie_mensual || []).map(x => ({ ...x, mesCorto: x.mes.slice(5) + '/' + x.mes.slice(2, 4) }))
+  const u = datos.universos || {}
+  const dona = [
+    { name: '🏠 Privada', value: u.privado?.cotizado || 0, key: 'privado' },
+    { name: '🏛️ Pública', value: u.publico?.cotizado || 0, key: 'publico' },
+  ].filter(x => x.value > 0)
+  const top = datos.top_clientes || []
+  const maxTop = Math.max(1, ...top.map(x => x.cotizado))
+  return (
+    <div data-testid="vista-analisis" className="grid lg:grid-cols-[180px_1fr] gap-4">
+      <div className="space-y-4">
+        <div className="bg-white rounded-xl border border-slate-100 p-3">
+          <p className="text-[10px] font-black tracking-widest text-slate-400 mb-2">PERÍODO</p>
+          {[[3, '3 meses'], [6, '6 meses'], [12, '12 meses']].map(([v, l]) => (
+            <button key={v} onClick={() => setMeses(v)}
+                    className={`block w-full text-left text-[12px] rounded-lg px-2.5 py-1.5 mb-1 font-medium transition ${meses === v ? 'bg-navy-500 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl border border-slate-100 p-3">
+          <p className="text-[10px] font-black tracking-widest text-slate-400 mb-2">UNIVERSO</p>
+          {[['todos', '🌐 Todos'], ['privado', '🏠 Privada'], ['publico', '🏛️ Pública']].map(([v, l]) => (
+            <button key={v} onClick={() => setUni(v)}
+                    className={`block w-full text-left text-[12px] rounded-lg px-2.5 py-1.5 mb-1 font-medium transition ${uni === v ? 'bg-navy-500 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div data-testid="grafica-mensual" className="sm:col-span-2 bg-white rounded-xl border border-slate-100 p-4">
+          <p className="text-[11px] font-bold text-slate-500 mb-2">📈 Cotizado vs adjudicado por mes</p>
+          <ResponsiveContainer width="100%" height={190}>
+            <BarChart data={serie} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+              <XAxis dataKey="mesCorto" tick={{ fontSize: 10, fill: '#94A3B8' }} />
+              <YAxis tick={{ fontSize: 9, fill: '#94A3B8' }} tickFormatter={v => v >= 1e6 ? (v / 1e6) + 'M' : v} />
+              <RTooltip formatter={(v) => COP(v)} labelStyle={{ fontSize: 11 }} contentStyle={{ fontSize: 11, borderRadius: 12 }} />
+              <Bar dataKey="cotizado" name="Cotizado" fill="#9DB8DA" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="ganado" name="Adjudicado" fill="#1C3A5E" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <p className="text-[11px] font-bold text-slate-500 mb-2">🌐 Composición por universo</p>
+          {dona.length === 0 ? <p className="text-[11px] text-slate-400 py-8 text-center">Sin datos aún</p> : (
+            <ResponsiveContainer width="100%" height={170}>
+              <PieChart>
+                <Pie data={dona} dataKey="value" nameKey="name" innerRadius={45} outerRadius={70} paddingAngle={3}>
+                  {dona.map(x => <Cell key={x.key} fill={COLORES_UNI[x.key]} />)}
+                </Pie>
+                <RTooltip formatter={(v) => COP(v)} contentStyle={{ fontSize: 11, borderRadius: 12 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+          <div className="flex justify-center gap-4 text-[10px] text-slate-500">
+            {dona.map(x => <span key={x.key}><span style={{ color: COLORES_UNI[x.key] }}>●</span> {x.name}</span>)}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <p className="text-[11px] font-bold text-slate-500 mb-3">🏆 Top clientes — cotizado y tasa</p>
+          {top.length === 0 && <p className="text-[11px] text-slate-400 py-8 text-center">Sin datos aún</p>}
+          <div className="space-y-2">
+            {top.slice(0, 6).map(c => (
+              <div key={c.nombre} className="text-[11px]">
+                <div className="flex justify-between mb-0.5">
+                  <span className="font-medium text-slate-600 truncate">{c.nombre}</span>
+                  <span className="text-slate-400">{c.n_ganados}/{c.n_enviados} · <strong className={c.tasa >= 50 ? 'text-emerald-600' : 'text-slate-500'}>{c.tasa}%</strong></span>
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-navy-400 rounded-full" style={{ width: `${(c.cotizado / maxTop) * 100}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const nav = useNavigate()
   const [proyectos, setProyectos] = useState([])
   const [loading, setLoading] = useState(true)
   const [showNuevo, setShowNuevo] = useState(false)
-  const [kpiAbierto, setKpiAbierto] = useState(null)   // 0..3: la tarjeta que muestra su desglose
+  const [kpiAbierto, setKpiAbierto] = useState(null)
+  const [pestana, setPestana] = useState('inicio')   // 0..3: la tarjeta que muestra su desglose
   const [nuevo, setNuevo] = useState({ nombre: '', cliente_nombre: '', cliente_telefono: '', region: 'bogota', sector: 'privado', entidad_nombre: '', contrato_numero: '', supervisor_nombre: '' })
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
   const [infoPago, setInfoPago] = useState(null)
@@ -206,6 +301,16 @@ export default function Dashboard() {
 
       <main className="max-w-5xl mx-auto px-4 py-6">
         {/* METRICAS DEL NEGOCIO */}
+        <div className="flex gap-1 mb-4">
+          {[['inicio', '🏠 Inicio'], ['analisis', '📊 Análisis']].map(([k, l]) => (
+            <button key={k} data-testid={`tab-${k}`} onClick={() => setPestana(k)}
+                    className={`text-sm font-bold rounded-xl px-4 py-2 transition ${pestana === k ? 'bg-navy-600 text-white shadow' : 'text-slate-500 hover:bg-slate-100'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+        {pestana === 'analisis' && <VistaAnalisis />}
+        {pestana === 'inicio' && <>
         {metricas && metricas.n_presupuestos > 0 && (
           <div className="mb-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -216,7 +321,8 @@ export default function Dashboard() {
                 ['📈', 'Tasa de cierre', `${metricas.tasa_cierre}% (${metricas.n_ganados || 0} de ${metricas.n_enviados || 0})`, 'text-navy-600'],
               ].map(([e, l, v, cls], i) => (
                 <div key={i} data-testid={`kpi-${i}`} onClick={() => setKpiAbierto(kpiAbierto === i ? null : i)}
-                     className={`bg-white rounded-xl border p-3 cursor-pointer transition ${kpiAbierto === i ? 'border-navy-300 ring-1 ring-navy-200' : 'border-slate-100 hover:border-slate-300'}`}>
+                     className={`relative overflow-hidden bg-white rounded-xl border p-3 pl-4 cursor-pointer transition shadow-sm hover:shadow ${kpiAbierto === i ? 'border-navy-300 ring-1 ring-navy-200' : 'border-slate-100 hover:border-slate-300'}`}>
+                  <span className={`absolute left-0 top-0 bottom-0 w-1 ${['bg-navy-400', 'bg-emerald-400', 'bg-amber-400', 'bg-sky-400'][i]}`} />
                   <p className="text-[10px] text-slate-400">{e} {l} <span className="text-slate-300">{kpiAbierto === i ? '▲' : '▼'}</span></p>
                   <p className={`text-sm sm:text-base font-black mt-0.5 truncate ${cls}`}>{v}</p>
                 </div>
@@ -627,7 +733,8 @@ export default function Dashboard() {
       )}
 
       {/* Modal nuevo proyecto */}
-      {showNuevo && (
+      </>}
+        {showNuevo && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowNuevo(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-slate-800">Nuevo presupuesto</h3>

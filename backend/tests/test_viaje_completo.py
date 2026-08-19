@@ -339,6 +339,13 @@ assert _du[0]["real"] == _mm2["total_ganado"] - 500_000, \
 assert _du[0]["delta"] == _du[0]["real"] - _du[0]["proyectada"]
 assert (_mm2.get("desglose") or {}).get("utilidad_realizada") == _du[0]["real"]
 PASOS.append("utilidad en dos verdades: proyectada vs REALIZADA (contrato - gastos) a peso")
+# 📊 EL ANALISIS cuadra con las metricas: la serie mensual suma lo mismo (partida doble)
+_an = paso("analisis mensual", c.get("/api/proyectos/analisis?meses=12", headers=H))
+_sum_cot = sum(x["cotizado"] for x in _an["serie_mensual"])
+assert _sum_cot == _mm2["total_cotizado"], f"serie != metricas: {_sum_cot} vs {_mm2['total_cotizado']}"
+assert _an["top_clientes"] and _an["top_clientes"][0]["n_enviados"] >= 1
+_uu = _an["universos"]
+assert _uu["privado"]["cotizado"] + _uu["publico"]["cotizado"] == _sum_cot
 
 r = c.get(f"/api/share/publico/{TOKEN}/contrato.pdf")
 assert r.status_code == 200 and r.headers.get("content-type", "").startswith("application/pdf")

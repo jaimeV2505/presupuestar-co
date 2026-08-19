@@ -2,7 +2,7 @@
 """Proyectos: CRUD + items del presupuesto + limites por plan."""
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Optional
@@ -118,6 +118,71 @@ class ProyectoUpdate(BaseModel):
     items: Optional[List[Dict]] = None
     aiu: Optional[Dict] = None
     contrato: Optional[Dict] = None
+
+
+@router.get("/analisis")
+def analisis(meses: int = 12, universo: str = "todos",
+             user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    """El ANALISIS: la serie mensual, los universos y el top de clientes.
+
+    La cabina (metricas) dice DONDE ESTAS; el analisis dice COMO VAS."""
+    meses = max(3, min(int(meses or 12), 24))
+    proyectos = db.query(Proyecto).filter(Proyecto.user_id == user.id,
+                                          Proyecto.es_demo.isnot(True)).all()
+    if universo in ("privado", "publico"):
+        proyectos = [x for x in proyectos if (x.sector or "privado") == universo]
+
+    ENVIADOS = ("enviado", "visto", "aceptado", "entrega_solicitada", "terminado", "rechazado")
+    GANADOS = ("aceptado", "entrega_solicitada", "terminado")
+    ahora = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    serie = {}
+    universos = {"privado": {"cotizado": 0, "ganado": 0, "n": 0},
+                 "publico": {"cotizado": 0, "ganado": 0, "n": 0}}
+    clientes = {}
+    for x in proyectos:
+        try:
+            t = calcular_totales(json.loads(x.items_json or "[]"), json.loads(x.aiu_json or "{}"))
+        except Exception:
+            continue
+        total = t.get("total") or 0
+        f = (x.creado.replace(tzinfo=None) if x.creado else ahora)
+        clave = f.strftime("%Y-%m")
+        sec = x.sector or "privado"
+        nom = (x.cliente_nombre or x.entidad_nombre or "(sin cliente)").strip()[:40]
+        if x.estado in ENVIADOS:
+            serie.setdefault(clave, {"mes": clave, "cotizado": 0, "ganado": 0, "margen": 0})
+            serie[clave]["cotizado"] += total
+            universos[sec]["cotizado"] += total
+            universos[sec]["n"] += 1
+            c = clientes.setdefault(nom, {"nombre": nom, "cotizado": 0, "ganado": 0,
+                                          "n_enviados": 0, "n_ganados": 0})
+            c["cotizado"] += total
+            c["n_enviados"] += 1
+            if x.estado in GANADOS:
+                serie[clave]["ganado"] += total
+                serie[clave]["margen"] += t.get("utilidad_valor") or 0
+                universos[sec]["ganado"] += total
+                c["ganado"] += total
+                c["n_ganados"] += 1
+    top = sorted(clientes.values(), key=lambda z: -z["cotizado"])[:8]
+    for c in top:
+        c["tasa"] = round(c["n_ganados"] * 100 / c["n_enviados"]) if c["n_enviados"] else 0
+    # completar la serie con los meses vacios del rango
+    salida = []
+    for i in range(meses - 1, -1, -1):
+        m = (ahora.replace(day=1) - timedelta(days=1)).replace(day=1) if False else None
+    # generar claves de los ultimos N meses
+    y, mth = ahora.year, ahora.month
+    claves = []
+    for _ in range(meses):
+        claves.append(f"{y:04d}-{mth:02d}")
+        mth -= 1
+        if mth == 0:
+            mth, y = 12, y - 1
+    for k in reversed(claves):
+        salida.append(serie.get(k, {"mes": k, "cotizado": 0, "ganado": 0, "margen": 0}))
+    return {"serie_mensual": salida, "universos": universos, "top_clientes": top}
 
 
 @router.get("/metricas")

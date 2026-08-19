@@ -31,9 +31,21 @@ test('humo: login por UI, KPIs pintan, badges y modales viven', async ({ page })
 
   await expect(page.getByTestId('kpi-3')).toContainText('%')
   // las tarjetas se ABREN: donde vive cada numero
+  // la pestaña de ANALISIS: la grafica mensual respira
+  await page.getByTestId('tab-analisis').click()
+  await expect(page.getByTestId('vista-analisis')).toBeVisible()
+  await expect(page.getByTestId('grafica-mensual')).toBeVisible()
+  await page.getByTestId('tab-inicio').click()
+
   await page.getByTestId('kpi-0').click()
   await expect(page.getByTestId('kpi-detalle')).toBeVisible()
   await expect(page.getByTestId('kpi-detalle')).toContainText('Obra de humo')
+  // la pestaña de ANALISIS: la grafica mensual respira
+  await page.getByTestId('tab-analisis').click()
+  await expect(page.getByTestId('vista-analisis')).toBeVisible()
+  await expect(page.getByTestId('grafica-mensual')).toBeVisible()
+  await page.getByTestId('tab-inicio').click()
+
   await page.getByTestId('kpi-0').click()
   await expect(page.getByTestId('badge-sector').first()).toContainText('Privada')
   await expect(page.getByText('Obra de humo')).toBeVisible()
