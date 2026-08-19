@@ -416,4 +416,15 @@ assert c.get(f"/api/proyectos/{PID2}", headers=H).status_code == 404
 
 print(f"\n{'='*52}")
 print(f"VIAJE PUBLICO: {len(PASOS)} pasos en verde ✅")
+# 🤖 CANDADO ANTI-BOTS: la metralleta de registros se topa con el muro
+_rl_visto = False
+for _i in range(8):
+    _r = c.post("/api/auth/registro", json={"nombre": "Bot Test", "email": f"bot{_i}@spam.test",
+                                            "password": "clave-bot-123", "ciudad": "bogota"})
+    if _r.status_code == 429:
+        _rl_visto = True
+        break
+assert _rl_visto, "el registro no tiene freno anti-bots (esperaba un 429)"
+PASOS.append("CANDADO anti-bots: registro masivo desde una IP -> 429")
+
 print("El ingeniero administro su contrato estatal completo — sin salir de la plataforma.")

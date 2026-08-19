@@ -4,7 +4,7 @@ import os
 import jwt
 import logging
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 import re
 from pydantic import BaseModel, field_validator
 import bcrypt
@@ -147,7 +147,10 @@ def _user_out(u: Usuario) -> dict:
 
 
 @router.post("/registro")
-def registro(req: RegistroRequest, db: Session = Depends(get_db)):
+def registro(req: RegistroRequest, request: Request, db: Session = Depends(get_db)):
+    # anti-bots: maximo 5 registros por IP por hora (la misma guardia del login)
+    _ip = (request.headers.get("x-forwarded-for", "") or (request.client.host if request.client else "?")).split(",")[0].strip()
+    _rl_fallo(f"registro-ip:{_ip}", db, max_intentos=5, bloqueo_min=60)
     try:
         email = req.email.lower().strip()
         if db.query(Usuario).filter(Usuario.email == email).first():
