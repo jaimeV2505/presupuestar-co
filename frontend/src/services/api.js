@@ -46,7 +46,7 @@ export const authAPI = {
 }
 
 export const proyectosAPI = {
-  analisis: (meses = 12, universo = 'todos') => get(`/proyectos/analisis?meses=${meses}&universo=${universo}`),
+  analisis: (meses = 12, universo = 'todos') => api.get(`/proyectos/analisis?meses=${meses}&universo=${universo}`).then(r => r.data),
   balance: (id) => api.get(`/proyectos/${id}/balance`).then(r => r.data),
   listar: () => api.get('/proyectos').then(r => r.data),
   crear: (data) => api.post('/proyectos', data).then(r => r.data),
