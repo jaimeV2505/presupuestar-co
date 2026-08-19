@@ -578,7 +578,8 @@ export default function Dashboard() {
             })}
           </div>
         )}
-      </main>
+      </>}
+        </main>
 
       {/* Modal SOPORTE */}
       {showSoporte && (
@@ -733,8 +734,7 @@ export default function Dashboard() {
       )}
 
       {/* Modal nuevo proyecto */}
-      </>}
-        {showNuevo && (
+      {showNuevo && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowNuevo(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-slate-800">Nuevo presupuesto</h3>
