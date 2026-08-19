@@ -554,7 +554,7 @@ export default function Dashboard() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.txt}</span>
                       </div>
                       <p className="text-sm text-slate-400 mt-0.5">
-                        {p.cliente_nombre && `${p.cliente_nombre} · `}
+                        {(p.sector === 'publico' ? p.entidad_nombre && `🏛️ ${p.entidad_nombre} · ` : p.cliente_nombre && `${p.cliente_nombre} · `)}
                         {p.num_items} ítem{p.num_items !== 1 ? 's' : ''}
                       </p>
                     </div>

@@ -645,7 +645,7 @@ export default function Editor() {
               <h1 className="font-semibold text-slate-800 truncate">{p.nombre}</h1>
               <p className="text-xs text-slate-400">
                 <span className="font-semibold text-navy-600">{p.numero}</span>
-                {' · '}{p.cliente_nombre || 'Sin cliente'}
+                {' · '}{p.sector === 'publico' ? ('🏛️ ' + (p.entidad_nombre || 'Sin entidad')) : (p.cliente_nombre || 'Sin cliente')}
                 {' · '}{p.actualizado ? new Date(p.actualizado).toLocaleDateString('es-CO') : ''}
                 {' · '}{sinRed ? (navigator.onLine === false ? '⚠️ Sin conexión — reintentando' : '⏳ Servidor lento — reintentando') : guardando ? 'Guardando...' : 'Guardado ✓'}
               </p>
