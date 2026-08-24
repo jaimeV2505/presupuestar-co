@@ -1,0 +1,11 @@
+.env
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+dist/
+.DS_Store
+robots/ui/test-results/
+robots/ui/playwright-report/
+robots/ui/node_modules/
+backend/data_db/

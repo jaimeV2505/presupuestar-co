@@ -36,7 +36,11 @@ if DATABASE_URL:
         engine = create_engine(url, pool_pre_ping=True, pool_size=2, max_overflow=3)
     ES_POSTGRES = True
 else:
-    DB_PATH = os.environ.get("DB_PATH", "/app/data_db/presupuestar.db")
+    # default PORTATIL (la leccion del humo local que cazo el OSError de /app):
+    # Docker usa /app; en cualquier otro entorno, una carpeta junto al backend.
+    _default_db = ("/app/data_db/presupuestar.db" if os.path.isdir("/app")
+                   else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data_db", "presupuestar.db"))
+    DB_PATH = os.environ.get("DB_PATH", _default_db)
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     engine = create_engine(
         f"sqlite:///{DB_PATH}",
