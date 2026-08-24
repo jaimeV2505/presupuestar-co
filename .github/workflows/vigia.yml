@@ -1,0 +1,28 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# EL VIGIA — patrulla PRODUCCION cada 30 minutos con la cuenta canario.
+# CI previene; el vigia VIGILA: si prod se cae a las 3am, el workflow se pone
+# rojo y GitHub te avisa por email — antes de que un usuario lo sufra.
+# Secrets requeridos: APP_URL, VIGIA_EMAIL, VIGIA_PASSWORD
+# ═══════════════════════════════════════════════════════════════════════════
+name: 🐤 Vigia de produccion
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  patrulla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install httpx
+      - name: "la ronda del vigia"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          VIGIA_EMAIL: ${{ secrets.VIGIA_EMAIL }}
+          VIGIA_PASSWORD: ${{ secrets.VIGIA_PASSWORD }}
+        run: python backend/tests/vigia_produccion.py

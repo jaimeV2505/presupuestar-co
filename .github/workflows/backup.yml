@@ -1,0 +1,41 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# GROOT — Renace completo desde una rama: backup JSON total cada lunes.
+# Requiere los secrets APP_URL (https://presupuestar-co.vercel.app) y
+# BACKUP_TOKEN (el mismo X-Backup-Token de Vercel). Retencion: 90 dias.
+# Ritual mensual del fundador: verificar que el artifact existe y pesa.
+# ═══════════════════════════════════════════════════════════════════════════
+name: GROOT
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"   # lunes 08:00 UTC (~3 a.m. Colombia)
+  workflow_dispatch:
+
+jobs:
+  backup:
+    name: "Backup completo (lunes)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Descargar respaldo completo"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          BACKUP_TOKEN: ${{ secrets.BACKUP_TOKEN }}
+        run: |
+          test -n "$APP_URL" || { echo "::error::Falta el secret APP_URL"; exit 1; }
+          test -n "$BACKUP_TOKEN" || { echo "::error::Falta el secret BACKUP_TOKEN"; exit 1; }
+          FECHA=$(date +%Y-%m-%d)
+          curl --fail --silent --show-error \
+               -H "X-Backup-Token: $BACKUP_TOKEN" \
+               "$APP_URL/api/respaldo/completo" \
+               -o "respaldo_${FECHA}.json"
+          test -s "respaldo_${FECHA}.json" || { echo "::error::El respaldo salio VACIO"; exit 1; }
+          python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print('Respaldo OK:', {k: (len(v) if isinstance(v,list) else '...') for k,v in list(d.items())[:6]})" "respaldo_${FECHA}.json"
+          echo "FECHA=$FECHA" >> "$GITHUB_ENV"
+
+      - name: "Guardar artifact (90 dias)"
+        uses: actions/upload-artifact@v4
+        with:
+          name: respaldo-${{ env.FECHA }}
+          path: respaldo_*.json
+          retention-days: 90
+          if-no-files-found: error
