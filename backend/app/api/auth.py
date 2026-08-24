@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Autenticacion: registro, login, JWT. Seguro y estandar."""
 import os
+import json
 import jwt
 import logging
 from datetime import datetime, timedelta, timezone
@@ -163,7 +164,8 @@ def registro(req: RegistroRequest, request: Request, db: Session = Depends(get_d
             password_hash=_hash_password(req.password),
             nombre=req.nombre,
             empresa=req.empresa.strip(),
-            terminos_aceptado=datetime.now(timezone.utc),
+            # evidencia Habeas Data SIN tocar el esquema: fecha ISO en el JSON existente
+            onboarding_json=json.dumps({"terminos_aceptado": datetime.now(timezone.utc).isoformat()}),
             telefono=req.telefono.strip(),
             ciudad=req.ciudad,
         )

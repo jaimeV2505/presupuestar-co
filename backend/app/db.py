@@ -81,7 +81,6 @@ class Usuario(Base):
     firma_b64 = Column(Text, default="")         # firma manuscrita del contratista (PNG base64)
     onboarding_json = Column(Text, default="{}")  # {tipo, flags de misiones, cerrado}
     reset_token_hash = Column(String(64), nullable=True)   # sha256 del token de recuperacion
-    terminos_aceptado = Column(DateTime, nullable=True)     # evidencia Habeas Data: cuando acepto
     reset_expira = Column(DateTime, nullable=True)
     plan = Column(String(20), default="gratis")  # gratis | pro
     plan_vence = Column(DateTime, nullable=True)  # cuando expira el plan pro
@@ -416,7 +415,6 @@ def init_db():
                     "ALTER TABLE otrosies ALTER COLUMN valor TYPE BIGINT",
                     "ALTER TABLE gastos ALTER COLUMN valor TYPE BIGINT",
                     "ALTER TABLE precios_proveedor ALTER COLUMN precio TYPE BIGINT",
-                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS terminos_aceptado TIMESTAMP",
                 ]:
                     conn.execute(text(sql))
                 conn.commit()
