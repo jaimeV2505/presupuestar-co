@@ -189,4 +189,5 @@ def generar_contrato(proyecto, usuario, items: List[Dict], totales: Dict,
                    "fecha_inicio": fecha_inicio, "lugar": lugar},
         "firmas": firmas,
         "firmado": bool(firma),
+
     }

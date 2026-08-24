@@ -65,6 +65,7 @@ class RegistroRequest(BaseModel):
     empresa: str = ""
     telefono: str = ""
     ciudad: str = "bogota"
+    acepta_terminos: bool = False   # Habeas Data: sin esto no hay cuenta
 
     @field_validator("password")
     @classmethod
@@ -151,6 +152,8 @@ def registro(req: RegistroRequest, request: Request, db: Session = Depends(get_d
     # anti-bots: maximo 5 registros por IP por hora (la misma guardia del login)
     _ip = (request.headers.get("x-forwarded-for", "") or (request.client.host if request.client else "?")).split(",")[0].strip()
     _rl_fallo(f"registro-ip:{_ip}", db, max_intentos=5, bloqueo_min=60)
+    if not req.acepta_terminos:
+        raise HTTPException(400, "Debes aceptar los terminos y la politica de datos para crear tu cuenta")
     try:
         email = req.email.lower().strip()
         if db.query(Usuario).filter(Usuario.email == email).first():
@@ -160,6 +163,7 @@ def registro(req: RegistroRequest, request: Request, db: Session = Depends(get_d
             password_hash=_hash_password(req.password),
             nombre=req.nombre,
             empresa=req.empresa.strip(),
+            terminos_aceptado=datetime.now(timezone.utc),
             telefono=req.telefono.strip(),
             ciudad=req.ciudad,
         )

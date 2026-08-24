@@ -6,7 +6,7 @@ import { authAPI, recuperarAPI } from '../services/api'
 
 export default function Login({ modo = 'login' }) {
   const nav = useNavigate()
-  const [form, setForm] = useState({ email: '', password: '', nombre: '', empresa: '', telefono: '' })
+  const [form, setForm] = useState({ email: '', password: '', nombre: '', empresa: '', telefono: '' , acepta_terminos: false })
   const [loading, setLoading] = useState(false)
   const esRegistro = modo === 'registro'
   const [olvide, setOlvide] = useState(false)
@@ -72,6 +72,13 @@ export default function Login({ modo = 'login' }) {
           {!olvide && <input data-testid="auth-password" className="input" type="password" placeholder={esRegistro ? 'Contraseña (mínimo 8 caracteres) *' : 'Contraseña *'}
                  value={form.password} onChange={set('password')} autoComplete={esRegistro ? 'new-password' : 'current-password'} />}
 
+          {esRegistro && (
+            <label className="flex items-start gap-2 text-[11px] text-slate-500 cursor-pointer">
+              <input type="checkbox" data-testid="check-terminos" className="mt-0.5" checked={!!form.acepta_terminos}
+                     onChange={e => setForm(f => ({ ...f, acepta_terminos: e.target.checked }))} />
+              <span>Acepto los <a href="/legal" target="_blank" rel="noreferrer" className="underline text-navy-600">términos y la política de tratamiento de datos</a> (Ley 1581 de 2012)</span>
+            </label>
+          )}
           <button data-testid="auth-submit" disabled={loading}
                   className="w-full bg-navy-600 hover:bg-navy-700 text-white font-semibold rounded-xl py-3 transition disabled:opacity-50">
             {loading ? 'Un momento...' : olvide ? 'Enviarme el enlace' : esRegistro ? 'Crear cuenta gratis' : 'Entrar'}

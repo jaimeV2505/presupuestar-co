@@ -43,7 +43,7 @@ def paso(nombre, resp, status=200, contiene=None):
 
 print("═══ ACTO 0: EL INGENIERO Y SU CONTRATO ESTATAL ═══")
 d = paso("registro", c.post("/api/auth/registro",
-         json={"nombre": "Ing Publico", "email": "ing@publico.test",
+         json={"nombre": "Ing Publico", "acepta_terminos": True, "email": "ing@publico.test",
                "password": "ObraPublica2026", "ciudad": "bogota"}))
 H = {"Authorization": f"Bearer {d['token']}"}
 
@@ -170,7 +170,7 @@ PASOS.append("recetario semilla: 16 recetas, panete 22.524 exacto, idempotente")
 
 print("═══ ACTO 1.9: EL LADRON (ownership cruzado) ═══")
 d2 = paso("registro del intruso", c.post("/api/auth/registro",
-          json={"nombre": "Usuario Robot", "ciudad": "bogota", "email": "intruso@publico.test", "password": "Intruso2026x"}))
+          json={"acepta_terminos": True, "nombre": "Usuario Robot", "ciudad": "bogota", "email": "intruso@publico.test", "password": "Intruso2026x"}))
 H2 = {"Authorization": f"Bearer {d2['token']}"}
 r = c.put(f"/api/apus/{APU_MANUAL}", json={"descripcion": "hackeado", "precio": 1}, headers=H2)
 paso("CANDADO: editar APU ajeno -> 404", r, status=404)
@@ -416,10 +416,15 @@ assert c.get(f"/api/proyectos/{PID2}", headers=H).status_code == 404
 
 print(f"\n{'='*52}")
 print(f"VIAJE PUBLICO: {len(PASOS)} pasos en verde ✅")
+# ⚖️ CANDADO HABEAS DATA: sin aceptar terminos NO hay cuenta
+r = c.post("/api/auth/registro", json={"nombre": "Sin Terminos", "email": "sinterminos@test.co",
+                                       "password": "clave-fuerte-123", "ciudad": "bogota"})
+paso("CANDADO: registro sin aceptar terminos -> 400", r, status=400)
+
 # 🤖 CANDADO ANTI-BOTS: la metralleta de registros se topa con el muro
 _rl_visto = False
 for _i in range(8):
-    _r = c.post("/api/auth/registro", json={"nombre": "Bot Test", "email": f"bot{_i}@spam.test",
+    _r = c.post("/api/auth/registro", json={"nombre": "Bot Test", "acepta_terminos": True, "email": f"bot{_i}@spam.test",
                                             "password": "clave-bot-123", "ciudad": "bogota"})
     if _r.status_code == 429:
         _rl_visto = True

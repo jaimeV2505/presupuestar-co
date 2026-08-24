@@ -10,7 +10,7 @@ export function emailUnico(prefijo = 'robot') {
 export async function registrarPorAPI(email) {
   const r = await fetch(`${API}/auth/registro`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre: 'Robot UI', email, password: 'clave-robot-123', ciudad: 'bogota' }),
+    body: JSON.stringify({ acepta_terminos: true, nombre: 'Robot UI', email, password: 'clave-robot-123', ciudad: 'bogota' }),
   })
   if (!r.ok) throw new Error(`registro fallo: ${r.status} ${await r.text()}`)
   const d = await r.json()
