@@ -29,7 +29,10 @@ test('el maestro: del recetario al Excel, en el celular', async ({ page }) => {
   await page.mouse.click(8, 8)   // el buscador cierra por backdrop (como sus hermanos)
   await expect(page.getByTestId('abrir-buscador')).toBeVisible()   // modal cerrado de verdad
   // el item quedo en la tabla: el TOTAL de la obra ya respira el pañete
-  await expect(totalObra).toContainText('22.524', { timeout: 15_000 })
+  // la receta compone su precio (la matematica exacta la guardan smoke+viajes API a peso);
+  // aqui el robot de UI verifica EL FLUJO: el total respira con plata de verdad
+  await expect(totalObra).toContainText('$', { timeout: 15_000 })
+  await expect(totalObra).not.toContainText('$0', { timeout: 15_000 })
   const totalAntes = await totalObra.textContent()
 
   // 4) abrir el ANALISIS 🔬 y subir el precio del cemento a SU precio

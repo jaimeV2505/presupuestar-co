@@ -153,7 +153,7 @@ def registro(req: RegistroRequest, request: Request, db: Session = Depends(get_d
     # anti-bots: maximo 5 registros por IP por hora (la misma guardia del login)
     _ip = (request.headers.get("x-forwarded-for", "") or (request.client.host if request.client else "?")).split(",")[0].strip()
     _rl_verificar(f"registro-ip:{_ip}", db)   # el 429 si ya esta bloqueada
-    _rl_fallo(f"registro-ip:{_ip}", db, max_intentos=5, bloqueo_min=60)
+    _rl_fallo(f"registro-ip:{_ip}", db, max_intentos=int(os.environ.get("RL_REGISTRO_MAX", "5")), bloqueo_min=60)
     if not req.acepta_terminos:
         raise HTTPException(400, "Debes aceptar los terminos y la politica de datos para crear tu cuenta")
     try:

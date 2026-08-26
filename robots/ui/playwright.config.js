@@ -37,6 +37,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
       env: {
+        RL_REGISTRO_MAX: '100',   // 6 viajes registran desde la misma IP — el anti-bots no balea aliados
         DATABASE_URL: `sqlite:///${DB}`,
         JWT_SECRET: 'robot-ui-secreto-de-prueba-0123456789abcdef', // gitleaks:allow
         ADMIN_EMAILS: 'robot@ui.test',
