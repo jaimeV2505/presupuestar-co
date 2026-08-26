@@ -268,38 +268,9 @@ export default function Editor() {
   const soloLectura = p?.estado === 'terminado'   // 🔒 terminado: solo vista, duplicar para reutilizar
   const selladoUI = soloLectura || ['aceptado', 'entrega_solicitada'].includes(p?.estado)  // la tabla firmada no se teclea
 
-  // La barra fija de totales tapa siempre los ultimos ~64-90px del VIEWPORT (asi es
-  // "fixed"), y en movil, al abrir el panel de Analisis, la fila de botones Guardar/
-  // Aplicar puede terminar renderizada justo en esa franja SIN que el navegador haya
-  // scrolleado — Playwright no lo detecta porque el boton objetivo (btn-descuento) ya
-  // esta "en viewport" al ser fixed, y no ve que ALGO ARRIBA le tapa el punto de click.
-  // Medimos el alto REAL del footer (crece con el badge de descuento, AIU, etc.) para
-  // usarlo como scroll-margin-bottom: asi, cuando forcemos el scroll al abrir el panel,
-  // el navegador SIEMPRE deja la fila de botones por ENCIMA del footer, sin importar
-  // cuanto crezca.
-  const [footerH, setFooterH] = useState(0)
-  const footerRoRef = useRef(null)
-  const setFooterRef = useCallback((node) => {
-    if (footerRoRef.current) { footerRoRef.current.disconnect(); footerRoRef.current = null }
-    if (node) {
-      const ro = new ResizeObserver((entries) => {
-        const h = entries[0]?.contentRect?.height
-        if (h) setFooterH(Math.ceil(h))
-      })
-      ro.observe(node)
-      footerRoRef.current = ro
-    }
-  }, [])
-
   // ── F1: visibilidad del ANÁLISIS del ítem (desglose de Mis APUs) ────────
   const [desgloses, setDesgloses] = useState({ porId: {}, porCodigo: {} })
   const [analisisAbierto, setAnalisisAbierto] = useState(null)  // _idx del item expandido
-  const accionesAnalisisRef = useRef(null)
-  const asegurarAccionesVisibles = useCallback(() => {
-    // 'smooth' depende de que la animacion termine sin interrupciones (fragil en CI
-    // headless); instantaneo no tiene nada que pueda no completarse.
-    accionesAnalisisRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [])
   const [showExplosion, setShowExplosion] = useState(false)     // F2: lista de materiales
   const [rindeIdx, setRindeIdx] = useState(-1)                  // R2: calculadora de rendimiento
   const [showDisenos, setShowDisenos] = useState(false)         // 🎨 renders/planos para el cliente
@@ -338,21 +309,6 @@ export default function Editor() {
     setAnalisisAbierto(it._idx)
     setAnEdit(d ? JSON.parse(JSON.stringify({ ...d, transporte: d.transporte || 0 })) : null)
   }
-  useEffect(() => {
-    if (analisisAbierto === null || !anEdit) return
-    // CADA interaccion dentro del panel (llenar un precio, aplicar el analisis) puede
-    // disparar un scroll AUTOMATICO del navegador hacia ESE campo (arriba de la fila de
-    // botones), deshaciendo el scroll que dejamos la fila de botones sobre la barra fija.
-    // Por eso este efecto depende tambien de anEdit: se re-dispara con CADA cambio dentro
-    // del panel, no solo al abrirlo, y vuelve a corregir la posicion cada vez.
-    const t = setTimeout(asegurarAccionesVisibles, 50)
-    let ro = null
-    if (accionesAnalisisRef.current?.parentElement) {
-      ro = new ResizeObserver(() => asegurarAccionesVisibles())
-      ro.observe(accionesAnalisisRef.current.parentElement)
-    }
-    return () => { clearTimeout(t); ro?.disconnect() }
-  }, [analisisAbierto, anEdit, asegurarAccionesVisibles])
   const recalcularAnalisis = async (it, aplicarAlItem) => {
     const apuId = apuIdDe(it)
     if (!apuId || !anEdit) return
@@ -385,6 +341,11 @@ export default function Editor() {
         setItemsYGuardar(prev => prev.map((x, i) => i === it._idx
           ? { ...x, precio_unitario: r.precio, precio_lista: null, precio_editado: false } : x))
         toast.success(`APU recalculado y aplicado: ${COP(r.precio)} — totales, anexo y lista de materiales al día ✨`)
+        // el trabajo esta hecho: cerramos el panel y volvemos a ver el item ya actualizado
+        // en la lista (ademas, un panel colgante en movil no tiene por que competir con
+        // la barra fija de totales que viene despues).
+        setAnalisisAbierto(null)
+        setAnEdit(null)
       } else {
         toast.success(`APU recalculado: ${COP(r.precio)} (guardado en Mis APUs)`)
       }
@@ -1012,8 +973,7 @@ export default function Editor() {
                             </div>
                           </div>
                           <p className="text-slate-400 mt-1">💡 Herramienta es un <strong>porcentaje</strong> de la mano de obra (práctica estándar 3-10%). Si lo tuyo es un flete en <strong>pesos</strong>, ese va en la fila 4 · Transporte 🚚.</p>
-                          <div ref={accionesAnalisisRef} className="flex gap-2 mt-2 items-center"
-                               style={{ scrollMarginBottom: (footerH || 72) + 16 }}>
+                          <div className="flex gap-2 mt-2 items-center">
                             <button disabled={anGuardando} onClick={() => recalcularAnalisis(it, false)}
                                     data-testid="btn-guardar-apu" className="flex-1 py-1.5 rounded-lg border border-violet-300 text-violet-700 font-bold hover:bg-violet-100 disabled:opacity-50">
                               💾 Recalcular y guardar el APU
@@ -1507,7 +1467,7 @@ export default function Editor() {
 
       {/* Barra de totales fija */}
       {totales && items.length > 0 && (
-        <div ref={setFooterRef} className="fixed bottom-0 left-0 right-0 bg-navy-800 text-white z-40">
+        <div className="fixed bottom-0 left-0 right-0 bg-navy-800 text-white z-40">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
             <div className="flex gap-4 text-xs text-blue-200 overflow-x-auto items-center">
               <button onClick={() => setShowAnalisis(v => !v)} data-testid="btn-incidencia" title="Incidencia por capítulos"
