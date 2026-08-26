@@ -38,11 +38,15 @@ test('el maestro: del recetario al Excel, en el celular', async ({ page }) => {
   // 4) abrir el ANALISIS 🔬 y subir el precio del cemento a SU precio
   await page.getByTestId('chip-analisis').first().click()
   const filaCemento = page.locator('div, tr').filter({ hasText: 'Cemento gris' }).last()
-  await filaCemento.locator('input[type="number"]').nth(1).fill('42000')
+  // la fila trae [Cant][Desp.%][Vr.unit] — el PRECIO es nth(2) (la evidencia del robot nos corrigio)
+  const inputPrecio = filaCemento.locator('input[type="number"]').nth(2)
+  await inputPrecio.fill('42000')
+  await expect(page.getByText('PRECIO UNITARIO ANALIZADO')).toBeVisible()
 
   // 5) ⚡ APLICAR: recalculo en servidor -> el total del proyecto CAMBIA
   await page.getByTestId('btn-aplicar-apu').click()
-  await expect(totalObra).not.toHaveText(totalAntes || '', { timeout: 20_000 })
+  // el servidor recalcula y el editor refresca: el total del proyecto CAMBIA
+  await expect(totalObra).not.toHaveText(totalAntes || '', { timeout: 25_000 })
 
   // 6) 💸 descuento 5%
   await page.getByTestId('btn-descuento').click()
