@@ -1230,6 +1230,17 @@ export default function Editor() {
             )}
           </div>
         )}
+        {/* Colchón de seguridad: la barra fija de totales SIEMPRE tapa los ultimos
+            ~64-90px del viewport. Sin este espacio de sobra al final de main, en
+            pantallas cortas el ultimo contenido real (Contrato de obra, o cualquier
+            seccion que termine siendo la ultima) puede quedar bajo la barra fija sin
+            que nada haya scrolleado — no es un problema de timing, es geometria pura:
+            content quieto en la franja fija. Un colchon fijo, siempre presente, hace
+            que esa franja SIEMPRE caiga sobre este relleno vacio, nunca sobre algo
+            clicable. Mas generoso que cualquier alto real del footer (incluso con el
+            badge de descuento + AIU + IVA).
+        */}
+        <div className="h-32" aria-hidden="true" />
       </main>
       </div>
 
