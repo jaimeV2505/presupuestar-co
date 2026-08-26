@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
@@ -271,6 +271,25 @@ export default function Editor() {
   // ── F1: visibilidad del ANÁLISIS del ítem (desglose de Mis APUs) ────────
   const [desgloses, setDesgloses] = useState({ porId: {}, porCodigo: {} })
   const [analisisAbierto, setAnalisisAbierto] = useState(null)  // _idx del item expandido
+
+  // La barra fija de totales tapa SIEMPRE los ultimos ~64-90px del VIEWPORT ACTUAL
+  // (asi es "fixed" — no importa cuanto padding le pongamos DESPUES al contenido,
+  // eso no mueve nada que ya este ARRIBA de ese padding). En pantallas cortas, con
+  // poco contenido (ej: un solo item, panel de analisis cerrado), el final real del
+  // documento (Contrato de obra) puede caer justo en esa franja SIN que nadie haya
+  // scrolleado — geometria pura en scrollY=0, no una condicion de carrera.
+  // El fix real es mover el scroll de verdad. Corre SINCRONO (antes del primer paint),
+  // no con un timer que ya demostramos que llega tarde una y otra vez.
+  useLayoutEffect(() => {
+    const el = document.scrollingElement || document.documentElement
+    const ALTO_FOOTER_MAX = 140  // mas generoso que cualquier alto real (con badge de descuento + AIU + IVA)
+    const maxScroll = Math.max(0, el.scrollHeight - window.innerHeight)
+    // Solo empujamos si hay ADONDE scrollear y si el usuario esta cerca del tope
+    // (si ya scrolleo manualmente mas abajo, no le peleamos su scroll).
+    if (maxScroll > 0 && el.scrollTop < ALTO_FOOTER_MAX) {
+      el.scrollTop = Math.min(ALTO_FOOTER_MAX, maxScroll)
+    }
+  }, [items.length, analisisAbierto])
   const [showExplosion, setShowExplosion] = useState(false)     // F2: lista de materiales
   const [rindeIdx, setRindeIdx] = useState(-1)                  // R2: calculadora de rendimiento
   const [showDisenos, setShowDisenos] = useState(false)         // 🎨 renders/planos para el cliente
