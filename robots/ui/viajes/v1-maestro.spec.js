@@ -44,9 +44,11 @@ test('el maestro: del recetario al Excel, en el celular', async ({ page }) => {
   await expect(page.getByText('PRECIO UNITARIO ANALIZADO')).toBeVisible()
 
   // 5) ⚡ APLICAR: recalculo en servidor -> el total del proyecto CAMBIA
-  await page.getByTestId('btn-aplicar-apu').click()
-  // el servidor recalcula y el editor refresca: el total del proyecto CAMBIA
-  await expect(totalObra).not.toHaveText(totalAntes || '', { timeout: 25_000 })
+  // el analisis re-renderiza tras el fill: click-con-reintento (mata el race del boton remontado)
+  await expect(async () => {
+    await page.getByTestId('btn-aplicar-apu').click()
+    await expect(totalObra).not.toHaveText(totalAntes || '', { timeout: 6_000 })
+  }).toPass({ timeout: 30_000 })
 
   // 6) 💸 descuento 5%
   await page.getByTestId('btn-descuento').click()
