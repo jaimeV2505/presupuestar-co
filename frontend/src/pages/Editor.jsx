@@ -295,15 +295,11 @@ export default function Editor() {
   const [desgloses, setDesgloses] = useState({ porId: {}, porCodigo: {} })
   const [analisisAbierto, setAnalisisAbierto] = useState(null)  // _idx del item expandido
   const accionesAnalisisRef = useRef(null)
-  useEffect(() => {
-    if (analisisAbierto === null) return
-    // el panel recien se monto (tabla de materiales incluida): dejamos que el layout
-    // se asiente antes de forzar el scroll, si no el alto todavia no es el final.
-    const t = setTimeout(() => {
-      accionesAnalisisRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-    }, 50)
-    return () => clearTimeout(t)
-  }, [analisisAbierto])
+  const asegurarAccionesVisibles = useCallback(() => {
+    // 'smooth' depende de que la animacion termine sin interrupciones (fragil en CI
+    // headless); instantaneo no tiene nada que pueda no completarse.
+    accionesAnalisisRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [])
   const [showExplosion, setShowExplosion] = useState(false)     // F2: lista de materiales
   const [rindeIdx, setRindeIdx] = useState(-1)                  // R2: calculadora de rendimiento
   const [showDisenos, setShowDisenos] = useState(false)         // 🎨 renders/planos para el cliente
