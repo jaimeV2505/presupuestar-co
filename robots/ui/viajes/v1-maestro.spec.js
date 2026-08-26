@@ -51,25 +51,16 @@ test('el maestro: del recetario al Excel, en el celular', async ({ page }) => {
   }).toPass({ timeout: 30_000 })
 
   // 6) 💸 descuento 5%
-  // DIAGNOSTICO TEMPORAL — quitar despues de encontrar la causa real
-  console.log('DEBUG-SCROLL', JSON.stringify(await page.evaluate(() => {
-    const el = document.scrollingElement || document.documentElement
-    const btn = document.querySelector('[data-testid="btn-descuento"]')
-    const r = btn ? btn.getBoundingClientRect() : null
-    const puntoMedio = r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null
-    const hit = puntoMedio ? document.elementFromPoint(puntoMedio.x, puntoMedio.y) : null
-    return {
-      scrollTop: el.scrollTop,
-      scrollHeight: el.scrollHeight,
-      innerHeight: window.innerHeight,
-      maxScrollPosible: el.scrollHeight - window.innerHeight,
-      btnDescuentoRect: r ? { top: Math.round(r.top), bottom: Math.round(r.bottom) } : null,
-      elementoEnElPunto: hit ? (hit.getAttribute('data-testid') || hit.tagName + '.' + (hit.className || '').toString().slice(0, 40)) : null,
-    }
-  })))
-  await page.getByTestId('btn-descuento').click()
+  // btn-descuento vive en la barra FIJA (position:fixed). El scrollIntoViewIfNeeded
+  // AUTOMATICO que Playwright corre antes de cada click tiene comportamiento indefinido
+  // sobre elementos fixed (no tienen una posicion de scroll "natural" que calcular) —
+  // confirmado con diagnostico: justo ANTES del click de Playwright, scrollTop y el
+  // hit-test en el punto exacto del boton son perfectos (sin solape); el intento de
+  // scroll interno de Playwright es lo que lo rompe, no la app. force:true salta ese
+  // paso — ya sabemos independientemente que el elemento esta bien posicionado.
+  await page.getByTestId('btn-descuento').click({ force: true })
   await page.getByTestId('input-descuento').fill('5')
-  await page.getByTestId('btn-aplicar-descuento').click()
+  await page.getByTestId('btn-aplicar-descuento').click({ force: true })
 
   // 7) exportar el EXCEL del oficio (3 hojas): la descarga llega
   await abrirHerramientas(page)
