@@ -41,14 +41,21 @@ def _resumen(p: Proyecto, gastos, db: Session):
     items = json.loads(p.items_json or "[]")
     aiu = json.loads(p.aiu_json or "{}")
     t = calcular_totales(items, aiu)
+    # Los adicionales (otrosi) APROBADOS son valor real del contrato — sin esto,
+    # "utilidad real" quedaba subestimada: el gasto de ejecutar el adicional SI
+    # se contaba, pero su ingreso NO. Mismo criterio que los KPIs (api/proyectos.py).
+    from app.services.otrosi_service import valor_adicionales
+    adicionales = valor_adicionales(p, db)
+    total_contrato = t["total"] + adicionales
     gastado = sum(g.valor for g in gastos)
     por_categoria = {}
     for g in gastos:
         por_categoria[g.categoria] = por_categoria.get(g.categoria, 0) + g.valor
-    utilidad_real = t["total"] - gastado
+    utilidad_real = total_contrato - gastado
     return {
         "presupuesto_directo": t["subtotal_directo"],
-        "total_contrato": t["total"],
+        "total_contrato": total_contrato,
+        "adicionales_aprobados": adicionales,
         "gastado": gastado,
         "por_categoria": por_categoria,
         "utilidad_proyectada": t["utilidad_valor"],

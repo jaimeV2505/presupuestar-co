@@ -66,17 +66,28 @@ def health():
 app.include_router(precios.router, prefix="/api/precios", tags=["precios"])
 app.include_router(exportar.router, prefix="/api/exportar", tags=["exportar"])
 
-# Routers heredados (feature premium IA + validacion)
+# planos.py depende de Claude Vision (anthropic) para extraer de imagenes/PDF —
+# si esa dependencia no esta instalada, SOLO este router debe caer.
 try:
-    from app.api import planos, presupuesto, mercado, validacion, feedback
+    from app.api import planos
     app.include_router(planos.router, prefix="/api/planos", tags=["planos-ia"])
+    logger.info("Modulo de extraccion de planos (IA) cargado")
+except Exception as e:
+    logger.warning(f"Modulo de planos (IA) no disponible: {e}")
+
+# Estos cuatro NO dependen de anthropic — antes vivian en el mismo bloque que
+# planos.py, asi que si anthropic faltaba, TODOS caian juntos, incluido el
+# estimador de presupuesto por elementos estructurales (calculo 100% determinista,
+# sin IA). Separados para que una dependencia de OTRA feature no tumbe esta.
+try:
+    from app.api import presupuesto, mercado, validacion, feedback
     app.include_router(presupuesto.router, prefix="/api/presupuesto", tags=["presupuesto-ia"])
     app.include_router(mercado.router, prefix="/api/mercado", tags=["mercado"])
     app.include_router(validacion.router, prefix="/api/validacion", tags=["validacion"])
     app.include_router(feedback.router, prefix="/api/feedback", tags=["feedback"])
-    logger.info("Modulos IA premium cargados")
+    logger.info("Modulos de presupuesto/mercado/validacion/feedback cargados")
 except Exception as e:
-    logger.warning(f"Modulos IA no disponibles: {e}")
+    logger.warning(f"Modulos de presupuesto/mercado/validacion/feedback no disponibles: {e}")
 
 
 @app.get("/api/config")
