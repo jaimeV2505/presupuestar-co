@@ -342,6 +342,21 @@ export default function Editor() {
     setAnalisisAbierto(it._idx)
     setAnEdit(d ? JSON.parse(JSON.stringify({ ...d, transporte: d.transporte || 0 })) : null)
   }
+  useEffect(() => {
+    if (analisisAbierto === null || !anEdit) return
+    // CADA interaccion dentro del panel (llenar un precio, aplicar el analisis) puede
+    // disparar un scroll AUTOMATICO del navegador hacia ESE campo (arriba de la fila de
+    // botones), deshaciendo el scroll que dejamos la fila de botones sobre la barra fija.
+    // Por eso este efecto depende tambien de anEdit: se re-dispara con CADA cambio dentro
+    // del panel, no solo al abrirlo, y vuelve a corregir la posicion cada vez.
+    const t = setTimeout(asegurarAccionesVisibles, 50)
+    let ro = null
+    if (accionesAnalisisRef.current?.parentElement) {
+      ro = new ResizeObserver(() => asegurarAccionesVisibles())
+      ro.observe(accionesAnalisisRef.current.parentElement)
+    }
+    return () => { clearTimeout(t); ro?.disconnect() }
+  }, [analisisAbierto, anEdit, asegurarAccionesVisibles])
   const recalcularAnalisis = async (it, aplicarAlItem) => {
     const apuId = apuIdDe(it)
     if (!apuId || !anEdit) return
