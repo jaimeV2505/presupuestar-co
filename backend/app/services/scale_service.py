@@ -53,7 +53,7 @@ def detectar_escala_desde_textos(textos: list) -> Optional[ResultadoEscala]:
             num, den = int(m[0]), int(m[1])
             # Validar que sea una escala razonable
             if num == 1 and den in [d for _, d in ESCALAS_COMUNES]:
-                factor = num / den / 1000  # mm de papel → m reales
+                factor = den / num / 1000  # metros reales por mm de plano: 1mm papel = den mm reales
                 return ResultadoEscala(
                     escala_texto=f"1:{den}",
                     numerador=num,
@@ -65,7 +65,7 @@ def detectar_escala_desde_textos(textos: list) -> Optional[ResultadoEscala]:
                 )
             # También aceptar escalas inversas como "75:1"
             elif den == 1 and num in [d for _, d in ESCALAS_COMUNES]:
-                factor = 1 / num / 1000
+                factor = num / 1000  # denominador real de la escala es "num" (ej: "75:1" -> escala 1:75)
                 return ResultadoEscala(
                     escala_texto=f"1:{num}",
                     numerador=1,
@@ -148,7 +148,7 @@ def detectar_escala_desde_imagen(img_bytes: bytes, ancho_imagen_px: int) -> Opti
                 den_estimado = den
                 break
 
-        factor = 1 / den_estimado / 1000
+        factor = den_estimado / 1000
         return ResultadoEscala(
             escala_texto=f"1:{den_estimado}",
             numerador=1,
@@ -213,7 +213,7 @@ def estimar_escala_por_contexto(tipo_plano: str, sistema: str) -> ResultadoEscal
         escala_texto=f"1:{den}",
         numerador=1,
         denominador=den,
-        factor_m_por_mm=1 / den / 1000,
+        factor_m_por_mm=den / 1000,
         confianza="baja",
         metodo="estimado",
         nota=f"Escala estimada por tipo de plano. Verificar manualmente."

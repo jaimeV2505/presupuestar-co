@@ -35,7 +35,12 @@ def listar(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db
         .order_by(Notificacion.creado.desc())
         .limit(30).all()
     )
-    no_leidas = sum(1 for n in notifs if not n.leida)
+    # Conteo real de no leidas — independiente del limite de 30 de la lista mostrada.
+    no_leidas = (
+        db.query(Notificacion)
+        .filter(Notificacion.user_id == user.id, Notificacion.leida == False)  # noqa: E712
+        .count()
+    )
     return {
         "no_leidas": no_leidas,
         "notificaciones": [

@@ -186,16 +186,6 @@ def listar_tickets(admin: Usuario = Depends(admin_actual), db: Session = Depends
     ]
 
 
-class ResolverTicket(BaseModel):
-    ticket_id: int
-
-
-class ResponderTicket(BaseModel):
-    ticket_id: int
-    respuesta: str
-    resolver: bool = True
-
-
 class ResponderRequest(BaseModel):
     ticket_id: int
     respuesta: str
@@ -241,17 +231,6 @@ def finalizar_ticket(req: FinalizarRequest, admin: Usuario = Depends(admin_actua
                   "Si el tema persiste, responde el ticket y se reabre solo.")
     except Exception:
         pass
-    return {"ok": True}
-
-
-@router.post("/admin/resolver")
-def resolver(req: ResolverTicket, admin: Usuario = Depends(admin_actual),
-             db: Session = Depends(get_db)):
-    t = db.query(TicketSoporte).filter(TicketSoporte.id == req.ticket_id).first()
-    if not t:
-        raise HTTPException(404, "Ticket no encontrado")
-    t.estado = "resuelto"
-    db.commit()
     return {"ok": True}
 
 
