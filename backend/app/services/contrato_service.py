@@ -27,6 +27,7 @@ def generar_contrato(proyecto, usuario, items: List[Dict], totales: Dict,
     cfg = json.loads(proyecto.contrato_json or "{}")
     plazo = int(cfg.get("plazo_dias") or 45)
     anticipo_pct = float(cfg.get("anticipo_pct") or 50)
+    retegarantia_pct = max(0.0, min(20.0, float(cfg.get("retegarantia_pct") or 0)))
     fecha_inicio = cfg.get("fecha_inicio") or "por definir de comun acuerdo"
     lugar = cfg.get("lugar") or proyecto.direccion or proyecto.region or "Colombia"
 
@@ -104,7 +105,13 @@ def generar_contrato(proyecto, usuario, items: List[Dict], totales: Dict,
                 f"{anticipo_pct:g}%, esto es la suma de {_fmt(anticipo_valor)}. "
                 f"B) El saldo del {saldo_pct:g}%, esto es la suma de {_fmt(saldo_valor)}, "
                 f"contra avance de obra y/o acta de terminacion y entrega firmada por "
-                f"ambas partes.{forma_pago_extra}"
+                f"ambas partes."
+                + (f" PARAGRAFO PRIMERO: De cada pago de avance, el CONTRATANTE retendra "
+                   f"un {retegarantia_pct:g}% en calidad de retegarantia, suma que sera "
+                   f"liberada al CONTRATISTA una vez firmada el acta de entrega final de "
+                   f"la obra a satisfaccion."
+                   if retegarantia_pct > 0 else "")
+                + forma_pago_extra
             ),
         },
         {
