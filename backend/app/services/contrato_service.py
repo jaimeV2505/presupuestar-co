@@ -148,6 +148,18 @@ def generar_contrato(proyecto, usuario, items: List[Dict], totales: Dict,
                 "previsto en la Ley 527 de 1999 de la Republica de Colombia."
             ),
         },
+        {
+            "titulo": "NOVENA: NATURALEZA DEL DOCUMENTO",
+            "texto": (
+                "Este documento es una plantilla de referencia generada por la "
+                "plataforma PresupuestarCO como herramienta de apoyo, con base en la "
+                "informacion suministrada por las partes, quienes declaran haberla "
+                "revisado y adaptado a su caso. Los calculos tributarios incluidos "
+                "son ayudas de calculo y no sustituyen la asesoria de un contador "
+                "publico. PresupuestarCO no es parte de este contrato de obra y no "
+                "asume responsabilidad por su ejecucion o cumplimiento."
+            ),
+        },
     ]
 
     tabla = [
@@ -189,5 +201,7 @@ def generar_contrato(proyecto, usuario, items: List[Dict], totales: Dict,
                    "fecha_inicio": fecha_inicio, "lugar": lugar},
         "firmas": firmas,
         "firmado": bool(firma),
+        "leyenda_legal": ("Documento generado por PresupuestarCO como herramienta de apoyo. "
+                          "Plantilla de referencia — PresupuestarCO no es parte de este contrato de obra."),
 
     }

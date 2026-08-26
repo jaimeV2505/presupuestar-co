@@ -50,6 +50,12 @@ if not tok:
 d = paso("crear presupuesto canario", c.post(f"{URL}/api/proyectos",
          json={"nombre": "🐤 Canario del vigia", "cliente_nombre": "Vigia", "region": "bogota"}, headers=H))
 pid = d.get("id")
+if not pid:
+    print()
+    print("🚨 EL VIGIA NO PUDO CREAR EL CANARIO — la causa esta arriba (¿cuota del plan gratis?)")
+    print("   Cura: la cuenta canario debe ser PRO (ilimitada). En Neon SQL:")
+    print("   UPDATE usuarios SET plan='pro', plan_vence=NULL WHERE email='<canario>';")
+    sys.exit(1)
 d = paso("items + AIU", c.put(f"{URL}/api/proyectos/{pid}", json={
     "items": [{"id": "v1", "capitulo": "VIGIA", "descripcion": "Item canario",
                "unidad": "un", "cantidad": 3, "precio_unitario": 1000}],

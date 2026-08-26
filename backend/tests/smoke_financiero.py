@@ -324,3 +324,19 @@ _r4 = calcular_totales(_it, {"aplicar": True, "admin": 10, "imprevistos": 5,
                              "utilidad": 5, "iva_sobre_utilidad": False})
 assert _r4["iva"] == round(1_200_000*0.19) == 228_000
 print("OK regimen IVA: no-responsable / 19% total / 462-1 utilidad / base+AIU — los 4 a peso")
+
+# ═══ FAMILIA 10: LA DERIVA DE REDONDEO — tres actas de un contrato incomodo ═══
+# El peso perdido en redondeos es plata del contratista. Con numero primo feo,
+# el anticipo se amortiza EXACTO (el tope hace la magia) y nada queda regado.
+from app.services.otrosi_service import amortizacion_con_tope as _amt10
+_total10 = 10_000_001
+_cortes10 = [round(_total10*0.333), round(_total10*0.333)]
+_cortes10.append(_total10 - sum(_cortes10))
+_anticipo10 = round(_total10*0.30)
+_am10 = 0
+for _c10 in _cortes10:
+    _am10 += _amt10(_c10, 30, _anticipo10, _am10)
+assert sum(_cortes10) == _total10, "las actas no cubren el contrato completo"
+assert _am10 == _anticipo10, f"anticipo con residuo: {_anticipo10 - _am10} pesos regados"
+print("OK deriva de redondeo: 3 actas cubren el contrato y el anticipo amortiza EXACTO")
+
