@@ -128,6 +128,8 @@ def aprobar(req: ResolverRequest, admin: Usuario = Depends(admin_actual),
     s = db.query(SolicitudPro).filter(SolicitudPro.id == req.solicitud_id).first()
     if not s:
         raise HTTPException(404, "Solicitud no encontrada")
+    if s.estado != "pendiente":
+        raise HTTPException(400, f"Esta solicitud ya fue {s.estado} — no se puede volver a aprobar")
     user = db.query(Usuario).filter(Usuario.id == s.user_id).first()
     if not user:
         raise HTTPException(404, "Usuario no encontrado")
@@ -155,6 +157,8 @@ def rechazar(req: ResolverRequest, admin: Usuario = Depends(admin_actual),
     s = db.query(SolicitudPro).filter(SolicitudPro.id == req.solicitud_id).first()
     if not s:
         raise HTTPException(404, "Solicitud no encontrada")
+    if s.estado != "pendiente":
+        raise HTTPException(400, f"Esta solicitud ya fue {s.estado} — no se puede volver a resolver")
     s.estado = "rechazada"
     s.resuelto = datetime.now(timezone.utc)
     db.commit()

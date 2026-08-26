@@ -56,16 +56,19 @@ def backup_completo(x_backup_token: str = Header(default=""),
                     authorization: str = Header(default=""),
                     db: Session = Depends(get_db)):
     """Autenticacion dual: JWT de admin (boton del panel) o BACKUP_TOKEN (GitHub Action)."""
+    import hmac
     esperado = os.environ.get("BACKUP_TOKEN", "").strip()
     admin_email = "github-action"
-    if not (esperado and x_backup_token == esperado):
+    token_ok = bool(esperado) and hmac.compare_digest(x_backup_token, esperado)
+    if not token_ok:
         try:
             import jwt as _jwt
             from app.api.auth import JWT_SECRET, JWT_ALG
             token = (authorization or "").replace("Bearer ", "").strip()
             payload = _jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
             u = db.query(Usuario).filter(Usuario.id == int(payload["sub"])).first()
-            assert u and u.email.lower() in _admins()
+            if not (u and u.email.lower() in _admins()):
+                raise ValueError("no es admin")
             admin_email = u.email
         except Exception:
             raise HTTPException(401, "Solo administradores")

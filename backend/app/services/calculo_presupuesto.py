@@ -22,8 +22,8 @@ def calcular_totales(items: List[Dict], aiu: Dict) -> Dict:
     """
     subtotal = 0.0
     for it in items:
-        cant = float(it.get("cantidad") or 0)
-        precio = float(it.get("precio_unitario") or 0)
+        cant = _num(it.get("cantidad"))
+        precio = _num(it.get("precio_unitario"))
         subtotal += cant * precio
     subtotal = round(subtotal)
 
@@ -49,7 +49,7 @@ def calcular_totales(items: List[Dict], aiu: Dict) -> Dict:
     else:
         val_a = val_i = val_u = 0
         base_con_aiu = subtotal
-        iva = round(subtotal * 0.19) if aiu.get("con_iva", False) else 0
+        iva = round(subtotal * 0.19) if bool(aiu.get("con_iva", False)) else 0
         regimen_iva = "IVA 19% sobre subtotal" if iva else "Sin IVA"
 
     total = base_con_aiu + iva

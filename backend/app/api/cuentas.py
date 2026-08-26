@@ -367,6 +367,14 @@ def _generar_pdf(c: CuentaCobro, p: Proyecto, user: Usuario):
         ]
         if c.amortizacion:
             data.append([f"(-) Amortizacion anticipo ({c.anticipo_pct}%)", f"- {fmt(c.amortizacion)}"])
+        if c.retencion:
+            _rete_pct_mostrado = round((c.retencion / c.valor_corte) * 100, 1) if c.valor_corte else 0
+            data.append([f"(-) Retegarantia ({_rete_pct_mostrado:g}%)", f"- {fmt(c.retencion)}"])
+        deducciones_detalle = json.loads(c.deducciones_json) if c.deducciones_json else []
+        for d in deducciones_detalle:
+            data.append([f"(-) {d.get('nombre', 'Deduccion')} ({d.get('pct', 0):g}%)", f"- {fmt(d.get('valor', 0))}"])
+        if c.deducciones and not deducciones_detalle:
+            data.append(["(-) Deducciones de ley", f"- {fmt(c.deducciones)}"])
         data.append(["NETO A PAGAR", fmt(c.neto)])
         t = Table(data, colWidths=[11*cm, 5*cm])
         t.setStyle(TableStyle([
