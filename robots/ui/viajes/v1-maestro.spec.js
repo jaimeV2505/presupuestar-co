@@ -12,7 +12,8 @@ test('el maestro: del recetario al Excel, en el celular', async ({ page }) => {
 
   await page.goto(`/editor/${p.id}`)
   const totalObra = page.getByTestId('total-obra')
-  await expect(totalObra).toBeAttached()   // en movil vive oculto; el TEXTO igual respira
+  // el editor respira (el total-obra aparece cuando el recetario siembre items)
+  await expect(page.getByTestId('abrir-buscador')).toBeVisible()
 
   // 1) buscador → constructor → RECETARIO
   await page.getByTestId('abrir-buscador').click()
