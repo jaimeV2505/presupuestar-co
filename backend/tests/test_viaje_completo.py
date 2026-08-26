@@ -372,7 +372,8 @@ d = paso("liberar retegarantia", c.post(f"/api/cuentas/proyectos/{PID}/retegaran
 _cc_resp = c.get(f"/api/cuentas/proyectos/{PID}/cuentas", headers=H).json()
 _cuentas_all = _cc_resp.get("cuentas", _cc_resp) if isinstance(_cc_resp, dict) else _cc_resp
 _sum_rete = sum(x.get("retencion") or 0 for x in _cuentas_all if x.get("tipo") != "retegarantia")
-assert d["neto"] == _sum_rete and _sum_rete > 0, f"rete liberada != Σ retenciones: {d['neto']} vs {_sum_rete}"
+_neto_rete = (d.get("cuenta") or d).get("neto")   # el endpoint envuelve: {ok, cuenta:{...}}
+assert _neto_rete == _sum_rete and _sum_rete > 0, f"rete liberada != Σ retenciones: {_neto_rete} vs {_sum_rete}"
 r = c.post(f"/api/cuentas/proyectos/{PID}/retegarantia", headers=H)
 paso("CANDADO: retegarantia UNA sola vez -> 400", r, status=400)
 r = c.post(f"/api/disenos/proyectos/{PID}/disenos",
