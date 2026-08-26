@@ -497,7 +497,17 @@ async def calcular_presupuesto(
     subtotal = sum(i.precio_total for i in items)
     aiu_v = round(subtotal * porcentaje_aiu / 100) if incluir_aiu else 0
     base = subtotal + aiu_v
-    iva_v = round(base * 0.19) if incluir_iva else 0
+    # IVA en contratos de construccion (Art. 462-1 ET) va SOLO sobre la Utilidad,
+    # igual que el motor del editor manual (calculo_presupuesto.py). Este endpoint
+    # no separa admin/imprevistos/utilidad — solo recibe un porcentaje_aiu combinado —
+    # asi que asumimos la MISMA proporcion que el resto de la app usa por defecto
+    # (15% admin + 5% imprevistos + 8% utilidad = 28%, el default de porcentaje_aiu):
+    # utilidad = 8/28 del AIU total. Antes esto calculaba IVA sobre TODA la base
+    # (subtotal+AIU), una base ~4x mas grande — quedaba MUY por encima de lo que
+    # exige la ley, e inconsistente con el motor del editor manual.
+    FRACCION_UTILIDAD_EN_AIU = 8 / 28
+    utilidad_v = round(subtotal * porcentaje_aiu * FRACCION_UTILIDAD_EN_AIU / 100) if incluir_aiu else 0
+    iva_v = round(utilidad_v * 0.19) if incluir_iva else 0
     total = base + iva_v
 
     area_losa = next((el.area_m2 or 0 for el in elementos if el.tipo == "losa"), None)
@@ -549,7 +559,7 @@ async def calcular_presupuesto(
             "Adicionales metálica: tornillería 1.5%, soldadura 2.0%, platinería 4.0%",
             "Sandblasting y pintura anticorrosiva incluida en ítem separado (5.28)",
             f"AIU {porcentaje_aiu}% = Administración 15% + Imprevistos 5% + Utilidad 8%",
-            "IVA 19% sobre base con AIU — ET Art. 468",
+            "IVA 19% sobre la Utilidad (Art. 462-1 ET — contratos de construccion)",
             "Norma: NSR-10 | ASTM A500 (perfiles tubulares) | AISC (conexiones)",
             "AVISO: Presupuesto preliminar. Validar con memoria de cálculo y cotizaciones.",
         ],

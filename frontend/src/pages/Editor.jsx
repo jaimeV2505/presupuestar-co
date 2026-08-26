@@ -496,6 +496,16 @@ export default function Editor() {
 
   if (!p) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400">Cargando...</div>
 
+  // Items EFECTIVOS para el avance: contrato + adicionales (otrosi) APROBADOS,
+  // con el MISMO prefijo "ot{n}:" que espera items_efectivos() en el backend.
+  // Se calcula UNA sola vez y se reutiliza en el checklist, el resumen en vivo
+  // y el payload de envio — antes el payload solo tomaba `items` (sin otrosies)
+  // y cualquier % marcado sobre un adicional se descartaba en silencio: nunca
+  // llegaba al backend, nunca contaba en valor_ejecutado ni en cuentas de cobro.
+  const itemsParaAvance = [...items, ...otrosies.filter(o => o.estado === 'aprobado').flatMap(o =>
+    o.items.map(it => ({ ...it, id: `ot${o.numero}:${it.id || it.codigo || ''}`,
+                         descripcion: `[Otrosí ${o.numero}] ${it.descripcion}` })))]
+
   // Agrupar items por capitulo
   const grupos = {}
   items.forEach((it, idx) => {
@@ -2558,10 +2568,7 @@ export default function Editor() {
                 <div className="px-3 py-2 border-b border-slate-100 sticky top-0 bg-white">
                   <p className="text-[11px] font-semibold text-slate-500 uppercase">% de avance por actividad</p>
                 </div>
-                {[...items, ...otrosies.filter(o => o.estado === 'aprobado').flatMap(o =>
-                    o.items.map(it => ({ ...it, id: `ot${o.numero}:${it.id || it.codigo || ''}`,
-                                         descripcion: `[Otrosí ${o.numero}] ${it.descripcion}` })))
-                 ].map(it => {
+                {itemsParaAvance.map(it => {
                   const valorItem = Math.round((parseFloat(it.cantidad)||0) * (parseFloat(it.precio_unitario)||0))
                   const pct = avanceItems[it.id] ?? 0
                   return (
@@ -2585,7 +2592,7 @@ export default function Editor() {
               {/* Resumen en vivo: % ponderado + $ ejecutado */}
               {(() => {
                 let total = 0, ejec = 0
-                items.forEach(it => {
+                itemsParaAvance.forEach(it => {
                   const v = Math.round((parseFloat(it.cantidad)||0) * (parseFloat(it.precio_unitario)||0))
                   total += v
                   ejec += Math.round(v * (avanceItems[it.id] ?? 0) / 100)
@@ -2632,7 +2639,7 @@ export default function Editor() {
                         try {
                           const payload = {
                             ...nuevoAvance,
-                            items: items.map(it => ({ id: it.id, pct: avanceItems[it.id] ?? 0 })),
+                            items: itemsParaAvance.map(it => ({ id: it.id, pct: avanceItems[it.id] ?? 0 })),
                           }
                           const a = await avancesAPI.crear(id, payload)
                           setAvances(prev => [a, ...prev])
