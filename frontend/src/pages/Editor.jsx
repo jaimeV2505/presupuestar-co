@@ -328,7 +328,9 @@ export default function Editor() {
       })
       setAnEdit(JSON.parse(JSON.stringify({ ...r.desglose, transporte: r.desglose.transporte || 0 })))
       if (aplicarAlItem) {
-        setItemsYGuardar(prev => prev.map(x => x._idx === it._idx
+        // bug real: x._idx no existe en los items crudos (solo en la copia de render de la linea 469);
+        // el match correcto es por POSICION, igual que actualizarItem/eliminarItem/actualizarCalc
+        setItemsYGuardar(prev => prev.map((x, i) => i === it._idx
           ? { ...x, precio_unitario: r.precio, precio_lista: null, precio_editado: false } : x))
         toast.success(`APU recalculado y aplicado: ${COP(r.precio)} — totales, anexo y lista de materiales al día ✨`)
       } else {
