@@ -125,6 +125,7 @@ export const pagosAPI = {
   adminAprobar: (data) => api.post('/pagos/admin/aprobar', data).then(r => r.data),
   adminRechazar: (data) => api.post('/pagos/admin/rechazar', data).then(r => r.data),
   adminPlanManual: (data) => api.post('/pagos/admin/plan-manual', data).then(r => r.data),
+  adminUsuarios: () => api.get('/pagos/admin/usuarios').then(r => r.data),
 }
 
 export const recuperarAPI = {

@@ -18,6 +18,7 @@ export default function Admin() {
   const [manual, setManual] = useState({ email: '', dias: 30 })
   const [tickets, setTickets] = useState([])
   const [respuestas, setRespuestas] = useState({})  // {ticketId: texto}
+  const [usuarios, setUsuarios] = useState([])
 
   const cargar = () => {
     setCargando(true)
@@ -26,6 +27,7 @@ export default function Admin() {
       .catch(e => { toast.error(e.message); if (e.message.includes('autorizado')) nav('/') })
       .finally(() => setCargando(false))
     soporteAPI.adminListar().then(setTickets).catch(() => {})
+    pagosAPI.adminUsuarios().then(r => setUsuarios(r.usuarios || [])).catch(() => {})
   }
   useEffect(() => { cargar() }, [])
 
@@ -101,6 +103,49 @@ export default function Admin() {
                   className="shrink-0 text-xs font-bold bg-navy-600 text-white rounded-xl px-4 py-2.5">
             ⬇️ Descargar backup
           </button>
+        </div>
+
+        {/* USUARIOS REGISTRADOS — solo lectura, vision general */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-slate-700">
+              👥 Usuarios registrados {usuarios.length > 0 && <span className="text-slate-400 font-normal">({usuarios.length})</span>}
+            </p>
+          </div>
+          {usuarios.length === 0 ? (
+            <p className="text-sm text-slate-400 py-4 text-center">Sin usuarios aun</p>
+          ) : (
+            <div className="overflow-x-auto -mx-4 px-4">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-slate-400 border-b border-slate-100">
+                    <th className="py-2 pr-3 font-medium">Email</th>
+                    <th className="py-2 pr-3 font-medium">Nombre</th>
+                    <th className="py-2 pr-3 font-medium">Empresa</th>
+                    <th className="py-2 pr-3 font-medium">Ciudad</th>
+                    <th className="py-2 pr-3 font-medium">Plan</th>
+                    <th className="py-2 pr-3 font-medium">Registrado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usuarios.map(u => (
+                    <tr key={u.id} className="border-b border-slate-50 last:border-0">
+                      <td className="py-2 pr-3 text-slate-700 whitespace-nowrap">{u.email}</td>
+                      <td className="py-2 pr-3 text-slate-600 whitespace-nowrap">{u.nombre}</td>
+                      <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{u.empresa || '—'}</td>
+                      <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{u.ciudad || '—'}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${u.plan === 'pro' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {u.plan}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 text-slate-400 whitespace-nowrap">{u.creado}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Activacion manual directa */}

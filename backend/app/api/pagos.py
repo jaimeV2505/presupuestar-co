@@ -187,3 +187,24 @@ def plan_manual(req: PlanManualRequest, admin: Usuario = Depends(admin_actual),
     db.commit()
     return {"ok": True, "usuario": user.email, "plan": user.plan,
             "vence": user.plan_vence.strftime("%d/%m/%Y") if user.plan_vence else None}
+
+
+@router.get("/admin/usuarios")
+def admin_usuarios(admin: Usuario = Depends(admin_actual), db: Session = Depends(get_db)):
+    """Lista simple de usuarios registrados — solo lectura, para tener una vision general."""
+    usuarios = db.query(Usuario).order_by(Usuario.creado.desc()).all()
+    return {
+        "total": len(usuarios),
+        "usuarios": [
+            {
+                "id": u.id,
+                "email": u.email,
+                "nombre": u.nombre,
+                "empresa": u.empresa,
+                "ciudad": u.ciudad,
+                "plan": u.plan,
+                "creado": u.creado.strftime("%d/%m/%Y %H:%M") if u.creado else None,
+            }
+            for u in usuarios
+        ],
+    }
