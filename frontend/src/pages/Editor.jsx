@@ -196,6 +196,14 @@ export default function Editor() {
     timerGuardar.current = setTimeout(() => _enviar(0), 1000)
   }, [calcularLocal, _enviar])
 
+  // Fuerza el guardado pendiente ANTES de exportar: el autoguardado es debounced 1s
+  // y exportar lee la verdad del SERVIDOR — sin este flush, exportar justo tras editar
+  // puede pegarle a un backend todavia con el presupuesto viejo (o vacio).
+  const flushGuardado = useCallback(async () => {
+    clearTimeout(timerGuardar.current)
+    if (pendienteRef.current) await _enviar(0)
+  }, [_enviar])
+
   const setItemsYGuardar = (fn) => {
     if (p?.estado === 'terminado') {
       toast.error('Proyecto terminado — solo lectura. Duplícalo para reutilizar el presupuesto.', { id: 'ro' })
@@ -446,6 +454,7 @@ export default function Editor() {
   // ── Exportar ──────────────────────────────────────────────────────────
   const exportar = async (tipo) => {
     try {
+      await flushGuardado()
       toast.loading('Generando ' + tipo.toUpperCase() + '...', { id: 'exp' })
       const payload = { proyecto_id: parseInt(id) }
       const res = tipo === 'excel' ? await exportarAPI.excel(payload)
