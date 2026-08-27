@@ -35,7 +35,14 @@ api.interceptors.response.use(r => r, err => {
       msg = JSON.stringify(detail).slice(0, 200)
     }
   }
-  return Promise.reject(new Error(msg))
+  // NUNCA crear un Error nuevo aqui — eso descarta err.response, y el resto de
+  // la app (ej. _enviar en Editor.jsx: `const esRed = !e.response`) depende de
+  // esa propiedad para distinguir un error REAL del servidor (400/404/500, ya
+  // respondio) de un problema de red genuino (nunca respondio). Perderla hacia
+  // que CUALQUIER error de validacion se mostrara como "servidor lento" en vez
+  // del mensaje real. Se enriquece el mensaje sobre el MISMO error original.
+  err.message = msg
+  return Promise.reject(err)
 })
 
 export const authAPI = {
