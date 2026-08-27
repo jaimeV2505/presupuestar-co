@@ -187,10 +187,10 @@ def predim_zapata(
     ancho_col_m: float = 0.30,
     largo_col_m: float = 0.30,
     fc_mpa: float = 20.7
-) -> Tuple[float, float, str]:
+) -> Tuple[float, float, str, bool]:
     """
     Verifica si la zapata puede soportar la carga de la columna.
-    Retorna (carga_kN, capacidad_kN, evaluacion).
+    Retorna (carga_kN, capacidad_kN, evaluacion, punzonamiento_verificar).
     """
     qa = QA_SUELO.get(tipo_suelo, QA_SUELO["default"])  # kN/m^2
     area_zapata = largo_m * ancho_m  # m^2
@@ -205,12 +205,14 @@ def predim_zapata(
 
     # Verificar punzonamiento (perimetro critico a d/2 del borde columna)
     d = alto_m - 0.075  # altura efectiva
+    punzonamiento_verificar = False
     if d > 0:
         bo = 2 * ((ancho_col_m + d) + (largo_col_m + d))
         Vc_punch = 0.17 * (1 + 2/1) * math.sqrt(fc_mpa) * 1000 * bo * d / 1000
         if carga_columna_kn > Vc_punch * 0.75:
-            # Solo una nota informativa — el punzonamiento requiere calculo detallado
-            pass
+            # el calculo simplificado asume columna cuadrada (bc=1) — no reemplaza
+            # el chequeo real de punzonamiento, solo marca que hay que revisarlo
+            punzonamiento_verificar = True
 
     if capacidad_kn < carga_columna_kn * 0.8:
         evaluacion = "INSUFICIENTE"
@@ -219,7 +221,7 @@ def predim_zapata(
     else:
         evaluacion = "OK"
 
-    return carga_columna_kn, capacidad_kn, evaluacion
+    return carga_columna_kn, capacidad_kn, evaluacion, punzonamiento_verificar
 
 
 # ── Motor principal ──────────────────────────────────────────────────────────
@@ -340,9 +342,17 @@ def verificar_predimensionamiento(
         area_trib = 9.0
         carga_col = 10.0 * area_trib * max(num_pisos, 1) * 1.3
 
-        carga, cap, eval_z = predim_zapata(
+        carga, cap, eval_z, punz_verificar = predim_zapata(
             largo, ancho, h_zap, carga_col, tipo_suelo
         )
+
+        if punz_verificar:
+            resultado.alertas.append(AlertaPredim(
+                severidad="INFO",
+                elemento=nombre,
+                mensaje=f"Zapata {largo*100:.0f}x{ancho*100:.0f}cm: verificar punzonamiento (carga cercana al límite estimado)",
+                recomendacion="Chequeo simplificado (asume columna cuadrada) — verificar punzonamiento real en memoria de cálculo (NSR-10 C.11.11)."
+            ))
 
         if eval_z == "INSUFICIENTE":
             area_min = carga / QA_SUELO.get(tipo_suelo, 150)

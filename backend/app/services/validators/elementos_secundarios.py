@@ -58,17 +58,25 @@ def calcular_correas_desde_separacion(
 def calcular_malla_electrosoldada(
     area_m2: float, referencia_malla: str = "M-188", desperdicio_pct: float = 5.0
 ) -> Dict:
-    ref = referencia_malla.upper().strip()
+    ref_solicitada = referencia_malla.upper().strip()
+    ref = ref_solicitada
     malla = MALLAS_ELECTROSOLDADAS.get(ref)
     if not malla:
         for key in MALLAS_ELECTROSOLDADAS:
             if ref in key or key in ref:
                 malla = MALLAS_ELECTROSOLDADAS[key]; ref = key; break
-    if not malla:
+    no_reconocida = not malla
+    if no_reconocida:
+        # NUNCA sustituir en silencio: el peso puede variar mas del doble entre
+        # mallas (2.60 a 8.33 kg/m2). Se devuelve M-188 como referencia MINIMA de
+        # trabajo, pero marcado explicitamente — el llamador debe advertir, no
+        # mostrar "M-188" como si fuera lo detectado.
         ref = "M-188"; malla = MALLAS_ELECTROSOLDADAS["M-188"]
     area_desp = area_m2 * (1 + desperdicio_pct / 100)
     return {
         "referencia": ref,
+        "referencia_solicitada": ref_solicitada,
+        "no_reconocida": no_reconocida,
         "descripcion": malla["descripcion"],
         "area_m2": area_m2,
         "peso_kg_m2": malla["peso_kg_m2"],
@@ -111,7 +119,12 @@ def enriquecer_elementos_con_calculos(
             rm = calcular_malla_electrosoldada(el["area_m2"], f"M-{mm.group(1)}")
             el_new["_malla_kg"] = rm["kg_total"]
             el_new["_malla_ref"] = rm["referencia"]
-            notas.append(f"Malla {rm['referencia']} {el['area_m2']}m^2 = {rm['kg_total']}kg")
+            if rm["no_reconocida"]:
+                notas.append(f"⚠ Malla '{rm['referencia_solicitada']}' no esta en el catalogo — "
+                             f"se uso {rm['referencia']} como referencia MINIMA de trabajo "
+                             f"({el['area_m2']}m^2 = {rm['kg_total']}kg). Verificar la malla real del plano.")
+            else:
+                notas.append(f"Malla {rm['referencia']} {el['area_m2']}m^2 = {rm['kg_total']}kg")
         elementos_out.append(el_new)
     return elementos_out, notas
 
