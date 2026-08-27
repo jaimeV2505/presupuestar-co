@@ -44,7 +44,7 @@ export default function PerfilPublico() {
         <h1 className="text-xl font-black mt-3">{data.empresa || data.nombre}</h1>
         {data.empresa && <p className="text-sm text-blue-200">{data.nombre}</p>}
         <p className="text-xs text-blue-300 mt-1 flex items-center justify-center gap-1">
-          <MapPin className="w-3 h-3" /> {data.ciudad?.charAt(0).toUpperCase() + data.ciudad?.slice(1)}, Colombia
+          <MapPin className="w-3 h-3" /> {data.ciudad ? data.ciudad.charAt(0).toUpperCase() + data.ciudad.slice(1) : 'Colombia'}{data.ciudad ? ', Colombia' : ''}
         </p>
       </div>
 

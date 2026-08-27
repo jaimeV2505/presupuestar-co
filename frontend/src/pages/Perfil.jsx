@@ -117,8 +117,10 @@ function Reputacion() {
                 </div>
                 {e.comentario && (
                   <button onClick={async () => {
-                            const r = await shareAPI.publicarResena({ encuesta_id: e.id, publico: !e.publico })
-                            setRep(prev => ({ ...prev, encuestas: prev.encuestas.map(x => x.id === e.id ? { ...x, publico: r.publico } : x) }))
+                            try {
+                              const r = await shareAPI.publicarResena({ encuesta_id: e.id, publico: !e.publico })
+                              setRep(prev => ({ ...prev, encuestas: prev.encuestas.map(x => x.id === e.id ? { ...x, publico: r.publico } : x) }))
+                            } catch (err) { toast.error(err.message) }
                           }}
                           className={`shrink-0 text-[10px] font-bold px-2.5 py-1.5 rounded-full transition ${e.publico ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
                     {e.publico ? '✓ Público' : 'Oculto'}
