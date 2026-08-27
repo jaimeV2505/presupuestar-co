@@ -144,13 +144,28 @@ def _parsear_filas(contenido: bytes, nombre_archivo: str) -> List[dict]:
     ext = (nombre_archivo or "").lower().rsplit(".", 1)[-1]
 
     if ext in ("xlsx", "xlsm"):
-        import openpyxl
-        wb = openpyxl.load_workbook(io.BytesIO(contenido), data_only=True, read_only=True)
-        ws = wb.worksheets[0]
-        filas_crudas = list(ws.iter_rows(values_only=True))
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(contenido), data_only=True, read_only=True)
+            if not wb.worksheets:
+                raise HTTPException(400, "El archivo no tiene ninguna hoja")
+            ws = wb.worksheets[0]
+            filas_crudas = list(ws.iter_rows(values_only=True))
+        except HTTPException:
+            raise
+        except Exception:
+            # archivo con extension .xlsx pero corrupto/no es realmente un excel
+            # (BadZipFile y similares) — nunca un 500 crudo, siempre un mensaje claro
+            raise HTTPException(400, "No pude leer este archivo — verifica que sea "
+                                     "un Excel (.xlsx) valido y no este danado")
     elif ext == "csv":
-        texto = contenido.decode("utf-8-sig", errors="replace")
-        filas_crudas = list(csv.reader(io.StringIO(texto)))
+        try:
+            texto = contenido.decode("utf-8-sig", errors="replace")
+            filas_crudas = list(csv.reader(io.StringIO(texto)))
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(400, "No pude leer este archivo CSV — verifica el formato")
     else:
         raise HTTPException(400, "Formato no soportado — sube un .xlsx o .csv")
 
