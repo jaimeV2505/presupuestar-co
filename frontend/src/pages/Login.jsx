@@ -26,6 +26,7 @@ export default function Login({ modo = 'login' }) {
     }
     if (!form.email || !form.password) { toast.error('Email y contraseña requeridos'); return }
     if (esRegistro && !form.nombre) { toast.error('Tu nombre es requerido'); return }
+    if (esRegistro && !form.acepta_terminos) { toast.error('Debes aceptar los términos y la política de datos'); return }
     setLoading(true)
     try {
       const res = esRegistro
