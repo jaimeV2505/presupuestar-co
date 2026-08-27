@@ -68,6 +68,17 @@ def listar(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db
         if cid:
             stars_por_cliente.setdefault(cid, []).append(e.estrellas)
 
+    # adicionales aprobados por proyecto — UNA sola query (anti N+1), mismo
+    # patron que metricas() en proyectos.py
+    from app.db import Otrosi
+    ids_proyectos = [p.id for p in proyectos]
+    adicionales_por_proyecto = {}
+    if ids_proyectos:
+        for o in db.query(Otrosi).filter(Otrosi.proyecto_id.in_(ids_proyectos),
+                                         Otrosi.estado == "aprobado").all():
+            t = json.loads(o.totales_json or "{}")
+            adicionales_por_proyecto[o.proyecto_id] = adicionales_por_proyecto.get(o.proyecto_id, 0) + int(t.get("total") or 0)
+
     out = []
     for c in clientes:
         ps = por_cliente.get(c.id, [])
@@ -76,7 +87,9 @@ def listar(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db
             if p.estado in GANADOS:
                 items = json.loads(p.items_json or "[]")
                 aiu = json.loads(p.aiu_json or "{}")
-                total_contratado += calcular_totales(items, aiu)["total"]
+                # base + adicionales aprobados — mismo criterio que metricas() en proyectos.py,
+                # si no, el total contratado del cliente queda subestimado cuando hay otrosies
+                total_contratado += calcular_totales(items, aiu)["total"] + adicionales_por_proyecto.get(p.id, 0)
         pagado = sum(pagado_por_proyecto.get(p.id, 0) for p in ps)
         stars = stars_por_cliente.get(c.id, [])
         out.append({

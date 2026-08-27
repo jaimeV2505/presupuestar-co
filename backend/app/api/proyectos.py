@@ -25,7 +25,11 @@ def _verificar_limite(user: Usuario, db: Session):
     """Plan gratis: limite de 3 presupuestos al mes. Pro: ilimitado."""
     # auditoria pre-live: el Pro VENCIDO vuelve a ser gratis (plan_vence manda)
     ahora = datetime.now(timezone.utc).replace(tzinfo=None)
-    es_pro_vigente = user.plan == "pro" and (user.plan_vence is None or user.plan_vence >= ahora)
+    # plan_vence puede volver tz-aware o naive segun el driver de DB — normalizar
+    # ANTES de comparar (mismo patron que el resto de este archivo: .replace(tzinfo=None)).
+    # Sin esto, comparar aware vs naive tira TypeError y crashea al crear un proyecto.
+    vence = user.plan_vence.replace(tzinfo=None) if user.plan_vence else None
+    es_pro_vigente = user.plan == "pro" and (vence is None or vence >= ahora)
     if es_pro_vigente:
         return
     if user.plan not in ("gratis", "pro"):   # cortesias/admin pasan; el pro VENCIDO cae a la puerta
