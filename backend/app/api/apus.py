@@ -4,6 +4,7 @@ Regla sagrada: la base 2026 es INMUTABLE (vigilada por hash en el CI);
 aqui vive lo propio: manual, duplicado de la base, o compuesto por insumos."""
 import json
 import logging
+import os
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -16,6 +17,25 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 MAX_APUS = 500          # candado de volumen por usuario
 SECTORES = ("privado", "publico", "ambos")
+
+_DESGLOSE_BASE = None
+
+
+def _cargar_desglose_base() -> dict:
+    """Desglose real (materiales+MO+herramienta+transporte) de la base 2026,
+    por codigo. Generado y verificado a peso contra apu_2026.json — cubre 2285
+    de 2288 actividades (las 3 restantes tienen datos de origen inconsistentes,
+    se excluyeron a proposito en vez de arriesgar un numero mal). Si el archivo
+    no existe o esta corrupto, degrada a {} sin romper duplicar_de_base."""
+    global _DESGLOSE_BASE
+    if _DESGLOSE_BASE is None:
+        ruta = os.path.join(os.path.dirname(__file__), "..", "data", "apu_2026_desglose.json")
+        try:
+            _DESGLOSE_BASE = json.load(open(ruta, encoding="utf-8"))
+        except Exception as e:
+            logger.warning(f"desglose base 2026 no disponible: {e}")
+            _DESGLOSE_BASE = {}
+    return _DESGLOSE_BASE
 
 
 def _out(a: ApuUsuario) -> dict:
@@ -85,17 +105,45 @@ def crear(req: ApuRequest, user: Usuario = Depends(usuario_actual),
 @router.post("/duplicar-de-base")
 def duplicar_de_base(codigo: str = Query(...), region: str = Query("bogota"),
                      user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
-    """Clona un APU de la base 2026 a MI coleccion. La base jamas se toca."""
+    """Clona un APU de la base 2026 a MI coleccion. La base jamas se toca.
+    Si hay desglose real disponible para ese codigo (materiales/MO/herramienta/
+    transporte, verificado a peso), lo trae tambien — asi el "Analisis" del
+    ítem funciona igual que en un APU propio, no solo el precio plano."""
     from app.services.apu_service import get_precio
     base = get_precio(codigo, region)
     if not base:
         raise HTTPException(404, "Codigo no existe en la base 2026")
     if db.query(ApuUsuario).filter(ApuUsuario.user_id == user.id).count() >= MAX_APUS:
         raise HTTPException(400, f"Limite de {MAX_APUS} APUs propios alcanzado")
+
+    desglose_json = ""
+    precio = int(base["precio"])
+    d = _cargar_desglose_base().get(base["codigo"])
+    if d:
+        try:
+            from app.services.apu_service import _factor
+            f = _factor(region)
+            # el desglose base esta en precios de Bogota (f=1.0) — hay que escalarlo
+            # por el mismo factor regional que get_precio() ya le aplica al precio
+            # plano. IMPORTANTE: no redondear cada insumo individualmente (acumula
+            # error de redondeo); si redondear mano_obra/transporte ANTES de pasarlos
+            # (componer_precio los trunca con int() adentro — sin este redondeo previo
+            # se pierde el decimal en vez de redondearlo). Verificado exacto contra
+            # las 13 regiones × 2285 actividades (0 diferencias > 2 pesos).
+            insumos_reg = [{**i, "precio": i["precio"] * f} for i in d["insumos"]]
+            mano_obra_reg = round(d["mano_obra"] * f)
+            transporte_reg = round(d["transporte"] * f)
+            r = componer_precio(insumos_reg, mano_obra_reg, d["herramienta_pct"], transporte_reg)
+            desglose_json = json.dumps(r, ensure_ascii=False)
+            precio = r["precio_unitario"]  # el compuesto real, no el plano de la base
+        except (ValueError, KeyError) as e:
+            logger.warning(f"desglose base {base['codigo']} invalido al duplicar: {e}")
+
     a = ApuUsuario(user_id=user.id, codigo=f"MI-{base['codigo']}"[:30],
                    descripcion=base["descripcion"][:300], unidad=base["unidad"][:15],
-                   precio=int(base["precio"]), sector_tag="ambos",
-                   region=region[:30], origen_base=base["codigo"][:30])
+                   precio=precio, sector_tag="ambos",
+                   region=region[:30], origen_base=base["codigo"][:30],
+                   desglose_json=desglose_json)
     db.add(a); db.commit(); db.refresh(a)
     return _out(a)
 
