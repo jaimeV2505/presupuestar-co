@@ -196,6 +196,23 @@ export default function Editor() {
     timerGuardar.current = setTimeout(() => _enviar(0), 1000)
   }, [calcularLocal, _enviar])
 
+  // Blindaje contra perdida de datos: si el usuario recarga o cierra la pestaña
+  // MIENTRAS hay un guardado pendiente/reintentando (ej. servidor lento), ese
+  // cambio se pierde en silencio — pendienteRef vive solo en memoria del navegador,
+  // no sobrevive un reload. El aviso nativo del navegador es la unica red de
+  // seguridad real aqui: obliga a confirmar antes de irse con cambios sin guardar.
+  useEffect(() => {
+    const handler = (e) => {
+      if (pendienteRef.current || guardando || sinRed) {
+        e.preventDefault()
+        e.returnValue = ''
+        return ''
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [guardando, sinRed])
+
   // Fuerza el guardado pendiente ANTES de exportar: el autoguardado es debounced 1s
   // y exportar lee la verdad del SERVIDOR — sin este flush, exportar justo tras editar
   // puede pegarle a un backend todavia con el presupuesto viejo (o vacio).
@@ -848,6 +865,21 @@ export default function Editor() {
             </button>
           </div>
         )}
+        {selladoUI && !soloLectura && (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
+            <span className="text-xl">✍️</span>
+            <p className="flex-1 text-xs text-slate-700">
+              <strong data-testid="banner-firmado" className="text-slate-800">Este contrato ya está firmado.</strong>{' '}
+              Las cantidades y precios de la tabla quedan fijas — es lo que el cliente aceptó.
+              Para trabajo nuevo o extra, usá <strong>Adicionales</strong>: queda registrado con su propia
+              firma, sin tocar el contrato original.
+            </p>
+            <button data-testid="btn-ir-adicionales" onClick={() => setShowOtrosi(true)}
+                    className="shrink-0 px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700">
+              ➕ Ir a Adicionales
+            </button>
+          </div>
+        )}
         {tipEditor && (
           <div className="flex items-start gap-2 bg-navy-50 border border-navy-100 rounded-xl p-3 mb-4 text-[11px] text-navy-700">
             <span className="text-base">💡</span>
@@ -870,8 +902,10 @@ export default function Editor() {
                     className="text-emerald-400 font-bold px-1">✕</button>
           </div>
         )}
-        {/* Boton agregar actividades */}
-        {!soloLectura && (
+        {/* Boton agregar actividades — oculto tambien en firmado, no solo terminado:
+            agregar un item directo a un contrato ya aceptado siempre lo rechaza el
+            backend (400, correcto por diseno) — mejor no dejar llegar hasta ahi. */}
+        {!selladoUI && (
         <button onClick={() => setShowBuscador(true)}
                 className="w-full flex items-center gap-3 bg-white border-2 border-dashed border-slate-300 hover:border-navy-400 rounded-xl p-4 text-slate-500 hover:text-navy-600 transition mb-5">
           <Search className="w-5 h-5" />
@@ -939,9 +973,11 @@ export default function Editor() {
                       <div className="w-28 text-right font-semibold text-sm text-slate-800">
                         {COP((parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0))}
                       </div>
+                      {!selladoUI && (
                       <button onClick={() => eliminarItem(it._idx)} className="p-1.5 hover:bg-red-50 rounded-lg">
                         <Trash2 className="w-3.5 h-3.5 text-slate-300 hover:text-red-500" />
                       </button>
+                      )}
                     </div>
                   </div>
 
