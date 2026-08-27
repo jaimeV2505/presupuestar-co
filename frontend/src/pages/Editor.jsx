@@ -1690,15 +1690,22 @@ export default function Editor() {
                   {previewBase.data.insumos.length > 0 && (
                     <>
                       <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-violet-600 text-white font-bold">
-                        <span className="col-span-6">Materiales / Equipo</span><span className="col-span-2">Und</span>
-                        <span className="col-span-2 text-right">Cant.</span><span className="col-span-2 text-right">Parcial</span>
+                        <span className="col-span-5">Materiales / Equipo</span><span className="col-span-2">Und</span>
+                        <span className="col-span-2 text-right">Cant.</span><span className="col-span-2 text-right">Parcial</span><span className="col-span-1"></span>
                       </div>
                       {previewBase.data.insumos.map((ins, k) => (
                         <div key={k} className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-100 text-slate-600 items-center bg-white">
-                          <span className="col-span-6 truncate" title={ins.nombre}>{ins.nombre}</span>
+                          <span className="col-span-5 truncate" title={ins.nombre}>{ins.nombre}</span>
                           <span className="col-span-2">{ins.unidad}</span>
                           <span className="col-span-2 text-right">{ins.cantidad}</span>
                           <span className="col-span-2 text-right font-medium">{COP(ins.parcial)}</span>
+                          <button onClick={() => {
+                                    setConstruyendo(c => ({ ...c, insumos: [...c.insumos, { nombre: ins.nombre, unidad: ins.unidad, cantidad: ins.cantidad, precio: ins.precio }] }))
+                                    if (!showConstructor) { setPreviewComp(null); setShowConstructor(true) }
+                                    toast.success(`${ins.nombre} al constructor — ajusta la cantidad 📦`, { duration: 1800 })
+                                  }}
+                                  title="Agregar este material a mi propio APU"
+                                  className="col-span-1 text-emerald-600 hover:bg-emerald-50 rounded font-bold text-center">+</button>
                         </div>
                       ))}
                     </>
