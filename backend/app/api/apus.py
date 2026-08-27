@@ -102,6 +102,45 @@ def crear(req: ApuRequest, user: Usuario = Depends(usuario_actual),
     return _out(a)
 
 
+def _componer_desglose_base(codigo: str, region: str):
+    """Compone el desglose real (si existe) de una actividad de la base 2026,
+    escalado por region. Retorna None si no hay desglose disponible para ese
+    codigo (p.ej. las 3 actividades excluidas por inconsistencia de origen).
+    Compartida entre duplicar_de_base (persiste) y desglose-base (solo lectura)."""
+    d = _cargar_desglose_base().get(codigo)
+    if not d:
+        return None
+    try:
+        from app.services.apu_service import _factor
+        f = _factor(region)
+        # el desglose base esta en precios de Bogota (f=1.0) — hay que escalarlo
+        # por el mismo factor regional que get_precio() ya le aplica al precio
+        # plano. IMPORTANTE: no redondear cada insumo individualmente (acumula
+        # error de redondeo); si redondear mano_obra/transporte ANTES de pasarlos
+        # (componer_precio los trunca con int() adentro — sin este redondeo previo
+        # se pierde el decimal en vez de redondearlo). Verificado exacto contra
+        # las 13 regiones × 2285 actividades (0 diferencias > 2 pesos).
+        insumos_reg = [{**i, "precio": i["precio"] * f} for i in d["insumos"]]
+        mano_obra_reg = round(d["mano_obra"] * f)
+        transporte_reg = round(d["transporte"] * f)
+        return componer_precio(insumos_reg, mano_obra_reg, d["herramienta_pct"], transporte_reg)
+    except (ValueError, KeyError) as e:
+        logger.warning(f"desglose base {codigo} invalido: {e}")
+        return None
+
+
+@router.get("/desglose-base/{codigo}")
+def desglose_base(codigo: str, region: str = Query("bogota"),
+                  user: Usuario = Depends(usuario_actual)):
+    """Vista previa de solo lectura: el desglose real de una actividad de la
+    base 2026 (materiales/MO/herramienta/transporte), SIN duplicarla ni tocar
+    la coleccion del usuario. Para 'ver antes de agregar' en el buscador."""
+    r = _componer_desglose_base(codigo, region)
+    if not r:
+        raise HTTPException(404, "Esta actividad no tiene desglose detallado disponible")
+    return r
+
+
 @router.post("/duplicar-de-base")
 def duplicar_de_base(codigo: str = Query(...), region: str = Query("bogota"),
                      user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
@@ -118,26 +157,10 @@ def duplicar_de_base(codigo: str = Query(...), region: str = Query("bogota"),
 
     desglose_json = ""
     precio = int(base["precio"])
-    d = _cargar_desglose_base().get(base["codigo"])
-    if d:
-        try:
-            from app.services.apu_service import _factor
-            f = _factor(region)
-            # el desglose base esta en precios de Bogota (f=1.0) — hay que escalarlo
-            # por el mismo factor regional que get_precio() ya le aplica al precio
-            # plano. IMPORTANTE: no redondear cada insumo individualmente (acumula
-            # error de redondeo); si redondear mano_obra/transporte ANTES de pasarlos
-            # (componer_precio los trunca con int() adentro — sin este redondeo previo
-            # se pierde el decimal en vez de redondearlo). Verificado exacto contra
-            # las 13 regiones × 2285 actividades (0 diferencias > 2 pesos).
-            insumos_reg = [{**i, "precio": i["precio"] * f} for i in d["insumos"]]
-            mano_obra_reg = round(d["mano_obra"] * f)
-            transporte_reg = round(d["transporte"] * f)
-            r = componer_precio(insumos_reg, mano_obra_reg, d["herramienta_pct"], transporte_reg)
-            desglose_json = json.dumps(r, ensure_ascii=False)
-            precio = r["precio_unitario"]  # el compuesto real, no el plano de la base
-        except (ValueError, KeyError) as e:
-            logger.warning(f"desglose base {base['codigo']} invalido al duplicar: {e}")
+    r = _componer_desglose_base(base["codigo"], region)
+    if r:
+        desglose_json = json.dumps(r, ensure_ascii=False)
+        precio = r["precio_unitario"]  # el compuesto real, no el plano de la base
 
     a = ApuUsuario(user_id=user.id, codigo=f"MI-{base['codigo']}"[:30],
                    descripcion=base["descripcion"][:300], unidad=base["unidad"][:15],

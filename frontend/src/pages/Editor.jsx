@@ -28,6 +28,7 @@ export default function Editor() {
   const [buscando, setBuscando] = useState(false)
   const [showBuscador, setShowBuscador] = useState(false)
   const [fuenteApu, setFuenteApu] = useState('base')        // base | mios
+  const [previewBase, setPreviewBase] = useState(null)       // {codigo, descripcion, cargando, data, error}
   const [misApus, setMisApus] = useState([])
   const [showProveedores, setShowProveedores] = useState(false)
   const [proveedores, setProveedores] = useState([])
@@ -402,6 +403,17 @@ export default function Editor() {
       await apusAPI.duplicarDeBase(apu.codigo, p?.region || 'bogota')
       toast.success('Copiado a Mis APUs — edítalo a tu gusto ⧉')
     } catch (err) { toast.error(err.message) }
+  }
+
+  const verDesgloseBase = async (apu, e) => {
+    e.stopPropagation()
+    setPreviewBase({ codigo: apu.codigo, descripcion: apu.descripcion, cargando: true, data: null, error: null })
+    try {
+      const data = await apusAPI.desgloseBase(apu.codigo, p?.region || 'bogota')
+      setPreviewBase(prev => prev?.codigo === apu.codigo ? { ...prev, cargando: false, data } : prev)
+    } catch (err) {
+      setPreviewBase(prev => prev?.codigo === apu.codigo ? { ...prev, cargando: false, error: err.message } : prev)
+    }
   }
 
   const cargarProveedores = () => proveedoresAPI.listar().then(r => setProveedores(r.proveedores || [])).catch(() => {})
@@ -1637,14 +1649,80 @@ export default function Editor() {
                       <p className="text-[10px] text-slate-400">/{apu.unidad}</p>
                     </div>
                     {fuenteApu === 'base' && (
+                      <>
+                      <span onClick={(e) => verDesgloseBase(apu, e)} title="Ver desglose: materiales, mano de obra, transporte"
+                            className="text-[10px] font-bold text-violet-500 border border-violet-200 rounded-lg px-1.5 py-1 hover:bg-violet-50 shrink-0">👁</span>
                       <span onClick={(e) => duplicarComoMio(apu, e)} title="Duplicar como mío (editable)"
                             className="text-[10px] font-bold text-navy-500 border border-navy-200 rounded-lg px-1.5 py-1 hover:bg-navy-50 shrink-0">⧉</span>
+                      </>
                     )}
                     <Plus className="w-4 h-4 text-slate-300 group-hover:text-navy-600 shrink-0" />
                   </button>
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal VISTA PREVIA del desglose — Base 2026, antes de agregar/duplicar */}
+      {previewBase && (
+        <div className="fixed inset-0 bg-black/40 z-[65] flex items-start justify-center p-4 pt-[8vh]" onClick={() => setPreviewBase(null)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <h3 className="font-semibold text-slate-800 text-sm leading-snug">👁 {previewBase.descripcion}</h3>
+              <button onClick={() => setPreviewBase(null)} className="shrink-0 text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
+            </div>
+            <p className="text-[10px] text-slate-400 mb-3">Código {previewBase.codigo} · vista previa de solo lectura — para editarlo, duplícalo primero (⧉)</p>
+
+            {previewBase.cargando ? (
+              <p className="text-center text-xs text-slate-400 py-8">Cargando desglose...</p>
+            ) : previewBase.error ? (
+              <p className="text-center text-xs text-amber-600 bg-amber-50 rounded-xl py-6 px-3">
+                Esta actividad no tiene desglose detallado disponible todavía — solo precio de referencia.
+              </p>
+            ) : previewBase.data && (
+              <>
+                <div className="bg-violet-50/60 rounded-xl border border-violet-100 overflow-hidden text-[11px]">
+                  {previewBase.data.insumos.length > 0 && (
+                    <>
+                      <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-violet-600 text-white font-bold">
+                        <span className="col-span-6">Materiales / Equipo</span><span className="col-span-2">Und</span>
+                        <span className="col-span-2 text-right">Cant.</span><span className="col-span-2 text-right">Parcial</span>
+                      </div>
+                      {previewBase.data.insumos.map((ins, k) => (
+                        <div key={k} className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-100 text-slate-600 items-center bg-white">
+                          <span className="col-span-6 truncate" title={ins.nombre}>{ins.nombre}</span>
+                          <span className="col-span-2">{ins.unidad}</span>
+                          <span className="col-span-2 text-right">{ins.cantidad}</span>
+                          <span className="col-span-2 text-right font-medium">{COP(ins.parcial)}</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  <div className="grid grid-cols-12 gap-1 px-2 py-1.5 border-t border-violet-200 bg-white items-center">
+                    <span className="col-span-8 font-medium text-slate-600">Mano de obra</span>
+                    <span className="col-span-4 text-right font-medium">{COP(previewBase.data.mano_obra)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 gap-1 px-2 py-1.5 border-t border-violet-100 bg-white items-center">
+                    <span className="col-span-8 font-medium text-slate-600">Herramienta menor ({previewBase.data.herramienta_pct}% MO)</span>
+                    <span className="col-span-4 text-right font-medium">{COP(previewBase.data.herramienta)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 gap-1 px-2 py-1.5 border-t border-violet-100 bg-white items-center">
+                    <span className="col-span-8 font-medium text-slate-600">Transporte 🚚</span>
+                    <span className="col-span-4 text-right font-medium">{COP(previewBase.data.transporte)}</span>
+                  </div>
+                  <div className="grid grid-cols-12 gap-1 px-2.5 py-2 border-t-2 border-violet-300 bg-violet-100 items-center">
+                    <span className="col-span-8 font-bold text-violet-800">PRECIO UNITARIO</span>
+                    <span className="col-span-4 text-right font-black text-violet-800">{COP(previewBase.data.precio_unitario)}</span>
+                  </div>
+                </div>
+                <button onClick={(e) => { duplicarComoMio({ codigo: previewBase.codigo }, e); setPreviewBase(null) }}
+                        className="w-full mt-3 py-2.5 rounded-xl bg-navy-600 text-white text-xs font-bold hover:bg-navy-700">
+                  ⧉ Duplicar como mío para editarlo
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

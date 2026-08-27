@@ -77,6 +77,7 @@ export const apusAPI = {
   listar: (params) => api.get('/apus', { params }).then(r => r.data),
   crear: (data) => api.post('/apus', data).then(r => r.data),
   duplicarDeBase: (codigo, region) => api.post(`/apus/duplicar-de-base?codigo=${encodeURIComponent(codigo)}&region=${region || 'bogota'}`).then(r => r.data),
+  desgloseBase: (codigo, region) => api.get(`/apus/desglose-base/${encodeURIComponent(codigo)}`, { params: { region: region || 'bogota' } }).then(r => r.data),
   componer: (data) => api.post('/apus/componer', data).then(r => r.data),
   actualizar: (id, data) => api.put(`/apus/${id}`, data).then(r => r.data),
   guardarDesglose: (id, data) => api.put(`/apus/${id}/desglose`, data).then(r => r.data),
