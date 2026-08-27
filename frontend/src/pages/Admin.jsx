@@ -124,6 +124,7 @@ export default function Admin() {
                     <th className="py-2 pr-3 font-medium">Empresa</th>
                     <th className="py-2 pr-3 font-medium">Ciudad</th>
                     <th className="py-2 pr-3 font-medium">Plan</th>
+                    <th className="py-2 pr-3 font-medium">Vence</th>
                     <th className="py-2 pr-3 font-medium">Registrado</th>
                   </tr>
                 </thead>
@@ -138,6 +139,15 @@ export default function Admin() {
                         <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${u.plan === 'pro' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
                           {u.plan}
                         </span>
+                      </td>
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        {u.vence ? (
+                          <span className={u.vencido ? 'text-red-500 font-semibold' : 'text-slate-500'}>
+                            {u.vence}{u.vencido && ' (vencido)'}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
                       </td>
                       <td className="py-2 pr-3 text-slate-400 whitespace-nowrap">{u.creado}</td>
                     </tr>

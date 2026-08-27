@@ -193,6 +193,16 @@ def plan_manual(req: PlanManualRequest, admin: Usuario = Depends(admin_actual),
 def admin_usuarios(admin: Usuario = Depends(admin_actual), db: Session = Depends(get_db)):
     """Lista simple de usuarios registrados — solo lectura, para tener una vision general."""
     usuarios = db.query(Usuario).order_by(Usuario.creado.desc()).all()
+    ahora = datetime.now(timezone.utc)
+
+    def _vencido(u):
+        if not u.plan_vence:
+            return False
+        vence = u.plan_vence
+        if vence.tzinfo is None:
+            vence = vence.replace(tzinfo=timezone.utc)
+        return vence < ahora
+
     return {
         "total": len(usuarios),
         "usuarios": [
@@ -203,6 +213,8 @@ def admin_usuarios(admin: Usuario = Depends(admin_actual), db: Session = Depends
                 "empresa": u.empresa,
                 "ciudad": u.ciudad,
                 "plan": u.plan,
+                "vence": u.plan_vence.strftime("%d/%m/%Y") if u.plan_vence else None,
+                "vencido": _vencido(u),
                 "creado": u.creado.strftime("%d/%m/%Y %H:%M") if u.creado else None,
             }
             for u in usuarios
