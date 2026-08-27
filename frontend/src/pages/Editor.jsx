@@ -1697,8 +1697,13 @@ export default function Editor() {
                                   setConstruyendo(c => ({ ...c, insumos: c.insumos.map((x, j) => j === i ? { ...x, nombre: s.nombre, precio: s.precio } : x) }))
                                   setSugerencias([]); setSugerenciaPara(-1)
                                 }}
-                                className="w-full flex items-center justify-between px-2 py-1.5 text-[10px] hover:bg-slate-50 text-left">
-                          <span className="text-slate-600 truncate">{s.fuente === 'mi_proveedor' ? '🏪 ' : '📖 '}{s.nombre}</span>
+                                className="w-full flex items-center justify-between gap-1.5 px-2 py-1.5 text-[10px] hover:bg-slate-50 text-left">
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            {s.imagen
+                              ? <img src={s.imagen} alt="" className="w-5 h-5 rounded object-contain bg-slate-50 shrink-0" onError={e => { e.target.style.display = 'none' }} />
+                              : <span className="shrink-0">{s.fuente === 'mi_proveedor' ? '🏪' : '📖'}</span>}
+                            <span className="text-slate-600 truncate">{s.nombre}</span>
+                          </span>
                           <span className="font-bold text-slate-700 tabular-nums shrink-0 ml-2">{COP(s.precio)}
                             <span className="font-normal text-slate-300 ml-1">{s.fuente === 'mi_proveedor' ? s.detalle : s.fecha}</span>{s.precio_viejo && <span className="text-amber-600 font-bold ml-1">⚠ precio de hace {Math.round(s.edad_dias / 30)} meses</span>}</span>
                         </button>
@@ -1737,7 +1742,7 @@ export default function Editor() {
               <button onClick={() => setConstruyendo(c => ({ ...c, insumos: [...c.insumos, { nombre: '', cantidad: '', precio: '' }] }))}
                       className="text-xs font-medium text-navy-600">+ agregar insumo</button>
               <button onClick={() => { insumosAPI.catalogo().then(setCatalogo).catch(() => {}); setShowCatalogo(true) }}
-                      className="text-xs font-medium text-emerald-600">📦 Catálogo de referencia (229 insumos)</button>
+                      className="text-xs font-medium text-emerald-600">📦 Catálogo de referencia</button>
             </div>
 
             <button onClick={async () => {
@@ -1936,7 +1941,10 @@ export default function Editor() {
                             setShowCatalogo(false); setCatalogo(null)
                             toast.success(`${ins.nombre} al constructor — ajusta la cantidad 📦`, { duration: 1800 })
                           }}
-                          className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-emerald-50 text-left border-b border-slate-50">
+                          className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl hover:bg-emerald-50 text-left border-b border-slate-50">
+                    {ins.imagen
+                      ? <img src={ins.imagen} alt="" className="w-8 h-8 rounded-lg object-contain bg-slate-50 border border-slate-100 shrink-0" onError={e => { e.target.style.display = 'none' }} />
+                      : <span className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 shrink-0 flex items-center justify-center text-slate-300 text-xs">📦</span>}
                     <span className="text-xs text-slate-600 flex-1 pr-2">{ins.nombre}</span>
                     <span className="text-xs font-bold text-slate-700 tabular-nums shrink-0">{COP(ins.precio)}
                       <span className="font-normal text-slate-300 text-[10px]"> /{ins.unidad}</span></span>

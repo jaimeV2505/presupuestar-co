@@ -33,7 +33,8 @@ def fuente_curada(q: str, limit: int = 12) -> list:
         if qn in _sin_tildes(i["nombre"]) or qn in _sin_tildes(i["categoria"]):
             out.append({"fuente": "referencia", "nombre": i["nombre"], "unidad": i["unidad"],
                         "precio": i["precio"], "fecha": data["version"],
-                        "detalle": "Precio de referencia del mercado"})
+                        "detalle": "Precio de referencia del mercado",
+                        "imagen": i.get("imagen")})
             if len(out) >= limit:
                 break
     return out

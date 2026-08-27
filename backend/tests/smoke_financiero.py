@@ -169,7 +169,12 @@ print("OK balance de obra: caso exacto de 3 items + division segura")
 # ═══ ADAPTADOR DE FUENTES DE PRECIOS ═══
 from app.services.fuentes_precios import fuente_curada, fuente_externa
 
-# candado de calidad: la base curada es un ACTIVO — 200+ insumos, sin duplicados, precios sanos
+# candado de calidad: la base curada es un ACTIVO — 2000+ insumos, sin duplicados, precios sanos.
+# Rango ensanchado (26/8/2026, ampliacion Escuela de Contratistas): antes 500-5M tenia sentido
+# para 229 items curados a mano; con 2299 items reales el catalogo va desde consumibles chicos
+# (agua $79/Lt, tornillos) hasta equipo pesado real (ascensor $165M, plantas electricas $50M+).
+# 10-200M sigue atajando errores de verdad (un cero de mas/menos, un precio negativo) sin
+# rechazar precios legitimos del mundo real.
 import json as _j, os as _o
 _base = _j.load(open(_o.path.join(_o.path.dirname(__file__), "..", "app", "data", "insumos_2026.json"), encoding="utf-8"))
 _ins = _base["insumos"]
@@ -178,7 +183,7 @@ _noms = [i["nombre"] for i in _ins]
 assert len(_noms) == len(set(_noms)), "insumos duplicados en la base"
 for i in _ins:
     assert i["nombre"] and i["unidad"] and i["categoria"], i
-    assert 500 <= i["precio"] <= 5_000_000, f"precio sospechoso: {i}"
+    assert 10 <= i["precio"] <= 200_000_000, f"precio sospechoso: {i}"
 assert len({i["categoria"] for i in _ins}) >= 15
 assert _base["version"] >= "2026.2"
 
