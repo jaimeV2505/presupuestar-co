@@ -92,6 +92,10 @@ export const proveedoresAPI = {
   precios: (id) => api.get(`/proveedores/${id}/precios`).then(r => r.data),
   agregarPrecio: (id, data) => api.post(`/proveedores/${id}/precios`, data).then(r => r.data),
   eliminarPrecio: (precioId) => api.delete(`/proveedores/precios/${precioId}`).then(r => r.data),
+  cargarMasivo: (id, formData) => api.post(`/proveedores/${id}/precios/masivo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(r => r.data),
+  resolverConflictos: (decisiones) => api.post('/proveedores/precios/resolver-conflictos', { decisiones }).then(r => r.data),
 }
 
 export const shareAPI = {

@@ -35,6 +35,9 @@ export default function Editor() {
   const [provSel, setProvSel] = useState(null)              // {id, nombre, precios: []}
   const [nuevoProv, setNuevoProv] = useState({ nombre: '', telefono: '' })
   const [nuevoPrecio, setNuevoPrecio] = useState({ insumo: '', unidad: 'un', precio: '' })
+  const [cargandoMasivo, setCargandoMasivo] = useState(false)
+  const [conflictosMasivo, setConflictosMasivo] = useState(null)   // {proveedorId, lista: [...]}
+  const fileMasivoRef = useRef(null)
   const [showConstructor, setShowConstructor] = useState(false)
   const [construyendo, setConstruyendo] = useState({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5, transporte: '' })
   const [previewComp, setPreviewComp] = useState(null)
@@ -2102,6 +2105,36 @@ export default function Editor() {
               <>
                 <button onClick={() => setProvSel(null)} className="text-xs text-slate-400 mb-2">← volver</button>
                 <p className="text-sm font-bold text-slate-700 mb-2">{provSel.nombre}</p>
+                <input ref={fileMasivoRef} type="file" accept=".xlsx,.xlsm,.csv" className="hidden"
+                       onChange={async (e) => {
+                         const archivo = e.target.files?.[0]
+                         e.target.value = ''  // permite re-subir el mismo archivo si hace falta
+                         if (!archivo) return
+                         setCargandoMasivo(true)
+                         try {
+                           const fd = new FormData()
+                           fd.append('archivo', archivo)
+                           const r = await proveedoresAPI.cargarMasivo(provSel.id, fd)
+                           const partes = [`${r.nuevos} nuevo${r.nuevos !== 1 ? 's' : ''}`]
+                           if (r.sin_cambios) partes.push(`${r.sin_cambios} sin cambios`)
+                           if (r.invalidas) partes.push(`${r.invalidas} inválida${r.invalidas !== 1 ? 's' : ''}`)
+                           if (r.duplicados_en_archivo) partes.push(`${r.duplicados_en_archivo} repetido${r.duplicados_en_archivo !== 1 ? 's' : ''} en el archivo`)
+                           toast.success(`Carga completa: ${partes.join(' · ')}`, { duration: 5000 })
+                           const rp = await proveedoresAPI.precios(provSel.id)
+                           setProvSel(s => ({ ...s, precios: rp.precios })); cargarProveedores()
+                           if (r.conflictos?.length) {
+                             setConflictosMasivo({ proveedorId: provSel.id, lista: r.conflictos.map(c => ({ ...c, accion: 'mantener' })) })
+                           }
+                         } catch (err) { toast.error(err.message) }
+                         finally { setCargandoMasivo(false) }
+                       }} />
+                <button onClick={() => fileMasivoRef.current?.click()} disabled={cargandoMasivo}
+                        className="w-full mb-3 py-2 rounded-xl border border-dashed border-emerald-300 bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 disabled:opacity-50">
+                  {cargandoMasivo ? 'Cargando...' : `📤 Cargar mi base de precios (Excel/CSV) — hasta ${2500} filas`}
+                </button>
+                <p className="text-[10px] text-slate-400 -mt-2 mb-3">
+                  Columnas: nombre del insumo, unidad (opcional), precio. En cualquier orden.
+                </p>
                 {provSel.precios.map(pc => (
                   <div key={pc.id} className="flex items-center justify-between text-xs border-b border-slate-50 py-1.5">
                     <span className="text-slate-600 flex-1">{pc.insumo} <span className="text-slate-300">/{pc.unidad}</span></span>
@@ -2129,6 +2162,60 @@ export default function Editor() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal CONFLICTOS de carga masiva — precios que ya existían con otro valor */}
+      {conflictosMasivo && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[70]" onClick={() => setConflictosMasivo(null)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[86vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-slate-800 mb-1">⚠️ {conflictosMasivo.lista.length} precio{conflictosMasivo.lista.length !== 1 ? 's' : ''} con valor distinto</h3>
+            <p className="text-[11px] text-slate-400 mb-3">
+              Estos insumos ya existían con otro precio. Elegí cuáles actualizar — el resto se queda como estaba.
+            </p>
+            <div className="flex gap-2 mb-3">
+              <button onClick={() => setConflictosMasivo(c => ({ ...c, lista: c.lista.map(x => ({ ...x, accion: 'actualizar' })) }))}
+                      className="text-[11px] font-bold text-emerald-600 border border-emerald-200 rounded-lg px-2.5 py-1.5">Actualizar todos</button>
+              <button onClick={() => setConflictosMasivo(c => ({ ...c, lista: c.lista.map(x => ({ ...x, accion: 'mantener' })) }))}
+                      className="text-[11px] font-bold text-slate-500 border border-slate-200 rounded-lg px-2.5 py-1.5">Mantener todos</button>
+            </div>
+            <div className="space-y-1.5">
+              {conflictosMasivo.lista.map((c, i) => (
+                <div key={c.id_existente} className="flex items-center gap-2 border border-slate-100 rounded-xl p-2.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-slate-700 truncate">{c.insumo}</p>
+                    <p className="text-[10px] text-slate-400">
+                      Actual: <span className="line-through">{COP(c.precio_actual)}</span> → Nuevo: <strong className="text-slate-600">{COP(c.precio_nuevo)}</strong>
+                    </p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <button onClick={() => setConflictosMasivo(cm => ({ ...cm, lista: cm.lista.map((x, j) => j === i ? { ...x, accion: 'actualizar' } : x) }))}
+                            className={`text-[10px] font-bold rounded-lg px-2 py-1 ${c.accion === 'actualizar' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>Actualizar</button>
+                    <button onClick={() => setConflictosMasivo(cm => ({ ...cm, lista: cm.lista.map((x, j) => j === i ? { ...x, accion: 'mantener' } : x) }))}
+                            className={`text-[10px] font-bold rounded-lg px-2 py-1 ${c.accion === 'mantener' ? 'bg-slate-500 text-white' : 'bg-slate-100 text-slate-400'}`}>Mantener</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={async () => {
+                      try {
+                        const decisiones = conflictosMasivo.lista.map(c => ({
+                          id_existente: c.id_existente, accion: c.accion,
+                          precio_nuevo: c.precio_nuevo, unidad_nueva: c.unidad_nueva,
+                        }))
+                        const r = await proveedoresAPI.resolverConflictos(decisiones)
+                        toast.success(`${r.actualizados} precio${r.actualizados !== 1 ? 's' : ''} actualizado${r.actualizados !== 1 ? 's' : ''}`)
+                        if (provSel?.id === conflictosMasivo.proveedorId) {
+                          const rp = await proveedoresAPI.precios(provSel.id)
+                          setProvSel(s => ({ ...s, precios: rp.precios }))
+                        }
+                        setConflictosMasivo(null)
+                      } catch (err) { toast.error(err.message) }
+                    }}
+                    className="w-full mt-3 py-2.5 rounded-xl bg-navy-600 text-white text-xs font-bold hover:bg-navy-700">
+              Confirmar
+            </button>
           </div>
         </div>
       )}
