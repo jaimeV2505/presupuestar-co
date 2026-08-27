@@ -196,6 +196,23 @@ export default function Editor() {
     timerGuardar.current = setTimeout(() => _enviar(0), 1000)
   }, [calcularLocal, _enviar])
 
+  // Blindaje contra perdida de datos: si el usuario recarga o cierra la pestaña
+  // MIENTRAS hay un guardado pendiente/reintentando (ej. servidor lento), ese
+  // cambio se pierde en silencio — pendienteRef vive solo en memoria del navegador,
+  // no sobrevive un reload. El aviso nativo del navegador es la unica red de
+  // seguridad real aqui: obliga a confirmar antes de irse con cambios sin guardar.
+  useEffect(() => {
+    const handler = (e) => {
+      if (pendienteRef.current || guardando || sinRed) {
+        e.preventDefault()
+        e.returnValue = ''
+        return ''
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [guardando, sinRed])
+
   // Fuerza el guardado pendiente ANTES de exportar: el autoguardado es debounced 1s
   // y exportar lee la verdad del SERVIDOR — sin este flush, exportar justo tras editar
   // puede pegarle a un backend todavia con el presupuesto viejo (o vacio).
