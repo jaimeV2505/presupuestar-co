@@ -313,11 +313,20 @@ def verificar_traslapes(
 
         # Obtener diametro en mm
         var_ref = m.group(1) or m.group(2)
+        db_mm = 15.9  # #5 por defecto — SOLO si no se puede determinar la varilla real
+        supuesto = True
         if var_ref:
             var = get_varilla(var_ref)
-            db_mm = var["mm"] if var else 15.9
-        else:
-            db_mm = 15.9  # #5 por defecto
+            if var:
+                db_mm = var["mm"]
+                supuesto = False
+        if supuesto:
+            alertas.append(AlertaNSR(
+                codigo="C.12.15", severidad="ADVERTENCIA", elemento=nombre,
+                mensaje=(f"No se pudo determinar el diametro de varilla desde '{acero_long}' — "
+                         f"se asumio #5 (15.9mm) para calcular el traslape. Si la varilla real es "
+                         f"mas gruesa, el traslape requerido es MAYOR al aqui calculado."),
+            ))
 
         # Calcular traslape requerido
         # En zona sismica alta: siempre clase B fuera de zonas de confinamiento

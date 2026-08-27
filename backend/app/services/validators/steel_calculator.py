@@ -53,6 +53,9 @@ def calcular_acero_columna_exacto(
 
     if acero_long and TABLAS_OK:
         grupos = _parsear_grupos_varilla(acero_long)
+        if not grupos:
+            advertencias.append(f"No se pudo interpretar '{acero_long}' como especificacion de acero — "
+                                 f"kg longitudinal de esta columna quedo en 0, revisar el plano manualmente")
         detalles = []
         for cant, var_ref in grupos:
             var = get_varilla(var_ref)
@@ -136,7 +139,7 @@ def calcular_acero_columna_exacto(
         kg_total=round(kg_long + kg_trans, 2),
         detalle_longitudinal=detalle_long,
         detalle_transversal=detalle_trans,
-        metodo="especificacion_exacta" if acero_long and TABLAS_OK else "factor_estimado",
+        metodo="especificacion_exacta" if (acero_long and TABLAS_OK and kg_long > 0) else "factor_estimado",
         advertencias=advertencias
     )
 
@@ -162,6 +165,9 @@ def calcular_acero_viga_exacto(
         for spec, zona in [(acero_long_inf, "inferior"), (acero_long_sup, "superior")]:
             if spec:
                 grupos = _parsear_grupos_varilla(spec)
+                if not grupos:
+                    advertencias.append(f"No se pudo interpretar '{spec}' (cara {zona}) — "
+                                         f"kg de esa cara quedo en 0, revisar el plano manualmente")
                 for cant, var_ref in grupos:
                     var = get_varilla(var_ref)
                     if var:
@@ -194,7 +200,7 @@ def calcular_acero_viga_exacto(
         kg_total=round(kg_long + kg_trans, 2),
         detalle_longitudinal=" + ".join(detalles),
         detalle_transversal=detalle_trans,
-        metodo="especificacion_exacta" if acero_long_inf and TABLAS_OK else "factor_estimado",
+        metodo="especificacion_exacta" if (acero_long_inf and TABLAS_OK and kg_long > 0) else "factor_estimado",
         advertencias=advertencias
     )
 
@@ -212,8 +218,10 @@ def calcular_acero_zapata_exacto(
     if TABLAS_OK:
         def calc_dir(spec: str, dim_cm: float) -> tuple:
             if not spec:
-                return 0.0, ""
+                return 0.0, "", False
             grupos = _parsear_grupos_varilla(spec)
+            if not grupos:
+                return 0.0, "", True  # hubo spec pero no se pudo interpretar
             kg = 0.0
             dets = []
             for cant, var_ref in grupos:
@@ -229,10 +237,14 @@ def calcular_acero_zapata_exacto(
                     kg_dir = cant * long_varilla * var["peso_kg_m"] * num_zapatas
                     kg += kg_dir
                     dets.append(f"{cant}Ø{var['pulg']}\" L={long_varilla:.2f}m ({kg_dir:.1f}kg)")
-            return kg, " + ".join(dets)
+            return kg, " + ".join(dets), False
 
-        kg_d1, det1 = calc_dir(acero_dir1, largo_cm)
-        kg_d2, det2 = calc_dir(acero_dir2 or acero_dir1, ancho_cm)
+        kg_d1, det1, fallo1 = calc_dir(acero_dir1, largo_cm)
+        kg_d2, det2, fallo2 = calc_dir(acero_dir2 or acero_dir1, ancho_cm)
+        if fallo1:
+            advertencias.append(f"No se pudo interpretar '{acero_dir1}' (direccion 1) — kg quedo en 0")
+        if fallo2:
+            advertencias.append(f"No se pudo interpretar '{acero_dir2 or acero_dir1}' (direccion 2) — kg quedo en 0")
 
     return ResultadoAcero(
         kg_longitudinal=round(kg_d1 + kg_d2, 2),
@@ -240,7 +252,7 @@ def calcular_acero_zapata_exacto(
         kg_total=round(kg_d1 + kg_d2, 2),
         detalle_longitudinal=f"Dir.1: {det1} | Dir.2: {det2}",
         detalle_transversal="N/A (zapata sin estribos)",
-        metodo="especificacion_exacta" if acero_dir1 and TABLAS_OK else "factor_estimado",
+        metodo="especificacion_exacta" if (acero_dir1 and TABLAS_OK and (kg_d1 + kg_d2) > 0) else "factor_estimado",
         advertencias=advertencias
     )
 
@@ -264,4 +276,4 @@ def _parsear_grupos_varilla(spec: str) -> list:
             var_ref = m.group(2)
             if (cant, var_ref) not in grupos:
                 grupos.append((cant, var_ref))
-    return grupos if grupos else [(4, "5")]  # fallback #5
+    return grupos  # vacio si no matcheo nada — NUNCA adivinar en silencio (ver callers: deben advertir)
