@@ -179,6 +179,37 @@ function MockActas() {
     </div>
   )
 }
+function MockVistaPrevia() {
+  return (
+    <div className="text-[11px]">
+      <p className="text-[10px] font-bold text-violet-600 mb-2">👁 Localización y replanteo — antes de agregar</p>
+      {[['Localización topográfica', 'Un', '$302.130'], ['Mano de obra', 'cuadrilla', '$176.135'], ['Herramienta menor', '5% MO', '$8.807']].map(([n, c, p]) => (
+        <div key={n} className="flex items-center gap-2 py-1 border-b border-slate-100">
+          <span className="flex-1 font-medium">{n}</span>
+          <span className="text-slate-400">{c}</span>
+          <span className="font-bold text-slate-700">{p}</span>
+          <span className="text-emerald-600 font-black bg-emerald-50 rounded px-1">+</span>
+        </div>
+      ))}
+      <p className="text-[9px] text-slate-400 mt-2">→ toca "+" y ese material va directo a TU propio APU</p>
+    </div>
+  )
+}
+function MockMiBase() {
+  return (
+    <div className="text-[11px]">
+      <p className="text-[10px] font-bold text-sky-600 mb-2">📤 mi_lista_precios.xlsx</p>
+      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2 mb-1.5 flex justify-between">
+        <span className="text-emerald-700 font-bold">✓ 847 nuevos cargados</span>
+      </div>
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-2 mb-1.5 flex justify-between items-center">
+        <span className="text-amber-700 font-bold">⚠ Cemento gris 50kg</span>
+        <span className="text-slate-400 line-through mr-1">$38.500</span><span className="font-bold">$41.900</span>
+      </div>
+      <p className="text-[9px] text-slate-400 mt-1.5">→ nada se pisa solo: vos decidís cuál precio vale</p>
+    </div>
+  )
+}
 
 const DETALLE_HERRAMIENTA = [
   { titulo: 'El precio es TUYO, no de una tabla', puntos: ['Edita cemento, arena y M.O. con los precios de TU ferretería', 'Recalcula en el servidor y ⚡ aplica al ítem en un clic', 'El desglose queda guardado — tu propuesta 100% sustentada'] },
@@ -188,8 +219,10 @@ const DETALLE_HERRAMIENTA = [
   { titulo: 'Sabes dónde está la plata del proyecto', puntos: ['Incidencia por capítulos en un vistazo', 'Detecta el capítulo que se comió el presupuesto', 'Decide dónde negociar y dónde no'] },
   { titulo: 'Compra lo que la obra necesita', puntos: ['Explosión de insumos con desperdicio incluido', 'Cruzada con los precios de TUS proveedores', 'La lista de compras del maestro, lista para la ferretería'] },
   { titulo: 'La plata de la obra, a peso', puntos: ['Anticipo, cortes, retegarantía y deducciones de ley', 'El neto que calculas es el neto que llega', 'Cartera por edades con semáforo'] },
+  { titulo: 'Mira antes de agregar', puntos: ['Cada actividad de la base muestra su desglose real: materiales, mano de obra, herramienta y transporte', 'Elige solo lo que necesitas — material por material — para armar TU propio APU', 'Nada entra a tu presupuesto a ciegas'] },
+  { titulo: 'Tu base, no la de un genérico', puntos: ['Sube tu Excel o CSV con tus precios negociados', 'Hasta 2.500 filas por carga — sin ahogar el proceso', 'Si un precio ya existe distinto, TÚ decides si se actualiza'] },
 ]
-const MOCKS_DOCK = [MockAnalisis, MockRecetario, MockDescuento, MockDisenos, MockIncidencia, MockExplosion, MockActas]
+const MOCKS_DOCK = [MockAnalisis, MockRecetario, MockDescuento, MockDisenos, MockIncidencia, MockExplosion, MockActas, MockVistaPrevia, MockMiBase]
 
 // ── EL DOCK: las herramientas que se magnifican ──
 const HERRAMIENTAS = [
@@ -200,6 +233,8 @@ const HERRAMIENTAS = [
   { e: '📊', t: 'Incidencia', d: 'Qué capítulo pesa en el total' },
   { e: '🧱', t: 'Explosión', d: 'Cuántos bultos comprar, con desperdicio' },
   { e: '💵', t: 'Actas', d: 'Anticipo, cortes, rete y deducciones a peso' },
+  { e: '👁️', t: 'Vista previa', d: 'El desglose real antes de agregar' },
+  { e: '📤', t: 'Mi base', d: 'Sube tu propia lista de precios' },
 ]
 function Dock({ sel, setSel }) {
   const [cerca, setCerca] = useState(-1)
@@ -280,7 +315,7 @@ function ActaViva() {
 
 // ── LA TERMINAL DE LOS ROBOTS (typing) ──
 const LINEAS = [
-  '✓ 159 pasos de robots recorren la plataforma completa',
+  '✓ 194 pasos de robots recorren la plataforma completa',
   '✓ 49 candados rechazan lo indebido (4xx a propósito)',
   '✓ deducciones de ley liquidadas a peso: $684.987 exactos',
   '✓ 11 candados estructurales vigilan cada versión',
@@ -684,15 +719,15 @@ export default function Landing() {
       {/* EL SEGUIMIENTO DEL CLIENTE — la pelicula */}
       <SeccionSeguimiento />
 
-      {/* LAS TRES VIAS DEL APU */}
+      {/* LAS CUATRO VIAS DEL APU */}
       <section className="py-20 px-5">
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl font-black">Tu APU, por el camino que quieras</h2>
-          <p className="text-navy-300 mt-2 text-sm">Los tres llegan al mismo lugar: TU precio, con TU realidad.</p>
-          <div className="mt-10 grid md:grid-cols-3 gap-5 text-left">
+          <p className="text-navy-300 mt-2 text-sm">Los cuatro llegan al mismo lugar: TU precio, con TU realidad.</p>
+          <div className="mt-10 grid md:grid-cols-2 lg:grid-cols-4 gap-5 text-left">
             <div className="bg-white rounded-3xl p-5 text-slate-700 shadow-xl hover:-translate-y-1.5 transition-transform duration-300">
               <p className="text-[10px] font-black tracking-widest text-navy-500">📦 DESDE LA BASE 2026</p>
-              <p className="text-sm font-bold mt-2">2.288 actividades con desglose</p>
+              <p className="text-sm font-bold mt-2">2.288 actividades, desglose verificado a peso</p>
               <div className="mt-3 bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1">
                 <p className="flex justify-between"><span>1.01 Pañete 1:4 muros</span><strong>$22.524</strong></p>
                 <p className="flex justify-between text-slate-400"><span>2.14 Mampostería e=12</span><span>$68.900</span></p>
@@ -701,7 +736,7 @@ export default function Landing() {
             </div>
             <div className="bg-white rounded-3xl p-5 text-slate-700 shadow-xl hover:-translate-y-1.5 transition-transform duration-300 ring-2 ring-amber-400/60">
               <p className="text-[10px] font-black tracking-widest text-amber-600">🧱 EL CONSTRUCTOR</p>
-              <p className="text-sm font-bold mt-2">Desde tus insumos y proveedores</p>
+              <p className="text-sm font-bold mt-2">2.299 insumos reales, con foto</p>
               <div className="mt-3 bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1">
                 <p className="flex justify-between"><span>Cemento — Ferretería El Éxito</span><strong>$28.500</strong></p>
                 <p className="flex justify-between"><span>+ desperdicio 5% + M.O. + transporte</span><span>—</span></p>
@@ -715,6 +750,15 @@ export default function Landing() {
                 <p>✓ Pañete, mampostería, estuco, enchape…</p>
                 <p>✓ Cada una editable en el 🔬</p>
                 <p className="text-[9px] text-amber-600 font-bold">→ tu primer presupuesto en minutos</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-3xl p-5 text-slate-700 shadow-xl hover:-translate-y-1.5 transition-transform duration-300">
+              <p className="text-[10px] font-black tracking-widest text-sky-600">📤 TU PROPIA BASE</p>
+              <p className="text-sm font-bold mt-2">Sube tu Excel — hasta 2.500 precios de una</p>
+              <div className="mt-3 bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1">
+                <p className="flex justify-between"><span>mi_lista_precios.xlsx</span><span className="text-emerald-600 font-bold">✓ 847 cargados</span></p>
+                <p className="flex justify-between text-amber-600"><span>⚠ 12 con precio distinto</span><span>revisar</span></p>
+                <p className="text-[9px] text-sky-600 font-bold">→ nunca pisa un precio sin que confirmes</p>
               </div>
             </div>
           </div>
@@ -775,8 +819,8 @@ export default function Landing() {
               Y en vivo, un vigía patrulla la plataforma cada 30 minutos: cotiza, verifica y se va.
               Si algo falla a las 3 a.m., lo sabemos antes que tú.
             </p>
-            <div className="mt-6 grid grid-cols-3 gap-3 max-w-sm">
-              {[['159', 'pasos de robot'], ['49', 'candados 4xx'], ['2.288', 'actividades APU']].map(([n, l]) => (
+            <div className="mt-6 grid grid-cols-4 gap-2.5 max-w-md">
+              {[['194', 'pasos de robot'], ['49', 'candados 4xx'], ['2.288', 'actividades APU'], ['2.299', 'insumos reales']].map(([n, l]) => (
                 <div key={l} className="bg-navy-800 border border-navy-700 rounded-2xl p-3 text-center">
                   <p className="text-xl font-black text-amber-400">{n}</p>
                   <p className="text-[10px] text-navy-300">{l}</p>
