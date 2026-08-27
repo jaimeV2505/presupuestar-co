@@ -1700,7 +1700,7 @@ export default function Editor() {
                           <span className="col-span-2 text-right">{ins.cantidad}</span>
                           <span className="col-span-2 text-right font-medium">{COP(ins.parcial)}</span>
                           <button onClick={() => {
-                                    setConstruyendo(c => ({ ...c, insumos: [...c.insumos, { nombre: ins.nombre, unidad: ins.unidad, cantidad: ins.cantidad, precio: ins.precio }] }))
+                                    setConstruyendo(c => ({ ...c, insumos: [...c.insumos, { nombre: ins.nombre, cantidad: ins.cantidad, precio: ins.precio }] }))
                                     if (!showConstructor) { setPreviewComp(null); setShowConstructor(true) }
                                     toast.success(`${ins.nombre} al constructor — ajusta la cantidad 📦`, { duration: 1800 })
                                   }}
