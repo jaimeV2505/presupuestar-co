@@ -370,7 +370,12 @@ class Avance(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
-    # Migracion simple: agregar columnas nuevas a BDs existentes
+    # Migracion simple: agregar columnas nuevas a BDs existentes.
+    # CADA sentencia va en su propio try/except: antes, un solo fallo en el
+    # medio de la lista bloqueaba TODAS las que venian despues, en cada
+    # arranque, para siempre, sin loguear nada — un problema real de una sola
+    # migracion podia dejar el esquema a medio actualizar sin que nadie se
+    # enterara jamas. Aislado + logueado: un fallo puntual ya no cascada.
     from sqlalchemy import text
     try:
         with engine.connect() as conn:
@@ -420,8 +425,12 @@ def init_db():
                     "ALTER TABLE gastos ALTER COLUMN valor TYPE BIGINT",
                     "ALTER TABLE precios_proveedor ALTER COLUMN precio TYPE BIGINT",
                 ]:
-                    conn.execute(text(sql))
-                conn.commit()
+                    try:
+                        conn.execute(text(sql))
+                        conn.commit()
+                    except Exception as e:
+                        conn.rollback()
+                        logger.warning(f"migracion fallo (sigo con las demas): {sql[:80]}... -> {e}")
             else:
                 migs = [
                     ("usuarios", "condiciones", "ALTER TABLE usuarios ADD COLUMN condiciones TEXT DEFAULT ''"),
@@ -459,11 +468,16 @@ def init_db():
                     ("otrosies", "ip_firma", "ALTER TABLE otrosies ADD COLUMN ip_firma VARCHAR(45) DEFAULT ''"),
                 ]
                 for tabla, col, sql in migs:
-                    cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]
-                    if col not in cols:
-                        conn.execute(text(sql))
-                conn.commit()
-    except Exception:
+                    try:
+                        cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabla})"))]
+                        if col not in cols:
+                            conn.execute(text(sql))
+                            conn.commit()
+                    except Exception as e:
+                        conn.rollback()
+                        logger.warning(f"migracion sqlite fallo (sigo con las demas): {tabla}.{col} -> {e}")
+    except Exception as e:
+        logger.warning(f"init_db: fallo inesperado fuera de las migraciones individuales: {e}")
         pass
     _backfill_clientes()
 
