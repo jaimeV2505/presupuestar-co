@@ -867,7 +867,7 @@ export default function Editor() {
               📊 <span className="hidden sm:inline">Balance</span>
             </button>
             )}
-            {esPublico && (
+            {(esPublico || (['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado))) && (
             <button onClick={async () => {
                       try {
                         const [bal, cts, avs] = await Promise.all([
@@ -883,7 +883,7 @@ export default function Editor() {
               📋 <span className="hidden sm:inline">Seguimiento</span>
             </button>
             )}
-            {!esPublico && (
+            {!esPublico && !['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado) && (
             <button onClick={compartir}
                     className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
               <MessageCircle className="w-4 h-4" /> <span className="hidden sm:inline">Enviar propuesta</span>
@@ -2064,7 +2064,9 @@ export default function Editor() {
               </div>
 
               <p className="text-[10px] text-slate-300 border-t border-slate-50 pt-3">
-                🔒 Este seguimiento vive solo aquí: en obra pública nada viaja fuera de tu plataforma.
+                {esPublico
+                  ? '🔒 Este seguimiento vive solo aquí: en obra pública nada viaja fuera de tu plataforma.'
+                  : 'ℹ️ Un resumen rápido para vos — tu cliente ya ve el avance y las cuentas desde su propio enlace.'}
               </p>
             </div>
           </div>
