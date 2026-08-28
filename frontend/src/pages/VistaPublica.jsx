@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { CheckCircle2, ChevronDown, ChevronUp, Phone, Building2 } from 'lucide-react'
-import { shareAPI } from '../services/api'
+import { shareAPI, avancesAPI } from '../services/api'
 import toast from 'react-hot-toast'
 import { confirmarDialogo } from '../components/Dialogo'
 import InfoTip from '../components/InfoTip'
@@ -128,7 +128,7 @@ export default function VistaPublica() {
         setRechazado(d.estado === 'rechazado')
         if (d.firma) setFirmaInfo(d.firma)
         if (d.estado === 'aceptado' || d.estado === 'entrega_solicitada') {
-          shareAPI && import('../services/api').then(m => m.avancesAPI.publicos(token).then(setAvances).catch(() => {}))
+          avancesAPI.publicos(token).then(setAvances).catch(() => {})
         }
         // Abrir el primer capitulo por defecto
         const caps = Object.keys(d.capitulos || {})
