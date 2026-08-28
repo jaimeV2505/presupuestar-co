@@ -673,3 +673,102 @@ def explosion_excel(req: ExportRequest, user: Usuario = Depends(usuario_actual),
     except Exception as e:
         logger.error(f"Explosion Excel: {e}", exc_info=True)
         raise HTTPException(500, f"Error generando la lista de materiales: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CRONOGRAMA DE OBRA — PDF con el diagrama de Gantt (solo sector publico)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.post("/cronograma-pdf")
+def exportar_cronograma_pdf(req: ExportRequest, user: Usuario = Depends(usuario_actual),
+                            db: Session = Depends(get_db)):
+    p = db.query(Proyecto).filter(Proyecto.id == req.proyecto_id, Proyecto.user_id == user.id).first()
+    if not p:
+        raise HTTPException(404, "Proyecto no encontrado")
+    if (p.sector or "privado") != "publico":
+        raise HTTPException(400, "El cronograma es una herramienta exclusiva de obra publica")
+
+    from app.services.cronograma_service import resolver_cronograma, duracion_total_semanas, CronogramaError
+    data = json.loads(p.cronograma_json or "{}")
+    filas_crudas = data.get("filas", [])
+    if not filas_crudas:
+        raise HTTPException(400, "El cronograma esta vacio — agrega filas antes de exportar")
+    try:
+        filas = resolver_cronograma(filas_crudas)
+    except CronogramaError as e:
+        raise HTTPException(400, f"El cronograma tiene un error: {e} — corrigelo antes de exportar")
+
+    try:
+        from reportlab.lib.pagesizes import letter, landscape
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+        contrato = json.loads(p.contrato_json or "{}")
+        total_semanas = max(1, int(round(duracion_total_semanas(filas) + 0.49)))  # redondeo hacia arriba
+
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=landscape(letter), topMargin=1.2*cm, bottomMargin=1.2*cm,
+                                leftMargin=1.2*cm, rightMargin=1.2*cm)
+        styles = getSampleStyleSheet()
+        story = []
+
+        titulo = ParagraphStyle("t", parent=styles["Title"], fontSize=15, textColor=colors.HexColor("#1C3A5E"), alignment=0)
+        story.append(Paragraph(f"Cronograma de obra — {p.nombre}", titulo))
+        sub = f"<b>Entidad:</b> {p.entidad_nombre or '-'} &nbsp;&nbsp; <b>Contrato:</b> {p.contrato_numero or '-'}"
+        if contrato.get("fecha_inicio"):
+            sub += f" &nbsp;&nbsp; <b>Inicio:</b> {contrato['fecha_inicio']}"
+        story.append(Paragraph(sub, styles["Normal"]))
+        story.append(Spacer(1, 12))
+
+        # Ancho disponible: columna de nombre fija, el resto repartido entre las semanas
+        ancho_nombre = 5.5 * cm
+        ancho_disponible = landscape(letter)[0] - 2.4 * cm - ancho_nombre
+        ancho_semana = max(0.35 * cm, ancho_disponible / total_semanas)
+
+        encabezado = ["Actividad"] + [f"S{i+1}" for i in range(total_semanas)]
+        filas_tabla = [encabezado]
+        estilos_barras = []
+        for idx, f in enumerate(filas, start=1):
+            fila_render = [Paragraph(f["nombre"][:60], styles["BodyText"])] + [""] * total_semanas
+            filas_tabla.append(fila_render)
+            ini = int(f["semana_inicio_efectiva"])
+            fin = max(ini + 1, int(round(f["semana_fin_efectiva"])))
+            for sem in range(ini, min(fin, total_semanas)):
+                estilos_barras.append(("BACKGROUND", (sem + 1, idx), (sem + 1, idx), colors.HexColor("#0284C7")))
+
+        tabla = Table(filas_tabla, colWidths=[ancho_nombre] + [ancho_semana] * total_semanas, repeatRows=1)
+        tabla.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1C3A5E")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 6.5),
+            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#E2E8F0")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ] + estilos_barras))
+        story.append(tabla)
+        story.append(Spacer(1, 14))
+
+        from app.db import Avance
+        ultimo = (db.query(Avance).filter(Avance.proyecto_id == p.id).order_by(Avance.creado.desc()).first())
+        if ultimo:
+            story.append(Paragraph(f"<b>Avance real cargado:</b> {ultimo.porcentaje}%", styles["Normal"]))
+
+        story.append(Spacer(1, 10))
+        marca = ParagraphStyle("marca", parent=styles["Normal"], fontSize=7,
+                               textColor=colors.HexColor("#94A3B8"), alignment=1)
+        story.append(Paragraph("Hecho con <b>PresupuestarCO</b> — presupuestos profesionales en minutos", marca))
+
+        doc.build(story)
+        buf.seek(0)
+        return StreamingResponse(
+            buf, media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="cronograma_{p.id}.pdf"'},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Cronograma PDF: {e}", exc_info=True)
+        raise HTTPException(500, f"Error generando el PDF del cronograma: {e}")
+

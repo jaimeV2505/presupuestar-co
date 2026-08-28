@@ -221,6 +221,7 @@ export const exportarAPI = {
   apusPdf: (payload) => api.post('/exportar/apus-pdf', payload, { responseType: 'blob' }),
   explosion: (payload) => api.post('/exportar/explosion', payload).then(r => r.data),
   explosionExcel: (payload) => api.post('/exportar/explosion-excel', payload, { responseType: 'blob' }),
+  cronogramaPdf: (payload) => api.post('/exportar/cronograma-pdf', payload, { responseType: 'blob' }),
 }
 
 export default api

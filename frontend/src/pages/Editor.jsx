@@ -2614,6 +2614,31 @@ export default function Editor() {
               {cronoData?.fecha_inicio && <> Fecha de inicio del contrato: <strong>{cronoData.fecha_inicio}</strong>.</>}
             </p>
 
+            <button onClick={async () => {
+                      const capitulos = Object.keys(grupos)
+                      if (!capitulos.length) { toast.error('No hay ítems en el presupuesto todavía'); return }
+                      if (cronoFilas.length > 0 && !(await confirmarDialogo({
+                            titulo: '🔄 ¿Reemplazar las filas actuales?',
+                            mensaje: 'Esto borra las filas que ya tenés cargadas (a mano) y las reemplaza por una fila por cada capítulo del presupuesto. No se guarda nada todavía — podés revisar antes de tocar "Guardar".',
+                            confirmar: 'Reemplazar' }))) return
+                      const valorCap = capitulos.map(cap => grupos[cap].reduce((s, it) => s + (parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0), 0))
+                      const valorTotal = valorCap.reduce((a, b) => a + b, 0) || 1
+                      const plazoSemanas = Math.max(1, (cronoData?.plazo_dias_contrato || 90) / 7)
+                      let prevId = null
+                      const filas = capitulos.map((cap, i) => {
+                        const fid = 'f' + Date.now().toString(36) + i
+                        const dur = Math.max(0.5, Math.round((valorCap[i] / valorTotal) * plazoSemanas * 2) / 2)
+                        const fila = { id: fid, nombre: cap, duracion_semanas: dur, semana_inicio: 0, predecesora_id: prevId, orden: i }
+                        prevId = fid
+                        return fila
+                      })
+                      setCronoFilas(filas)
+                      toast.success(`${filas.length} capítulos generados desde el presupuesto — ajustá lo que haga falta`, { duration: 3000 })
+                    }}
+                    className="w-full mb-3 py-2.5 rounded-xl border-2 border-dashed border-sky-300 bg-sky-50 text-sky-700 text-xs font-bold hover:bg-sky-100">
+              🔄 Generar desde el presupuesto ({Object.keys(grupos).length} capítulos)
+            </button>
+
             {cronoData?.error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 text-xs text-red-700">
                 ⚠ {cronoData.error} — corrígelo abajo antes de guardar.

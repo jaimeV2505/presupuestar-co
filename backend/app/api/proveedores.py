@@ -137,6 +137,23 @@ ALIAS_COLUMNAS = {
 }
 
 
+def _detectar_columna(celda: str) -> str:
+    """Reconoce el tipo de columna a partir del texto del encabezado.
+    Primero prueba la frase completa (cubre alias de 2 palabras como
+    "precio unitario"), despues palabra por palabra (cubre encabezados
+    naturales como "Nombre del insumo" o "Descripcion del material").
+    A proposito NO es un match por substring: "segun" contiene "un" como
+    substring pero no es la palabra "un" — un substring ingenuo la
+    confundiria con la abreviatura de unidad."""
+    texto = _sin_tildes(celda)
+    if texto in ALIAS_COLUMNAS:
+        return ALIAS_COLUMNAS[texto]
+    for palabra in texto.split():
+        if palabra in ALIAS_COLUMNAS:
+            return ALIAS_COLUMNAS[palabra]
+    return None
+
+
 def _parsear_filas(contenido: bytes, nombre_archivo: str) -> List[dict]:
     """Lee un .xlsx o .csv y devuelve filas normalizadas {insumo, unidad, precio}.
     Encabezados tolerantes: cualquier orden, con/sin tildes, mayus/minus."""
@@ -179,7 +196,7 @@ def _parsear_filas(contenido: bytes, nombre_archivo: str) -> List[dict]:
     for i, fila in enumerate(filas_crudas[:10]):
         candidato = {}
         for j, celda in enumerate(fila or []):
-            clave = ALIAS_COLUMNAS.get(_sin_tildes(str(celda or "")))
+            clave = _detectar_columna(str(celda or ""))
             if clave:
                 candidato[clave] = j
         if "insumo" in candidato and "precio" in candidato:

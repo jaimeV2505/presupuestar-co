@@ -210,6 +210,33 @@ function MockMiBase() {
     </div>
   )
 }
+function MockCronograma() {
+  const filas = [
+    ['Preliminares', 0, 12], ['Excavación', 12, 18], ['Cimentación', 30, 20], ['Estructura', 50, 30],
+  ]
+  const total = 100
+  return (
+    <div className="text-[11px]">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[10px] font-bold text-violet-600">📅 Cronograma — obra pública</p>
+        <span className="text-[8px] font-black bg-navy-800 text-white px-1.5 py-0.5 rounded-full">⬇️ PDF</span>
+      </div>
+      <div className="relative mb-1">
+        <div className="absolute top-0 bottom-0 w-0.5 bg-emerald-500 z-10" style={{ left: '38%' }} />
+        {filas.map(([nombre, ini, dur]) => (
+          <div key={nombre} className="flex items-center gap-1.5 mb-1">
+            <span className="w-16 shrink-0 text-slate-500 truncate">{nombre}</span>
+            <div className="flex-1 h-3 bg-slate-100 rounded relative">
+              <div className="absolute top-0 bottom-0 rounded bg-violet-500" style={{ left: `${ini}%`, width: `${dur}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-[9px] text-emerald-600 font-bold">📍 38% avance real cargado</p>
+      <p className="text-[9px] text-slate-400 mt-1">→ generado solo con tocar un botón, desde tus propios capítulos</p>
+    </div>
+  )
+}
 
 const DETALLE_HERRAMIENTA = [
   { titulo: 'El precio es TUYO, no de una tabla', puntos: ['Edita cemento, arena y M.O. con los precios de TU ferretería', 'Recalcula en el servidor y ⚡ aplica al ítem en un clic', 'El desglose queda guardado — tu propuesta 100% sustentada'] },
@@ -221,8 +248,9 @@ const DETALLE_HERRAMIENTA = [
   { titulo: 'La plata de la obra, a peso', puntos: ['Anticipo, cortes, retegarantía y deducciones de ley', 'El neto que calculas es el neto que llega', 'Cartera por edades con semáforo'] },
   { titulo: 'Mira antes de agregar', puntos: ['Cada actividad de la base muestra su desglose real: materiales, mano de obra, herramienta y transporte', 'Elige solo lo que necesitas — material por material — para armar TU propio APU', 'Nada entra a tu presupuesto a ciegas'] },
   { titulo: 'Tu base, no la de un genérico', puntos: ['Sube tu Excel o CSV con tus precios negociados', 'Hasta 2.500 filas por carga — sin ahogar el proceso', 'Si un precio ya existe distinto, TÚ decides si se actualiza'] },
+  { titulo: 'El cronograma que exige la entidad, sin Excel a mano', puntos: ['Genera el Gantt con un clic desde tus propios capítulos del presupuesto', 'Dependencias entre actividades — arranca sola la que sigue', 'Se cruza con tu avance real cargado y se exporta en PDF'] },
 ]
-const MOCKS_DOCK = [MockAnalisis, MockRecetario, MockDescuento, MockDisenos, MockIncidencia, MockExplosion, MockActas, MockVistaPrevia, MockMiBase]
+const MOCKS_DOCK = [MockAnalisis, MockRecetario, MockDescuento, MockDisenos, MockIncidencia, MockExplosion, MockActas, MockVistaPrevia, MockMiBase, MockCronograma]
 
 // ── EL DOCK: las herramientas que se magnifican ──
 const HERRAMIENTAS = [
@@ -235,6 +263,7 @@ const HERRAMIENTAS = [
   { e: '💵', t: 'Actas', d: 'Anticipo, cortes, rete y deducciones a peso' },
   { e: '👁️', t: 'Vista previa', d: 'El desglose real antes de agregar' },
   { e: '📤', t: 'Mi base', d: 'Sube tu propia lista de precios' },
+  { e: '📅', t: 'Cronograma', d: 'Diagrama de Gantt — exclusivo obra pública' },
 ]
 function Dock({ sel, setSel }) {
   const [cerca, setCerca] = useState(-1)
