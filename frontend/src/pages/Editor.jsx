@@ -437,7 +437,7 @@ export default function Editor() {
           valor: grupos[cap].reduce((s, it) => s + (parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0), 0),
         }))
       : items.map(it => ({
-          nombre: it.nombre || 'Ítem sin nombre',
+          nombre: it.descripcion || 'Ítem sin nombre',
           valor: (parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0),
         }))
     if (!entradas.length) { toast.error('No hay ítems en el presupuesto todavía'); return }
@@ -2697,7 +2697,8 @@ export default function Editor() {
                            onChange={e => setCronoFilas(fs => fs.map((x, j) => j === i ? { ...x, semana_inicio: e.target.value } : x))}
                            className="w-14 text-xs text-right border border-slate-200 rounded-lg px-2 py-1.5" />
                   )}
-                  <button onClick={() => setCronoFilas(fs => fs.filter((_, j) => j !== i))}
+                  <button onClick={() => setCronoFilas(fs => fs.filter((_, j) => j !== i)
+                                                            .map(x => x.predecesora_id === f.id ? { ...x, predecesora_id: null } : x))}
                           className="shrink-0 p-1.5 hover:bg-red-50 rounded-lg">
                     <Trash2 className="w-3.5 h-3.5 text-slate-300 hover:text-red-500" />
                   </button>
