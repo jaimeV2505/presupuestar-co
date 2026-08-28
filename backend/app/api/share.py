@@ -123,8 +123,11 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
                 "nombre": user_t.nombre if user_t else "",
                 "empresa": user_t.empresa if user_t else "",
                 "logo_b64": user_t.logo_b64 if user_t else "",
+                "slug": user_t.slug if user_t else "",
             },
             "encuesta_respondida": enc is not None,
+            "encuesta_previa": ({"estrellas": enc.estrellas, "recomendaria": enc.recomendaria}
+                                if enc is not None else None),
         }
 
     # Registrar vista + cambiar estado a "visto" automaticamente

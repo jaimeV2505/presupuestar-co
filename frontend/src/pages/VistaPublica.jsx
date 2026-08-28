@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { CheckCircle2, ChevronDown, ChevronUp, Phone, Building2 } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp, Phone, Building2, MessageCircle } from 'lucide-react'
 import { shareAPI, avancesAPI } from '../services/api'
 import toast from 'react-hot-toast'
 import { confirmarDialogo } from '../components/Dialogo'
@@ -181,6 +181,20 @@ export default function VistaPublica() {
   // ── PROYECTO TERMINADO: acceso cerrado + encuesta ────────────────────────
   if (data.terminado) {
     const yaRespondida = data.encuesta_respondida || encuestaEnviada
+    // Positiva = recien enviada con buena nota, O de una visita anterior (backend
+    // ahora devuelve la calificacion real, no solo si-ya-respondio)
+    const calificacionPositiva = encuestaEnviada
+      ? (encuesta.estrellas >= 4 && encuesta.recomendaria)
+      : (data.encuesta_previa && data.encuesta_previa.estrellas >= 4 && data.encuesta_previa.recomendaria)
+    const slugContratista = data.contratista?.slug
+    const linkPerfil = slugContratista ? `${window.location.origin}/c/${slugContratista}` : ''
+    const compartirConAmigo = () => {
+      const nombreContratista = data.contratista.empresa || data.contratista.nombre
+      const texto = encodeURIComponent(
+        `¡${nombreContratista} me hizo un excelente trabajo! Si necesitas un contratista de confianza, mira su perfil aquí: ${linkPerfil}`
+      )
+      window.open(`https://wa.me/?text=${texto}`, '_blank')
+    }
     const enviarEncuesta = async () => {
       if (encuesta.estrellas < 1) { toast.error('Selecciona una calificación de 1 a 5 estrellas'); return }
       setEnviandoEncuesta(true)
@@ -217,6 +231,17 @@ export default function VistaPublica() {
             <div className="mt-5 bg-emerald-50 rounded-xl p-4">
               <p className="text-sm font-medium text-emerald-700">¡Gracias por tu calificación!</p>
               <p className="text-[11px] text-emerald-600 mt-1">Tu opinión ayuda al contratista a mejorar.</p>
+              {calificacionPositiva && linkPerfil && (
+                <div className="mt-3 pt-3 border-t border-emerald-100">
+                  <p className="text-xs text-emerald-700 mb-2">
+                    😊 ¿Conoces a alguien que necesite un contratista de confianza?
+                  </p>
+                  <button onClick={compartirConAmigo}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold transition">
+                    <MessageCircle className="w-4 h-4" /> Compartir con un amigo
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="mt-5 text-left space-y-3">
