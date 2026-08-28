@@ -104,4 +104,4 @@ def listar(user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db
                 for p in sorted(ps, key=lambda x: x.id, reverse=True)[:10]
             ],
         })
-    return out
+    return sorted(out, key=lambda x: -x["total_contratado"])

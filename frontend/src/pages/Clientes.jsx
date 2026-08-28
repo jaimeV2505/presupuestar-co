@@ -17,10 +17,21 @@ export default function Clientes() {
   const nav = useNavigate()
   const [clientes, setClientes] = useState(null)
   const [abierto, setAbierto] = useState(null)
+  const [busqueda, setBusqueda] = useState('')
+  const [orden, setOrden] = useState('valor')  // valor | recientes | nombre
 
   useEffect(() => {
     clientesAPI.listar().then(setClientes).catch(e => toast.error(e.message))
   }, [])
+
+  const visibles = (clientes || [])
+    .filter(c => !busqueda.trim() || c.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()))
+    .slice()
+    .sort((a, b) => {
+      if (orden === 'nombre') return a.nombre.localeCompare(b.nombre)
+      if (orden === 'recientes') return b.id - a.id  // el backend ya trae los mas nuevos con id mas alto
+      return b.total_contratado - a.total_contratado  // 'valor' (por defecto)
+    })
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -47,8 +58,23 @@ export default function Clientes() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {clientes.map(c => (
+          <>
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
+              <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
+                     placeholder="Buscar cliente por nombre..."
+                     className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" />
+              <select value={orden} onChange={e => setOrden(e.target.value)}
+                      className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white">
+                <option value="valor">Mayor valor</option>
+                <option value="recientes">Más recientes</option>
+                <option value="nombre">Nombre (A-Z)</option>
+              </select>
+            </div>
+            {visibles.length === 0 && (
+              <p className="text-center text-sm text-slate-400 py-10">Ningún cliente coincide con "{busqueda}"</p>
+            )}
+            <div className="space-y-2.5">
+            {visibles.map(c => (
               <div key={c.id} className="bg-white rounded-xl border border-slate-100">
                 <button onClick={() => setAbierto(abierto === c.id ? null : c.id)}
                         className="w-full flex items-center gap-3 p-4 text-left">
@@ -101,7 +127,8 @@ export default function Clientes() {
                 )}
               </div>
             ))}
-          </div>
+            </div>
+          </>
         )}
       </main>
     </div>
