@@ -120,6 +120,7 @@ class Proyecto(Base):
     aiu_json = Column(Text, default='{"admin":15,"imprevistos":5,"utilidad":8,"aplicar":true,"iva_sobre_utilidad":true}')
     notas = Column(Text, default="")
     contrato_json = Column(Text, default="{}")  # {plazo_dias, anticipo_pct, fecha_inicio, lugar}
+    cronograma_json = Column(Text, default="{}")  # {filas: [{id, nombre, duracion_semanas, semana_inicio, predecesora_id, orden}]} — solo obra publica
     share_token = Column(String(40), unique=True, index=True, nullable=True)
     sector = Column(String(10), default="privado")        # privado | publico
     entidad_nombre = Column(String(200), default="")      # publico: entidad contratante
@@ -390,6 +391,7 @@ def init_db():
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS documento VARCHAR(30) DEFAULT ''",
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pago_info VARCHAR(200) DEFAULT ''",
                     "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS contrato_json TEXT DEFAULT '{}'",
+                    "ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS cronograma_json TEXT DEFAULT '{}'",
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS plan_vence TIMESTAMP",
                     "ALTER TABLE tickets_soporte ADD COLUMN IF NOT EXISTS respuesta TEXT DEFAULT ''",
                     "ALTER TABLE tickets_soporte ADD COLUMN IF NOT EXISTS respondido TIMESTAMP",
@@ -442,6 +444,7 @@ def init_db():
                     ("usuarios", "documento", "ALTER TABLE usuarios ADD COLUMN documento VARCHAR(30) DEFAULT ''"),
                     ("usuarios", "pago_info", "ALTER TABLE usuarios ADD COLUMN pago_info VARCHAR(200) DEFAULT ''"),
                     ("proyectos", "contrato_json", "ALTER TABLE proyectos ADD COLUMN contrato_json TEXT DEFAULT '{}'"),
+                    ("proyectos", "cronograma_json", "ALTER TABLE proyectos ADD COLUMN cronograma_json TEXT DEFAULT '{}'"),
                     ("usuarios", "plan_vence", "ALTER TABLE usuarios ADD COLUMN plan_vence TIMESTAMP"),
                     ("tickets_soporte", "respuesta", "ALTER TABLE tickets_soporte ADD COLUMN respuesta TEXT DEFAULT ''"),
                     ("tickets_soporte", "respondido", "ALTER TABLE tickets_soporte ADD COLUMN respondido TIMESTAMP"),
