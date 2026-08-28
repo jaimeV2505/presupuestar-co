@@ -423,6 +423,46 @@ export default function Editor() {
     }
   }
 
+  // Cronograma: dos granularidades posibles.
+  // 'capitulo' — una barra por capitulo del presupuesto (ideal si ya organizaste
+  //   el presupuesto en capitulos con nombre propio: Preliminares, Cimentacion...).
+  // 'item' — una barra por cada item individual del presupuesto (util cuando el
+  //   presupuesto no esta tan organizado en capitulos, o se quiere mas detalle).
+  // Ninguno de los dos modos baja al nivel de materiales/insumos del APU — esos
+  // se consumen DENTRO de una actividad, no tienen fecha propia en un cronograma real.
+  const generarCronogramaDesdePresupuesto = async (modo) => {
+    const entradas = modo === 'capitulo'
+      ? Object.keys(grupos).map(cap => ({
+          nombre: cap,
+          valor: grupos[cap].reduce((s, it) => s + (parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0), 0),
+        }))
+      : items.map(it => ({
+          nombre: it.nombre || 'Ítem sin nombre',
+          valor: (parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0),
+        }))
+    if (!entradas.length) { toast.error('No hay ítems en el presupuesto todavía'); return }
+    if (entradas.length > 200) {
+      toast.error(`${entradas.length} ítems es más de las 200 filas permitidas — probá "por capítulo" en vez de "por ítem"`, { duration: 5000 })
+      return
+    }
+    if (cronoFilas.length > 0 && !(await confirmarDialogo({
+          titulo: '🔄 ¿Reemplazar las filas actuales?',
+          mensaje: `Esto borra las filas que ya tenés cargadas (a mano) y las reemplaza por una fila por cada ${modo === 'capitulo' ? 'capítulo' : 'ítem'} del presupuesto. No se guarda nada todavía — podés revisar antes de tocar "Guardar".`,
+          confirmar: 'Reemplazar' }))) return
+    const valorTotal = entradas.reduce((a, e) => a + e.valor, 0) || 1
+    const plazoSemanas = Math.max(1, (cronoData?.plazo_dias_contrato || 90) / 7)
+    let prevId = null
+    const filas = entradas.map((e, i) => {
+      const fid = 'f' + Date.now().toString(36) + i
+      const dur = Math.max(0.5, Math.round((e.valor / valorTotal) * plazoSemanas * 2) / 2)
+      const fila = { id: fid, nombre: e.nombre, duracion_semanas: dur, semana_inicio: 0, predecesora_id: prevId, orden: i }
+      prevId = fid
+      return fila
+    })
+    setCronoFilas(filas)
+    toast.success(`${filas.length} fila${filas.length !== 1 ? 's' : ''} generada${filas.length !== 1 ? 's' : ''} (${modo === 'capitulo' ? 'por capítulo' : 'por ítem'}) — ajustá lo que haga falta`, { duration: 3000 })
+  }
+
   const cargarProveedores = () => proveedoresAPI.listar().then(r => setProveedores(r.proveedores || [])).catch(() => {})
 
   const agregarItem = (apu) => {
@@ -2616,30 +2656,16 @@ export default function Editor() {
               {cronoData?.fecha_inicio && <> Fecha de inicio del contrato: <strong>{cronoData.fecha_inicio}</strong>.</>}
             </p>
 
-            <button onClick={async () => {
-                      const capitulos = Object.keys(grupos)
-                      if (!capitulos.length) { toast.error('No hay ítems en el presupuesto todavía'); return }
-                      if (cronoFilas.length > 0 && !(await confirmarDialogo({
-                            titulo: '🔄 ¿Reemplazar las filas actuales?',
-                            mensaje: 'Esto borra las filas que ya tenés cargadas (a mano) y las reemplaza por una fila por cada capítulo del presupuesto. No se guarda nada todavía — podés revisar antes de tocar "Guardar".',
-                            confirmar: 'Reemplazar' }))) return
-                      const valorCap = capitulos.map(cap => grupos[cap].reduce((s, it) => s + (parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0), 0))
-                      const valorTotal = valorCap.reduce((a, b) => a + b, 0) || 1
-                      const plazoSemanas = Math.max(1, (cronoData?.plazo_dias_contrato || 90) / 7)
-                      let prevId = null
-                      const filas = capitulos.map((cap, i) => {
-                        const fid = 'f' + Date.now().toString(36) + i
-                        const dur = Math.max(0.5, Math.round((valorCap[i] / valorTotal) * plazoSemanas * 2) / 2)
-                        const fila = { id: fid, nombre: cap, duracion_semanas: dur, semana_inicio: 0, predecesora_id: prevId, orden: i }
-                        prevId = fid
-                        return fila
-                      })
-                      setCronoFilas(filas)
-                      toast.success(`${filas.length} capítulos generados desde el presupuesto — ajustá lo que haga falta`, { duration: 3000 })
-                    }}
-                    className="w-full mb-3 py-2.5 rounded-xl border-2 border-dashed border-sky-300 bg-sky-50 text-sky-700 text-xs font-bold hover:bg-sky-100">
-              🔄 Generar desde el presupuesto ({Object.keys(grupos).length} capítulos)
-            </button>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <button onClick={() => generarCronogramaDesdePresupuesto('capitulo')}
+                      className="py-2.5 rounded-xl border-2 border-dashed border-sky-300 bg-sky-50 text-sky-700 text-xs font-bold hover:bg-sky-100">
+                🔄 Por capítulo ({Object.keys(grupos).length})
+              </button>
+              <button onClick={() => generarCronogramaDesdePresupuesto('item')}
+                      className="py-2.5 rounded-xl border-2 border-dashed border-violet-300 bg-violet-50 text-violet-700 text-xs font-bold hover:bg-violet-100">
+                🔄 Por ítem individual ({items.length})
+              </button>
+            </div>
 
             {cronoData?.error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 text-xs text-red-700">

@@ -706,7 +706,8 @@ def exportar_cronograma_pdf(req: ExportRequest, user: Usuario = Depends(usuario_
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
         contrato = json.loads(p.contrato_json or "{}")
-        total_semanas = max(1, int(round(duracion_total_semanas(filas) + 0.49)))  # redondeo hacia arriba
+        import math
+        total_semanas = max(1, math.ceil(duracion_total_semanas(filas)))
 
         buf = io.BytesIO()
         doc = SimpleDocTemplate(buf, pagesize=landscape(letter), topMargin=1.2*cm, bottomMargin=1.2*cm,
@@ -725,9 +726,16 @@ def exportar_cronograma_pdf(req: ExportRequest, user: Usuario = Depends(usuario_
         # Ancho disponible: columna de nombre fija, el resto repartido entre las semanas
         ancho_nombre = 5.5 * cm
         ancho_disponible = landscape(letter)[0] - 2.4 * cm - ancho_nombre
-        ancho_semana = max(0.35 * cm, ancho_disponible / total_semanas)
+        # Sin ancho minimo: para contratos largos (>~57 semanas con el minimo
+        # anterior de 0.35cm) la tabla se desbordaba de la pagina. Mejor
+        # columnas finas y legibles-por-agrupacion que una tabla rota.
+        ancho_semana = ancho_disponible / total_semanas
 
-        encabezado = ["Actividad"] + [f"S{i+1}" for i in range(total_semanas)]
+        # Con muchas semanas los numeros se aplastan y quedan ilegibles (verificado
+        # generando el PDF real con 61 columnas) — a partir de 20 semanas, mostrar
+        # el numero solo cada tantas columnas, dejando el resto en blanco.
+        intervalo = max(1, round(total_semanas / 20))
+        encabezado = ["Actividad"] + [f"S{i+1}" if (i % intervalo == 0 or i == total_semanas - 1) else "" for i in range(total_semanas)]
         filas_tabla = [encabezado]
         estilos_barras = []
         for idx, f in enumerate(filas, start=1):
