@@ -551,6 +551,23 @@ export default function Editor() {
     toast.success('Enlace copiado')
   }
 
+  const enviarPorCorreo = () => {
+    const asunto = encodeURIComponent(`Presupuesto: ${p?.nombre || 'tu obra'}`)
+    const cuerpo = encodeURIComponent(`${shareData.mensaje_whatsapp}\n\n${urlPreview}`)
+    window.open(`mailto:?subject=${asunto}&body=${cuerpo}`, '_blank')
+  }
+
+  const enviarRecordatorio = () => {
+    const nombreCliente = p?.cliente_nombre || ''
+    const vioAlguna = eventos?.total_vistas > 0
+    const mensaje = vioAlguna
+      ? `Hola ${nombreCliente}! Solo quería confirmar si alcanzaste a revisar el presupuesto de *${p?.nombre}* que te compartí. Cualquier duda, con gusto te la resuelvo 🙂`
+      : `Hola ${nombreCliente}! Te reenvío el presupuesto de *${p?.nombre}* por si no te llegó bien la primera vez. Cualquier cosa me avisas.`
+    const texto = encodeURIComponent(`${mensaje} ${urlPreview}`)
+    const base = shareData.telefono_cliente ? shareData.whatsapp_url_base : 'https://wa.me/'
+    window.open(`${base}?text=${texto}`, '_blank')
+  }
+
   // ── Exportar ──────────────────────────────────────────────────────────
   const exportar = async (tipo) => {
     try {
@@ -3260,14 +3277,19 @@ export default function Editor() {
               {urlPublica}
             </div>
 
+            <button onClick={abrirWhatsApp}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold shadow-lg shadow-emerald-500/30 transition">
+              <MessageCircle className="w-5 h-5" /> 📨 Enviar propuesta
+            </button>
+
             <div className="grid grid-cols-2 gap-2">
               <button onClick={copiarLink}
-                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600">
+                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">
                 <CopyIcon className="w-4 h-4" /> Copiar link
               </button>
-              <button onClick={abrirWhatsApp}
-                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-medium">
-                <MessageCircle className="w-4 h-4" /> Enviar por WhatsApp
+              <button onClick={enviarPorCorreo}
+                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                ✉️ Por correo
               </button>
             </div>
 
@@ -3276,6 +3298,20 @@ export default function Editor() {
                 {eventos.total_vistas === 0
                   ? 'Aún no lo han abierto'
                   : `Visto ${eventos.total_vistas} ${eventos.total_vistas === 1 ? 'vez' : 'veces'}${eventos.ultima_vista ? ' · última: ' + new Date(eventos.ultima_vista).toLocaleString('es-CO') : ''}`}
+              </div>
+            )}
+
+            {eventos && !eventos.aceptado && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-xs text-amber-800">
+                  {eventos.total_vistas === 0
+                    ? '💤 Tu cliente todavía no ha abierto el enlace.'
+                    : '👀 Lo vio, pero aún no ha respondido.'}
+                </p>
+                <button onClick={enviarRecordatorio}
+                        className="w-full mt-2 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition">
+                  📩 Enviar recordatorio
+                </button>
               </div>
             )}
           </div>
