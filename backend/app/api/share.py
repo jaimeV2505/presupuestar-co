@@ -25,12 +25,11 @@ router = APIRouter()
 
 @router.post("/proyectos/{proyecto_id}/compartir")
 def compartir(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
-    _p_chk = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
-    if _p_chk and (_p_chk.sector or "privado") == "publico":
-        raise HTTPException(400, "Los proyectos de obra publica no usan enlace de cliente — todo el control vive en tu tablero")
     p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
     if not p:
         raise HTTPException(404, "Proyecto no encontrado")
+    if (p.sector or "privado") == "publico":
+        raise HTTPException(400, "Los proyectos de obra publica no usan enlace de cliente — todo el control vive en tu tablero")
 
     items = json.loads(p.items_json or "[]")
     if not items:
@@ -45,10 +44,11 @@ def compartir(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Ses
     totales = calcular_totales(items, aiu)
     telefono = (p.cliente_telefono or "").replace(" ", "").replace("-", "").replace("+", "")
 
-    # Mensaje de WhatsApp pre-armado
+    # Mensaje de WhatsApp pre-armado — formato colombiano de miles (puntos, no comas)
+    total_fmt = f"{round(totales['total']):,}".replace(",", ".")
     mensaje = (
         f"Hola {p.cliente_nombre or ''}! Te comparto el presupuesto de "
-        f"*{p.nombre}* por ${totales['total']:,.0f}. "
+        f"*{p.nombre}* por ${total_fmt}. "
         f"Puedes verlo completo aqui:"
     ).strip()
 
@@ -70,6 +70,11 @@ def eventos(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sessi
     p = db.query(Proyecto).filter(Proyecto.id == proyecto_id, Proyecto.user_id == user.id).first()
     if not p:
         raise HTTPException(404, "Proyecto no encontrado")
+    # conteos reales, SIN el limite de 100 — si no, un proyecto muy revisitado
+    # mostraria menos vistas de las que realmente hubo (el limite de abajo es
+    # solo para el detalle reciente, no para el numero total)
+    total_vistas = db.query(EventoShare).filter(EventoShare.proyecto_id == p.id, EventoShare.tipo == "visto").count()
+    total_aceptados = db.query(EventoShare).filter(EventoShare.proyecto_id == p.id, EventoShare.tipo == "aceptado").count()
     evs = (
         db.query(EventoShare)
         .filter(EventoShare.proyecto_id == p.id)
@@ -78,11 +83,13 @@ def eventos(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Sessi
     )
     vistos = [e for e in evs if e.tipo == "visto"]
     aceptados = [e for e in evs if e.tipo == "aceptado"]
+    primera_vista_real = (db.query(EventoShare).filter(EventoShare.proyecto_id == p.id, EventoShare.tipo == "visto")
+                          .order_by(EventoShare.creado.asc()).first())
     return {
-        "total_vistas": len(vistos),
-        "primera_vista": vistos[-1].creado.isoformat() if vistos else None,
+        "total_vistas": total_vistas,
+        "primera_vista": primera_vista_real.creado.isoformat() if primera_vista_real else None,
         "ultima_vista": vistos[0].creado.isoformat() if vistos else None,
-        "aceptado": len(aceptados) > 0,
+        "aceptado": total_aceptados > 0,
         "fecha_aceptado": aceptados[0].creado.isoformat() if aceptados else None,
         "eventos": [
             {"tipo": e.tipo, "fecha": e.creado.isoformat()}
