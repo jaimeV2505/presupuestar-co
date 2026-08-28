@@ -150,6 +150,11 @@ export const otrosiesAPI = {
   eliminar: (id) => api.delete(`/otrosies/${id}`).then(r => r.data),
 }
 
+export const cronogramaAPI = {
+  obtener: (proyectoId) => api.get(`/cronograma/${proyectoId}`).then(r => r.data),
+  guardar: (proyectoId, filas) => api.put(`/cronograma/${proyectoId}`, { filas }).then(r => r.data),
+}
+
 export const wompiAPI = {
   disponible: () => api.get('/wompi/disponible').then(r => r.data),
   link: () => api.post('/wompi/link').then(r => r.data),

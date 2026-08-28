@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
          Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
-import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI, insumosAPI, disenosAPI } from '../services/api'
+import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI, insumosAPI, disenosAPI, cronogramaAPI } from '../services/api'
 import { comprimirImagen } from '../utils/imagen'
 import InfoTip from '../components/InfoTip'
 import { pedirTexto, confirmarDialogo } from '../components/Dialogo'
@@ -67,6 +67,10 @@ export default function Editor() {
   // ── Adicionales (otrosies) ──
   const [otrosies, setOtrosies] = useState([])
   const [showOtrosi, setShowOtrosi] = useState(false)
+  const [showCronograma, setShowCronograma] = useState(false)
+  const [cronoData, setCronoData] = useState(null)
+  const [cronoFilas, setCronoFilas] = useState([])
+  const [cronoGuardando, setCronoGuardando] = useState(false)
   const [otMotivo, setOtMotivo] = useState('')
   const [otItems, setOtItems] = useState([{ descripcion: '', unidad: 'un', cantidad: 1, precio_unitario: '' }])
   const [otBusca, setOtBusca] = useState('')
@@ -618,6 +622,17 @@ export default function Editor() {
                           <span className="ml-1.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{otrosies.filter(o => o.estado === 'aprobado').length} {esPublico ? 'aprobado' : 'firmado'}{otrosies.filter(o => o.estado === 'aprobado').length !== 1 ? 's' : ''}</span>}
                       </span>
                       <span className="block text-[10px] text-slate-400">Trabajo extra con otrosí firmado</span></span>
+                    </button>
+                  )}
+                  {esPublico && (
+                    <button onClick={() => {
+                              setShowPanel(false); setShowCronograma(true)
+                              cronogramaAPI.obtener(id).then(d => { setCronoData(d); setCronoFilas(d.filas || []) }).catch(e => toast.error(e.message))
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-sky-50 text-left">
+                      <span className="text-lg">📅</span>
+                      <span className="flex-1"><span className="block text-sm font-semibold text-slate-700">Cronograma</span>
+                      <span className="block text-[10px] text-slate-400">Diagrama de Gantt — solo obra pública</span></span>
                     </button>
                   )}
 
@@ -2586,7 +2601,121 @@ export default function Editor() {
         </div>
       )}
 
-      {/* Modal GASTOS */}
+      {/* Modal CRONOGRAMA (Gantt) — solo obra publica */}
+      {showCronograma && (
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center p-4 pt-[5vh] z-[60]" onClick={() => setShowCronograma(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-4xl max-h-[88vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-semibold text-slate-800">📅 Cronograma de obra</h3>
+              <button onClick={() => setShowCronograma(false)} className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
+            </div>
+            <p className="text-[11px] text-slate-400 mb-4">
+              Cada fila puede arrancar en una semana fija, o "empezar cuando termine" otra fila de la lista.
+              {cronoData?.fecha_inicio && <> Fecha de inicio del contrato: <strong>{cronoData.fecha_inicio}</strong>.</>}
+            </p>
+
+            {cronoData?.error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 text-xs text-red-700">
+                ⚠ {cronoData.error} — corrígelo abajo antes de guardar.
+              </div>
+            )}
+
+            {/* Editor de filas */}
+            <div className="space-y-2 mb-3">
+              {cronoFilas.map((f, i) => (
+                <div key={f.id} className="flex items-center gap-1.5 bg-slate-50 rounded-xl p-2">
+                  <input value={f.nombre} placeholder="Nombre de la actividad"
+                         onChange={e => setCronoFilas(fs => fs.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x))}
+                         className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5" />
+                  <input type="number" min="0.1" step="0.5" value={f.duracion_semanas} title="Duración en semanas"
+                         onChange={e => setCronoFilas(fs => fs.map((x, j) => j === i ? { ...x, duracion_semanas: e.target.value } : x))}
+                         className="w-16 text-xs text-right border border-slate-200 rounded-lg px-2 py-1.5" />
+                  <span className="text-[10px] text-slate-400 shrink-0">sem.</span>
+                  <select value={f.predecesora_id || ''} title="Empieza cuando termina..."
+                          onChange={e => setCronoFilas(fs => fs.map((x, j) => j === i ? { ...x, predecesora_id: e.target.value || null } : x))}
+                          className="w-36 text-[11px] border border-slate-200 rounded-lg px-1.5 py-1.5">
+                    <option value="">— fecha manual —</option>
+                    {cronoFilas.filter(o => o.id !== f.id).map(o => (
+                      <option key={o.id} value={o.id}>tras: {o.nombre || '(sin nombre)'}</option>
+                    ))}
+                  </select>
+                  {!f.predecesora_id && (
+                    <input type="number" min="0" step="0.5" value={f.semana_inicio ?? 0} title="Semana de inicio manual"
+                           onChange={e => setCronoFilas(fs => fs.map((x, j) => j === i ? { ...x, semana_inicio: e.target.value } : x))}
+                           className="w-14 text-xs text-right border border-slate-200 rounded-lg px-2 py-1.5" />
+                  )}
+                  <button onClick={() => setCronoFilas(fs => fs.filter((_, j) => j !== i))}
+                          className="shrink-0 p-1.5 hover:bg-red-50 rounded-lg">
+                    <Trash2 className="w-3.5 h-3.5 text-slate-300 hover:text-red-500" />
+                  </button>
+                </div>
+              ))}
+              <button onClick={() => setCronoFilas(fs => [...fs, {
+                        id: 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                        nombre: '', duracion_semanas: 1, semana_inicio: 0, predecesora_id: null,
+                      }])}
+                      className="text-xs font-medium text-navy-600 hover:text-navy-800">+ agregar fila</button>
+            </div>
+
+            <button disabled={cronoGuardando || !cronoFilas.length}
+                    onClick={async () => {
+                      setCronoGuardando(true)
+                      try {
+                        const filasLimpias = cronoFilas.map(f => ({
+                          id: f.id, nombre: f.nombre, orden: f.orden || 0,
+                          duracion_semanas: parseFloat(f.duracion_semanas) || 1,
+                          semana_inicio: parseFloat(f.semana_inicio) || 0,
+                          predecesora_id: f.predecesora_id || null,
+                        }))
+                        const d = await cronogramaAPI.guardar(id, filasLimpias)
+                        setCronoData(d); setCronoFilas(d.filas || [])
+                        toast.success('Cronograma guardado ✓')
+                      } catch (err) { toast.error(err.message) }
+                      finally { setCronoGuardando(false) }
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition disabled:opacity-50 mb-5">
+              {cronoGuardando ? 'Guardando...' : '💾 Guardar cronograma'}
+            </button>
+
+            {/* Gantt visual */}
+            {cronoData?.filas?.length > 0 && (() => {
+              const total = Math.max(cronoData.duracion_total_semanas || 1, 2)
+              const pctHoy = cronoData.pct_avance_real
+              return (
+                <div className="border border-slate-200 rounded-xl p-3 overflow-x-auto">
+                  <div className="min-w-[500px]">
+                    {pctHoy != null && (
+                      <p className="text-[11px] text-emerald-600 font-bold mb-2">📍 Avance real cargado: {pctHoy}%</p>
+                    )}
+                    <div className="relative">
+                      {pctHoy != null && (
+                        <div className="absolute top-0 bottom-0 w-0.5 bg-emerald-500 z-10"
+                             style={{ left: `${Math.min(100, pctHoy)}%` }} title={`${pctHoy}% del plazo total`} />
+                      )}
+                      {cronoData.filas.map(f => (
+                        <div key={f.id} className="flex items-center gap-2 py-1">
+                          <span className="w-32 shrink-0 text-[11px] text-slate-600 truncate" title={f.nombre}>{f.nombre}</span>
+                          <div className="flex-1 h-5 bg-slate-100 rounded relative">
+                            <div className="absolute top-0 bottom-0 rounded bg-sky-500 flex items-center justify-end pr-1"
+                                 style={{
+                                   left: `${(f.semana_inicio_efectiva / total) * 100}%`,
+                                   width: `${Math.max(2, (f.duracion_semanas / total) * 100)}%`,
+                                 }}>
+                              <span className="text-[9px] text-white font-bold">{f.duracion_semanas}sem</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-2 text-right">duración total: {total} semanas</p>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+
       {showGastos && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowGastos(false)}>
           <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
