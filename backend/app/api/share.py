@@ -47,9 +47,9 @@ def compartir(proyecto_id: int, user: Usuario = Depends(usuario_actual), db: Ses
     # Mensaje de WhatsApp pre-armado — formato colombiano de miles (puntos, no comas)
     total_fmt = f"{round(totales['total']):,}".replace(",", ".")
     mensaje = (
-        f"Hola {p.cliente_nombre or ''}! Te comparto el presupuesto de "
-        f"*{p.nombre}* por ${total_fmt}. "
-        f"Puedes verlo completo aqui:"
+        f"¡Hola {p.cliente_nombre or ''}! 👋 Ya tengo lista tu propuesta para "
+        f"*{p.nombre}*, por un valor de ${total_fmt}. "
+        f"Puedes revisar todo el detalle y aprobarla desde tu celular, aquí:"
     ).strip()
 
     return {

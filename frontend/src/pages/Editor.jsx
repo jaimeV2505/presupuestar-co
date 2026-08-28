@@ -92,6 +92,7 @@ export default function Editor() {
 
   // Share
   const [showShare, setShowShare] = useState(false)
+  const [primeraVezCompartiendo, setPrimeraVezCompartiendo] = useState(false)
   const [shareData, setShareData] = useState(null)
   const [eventos, setEventos] = useState(null)
 
@@ -529,11 +530,18 @@ export default function Editor() {
   // ── Compartir por WhatsApp ────────────────────────────────────────────
   const compartir = async () => {
     if (!items.length) { toast.error('Agrega ítems antes de compartir'); return }
+    const esPrimeraVez = p.estado === 'borrador'  // capturar ANTES de mutar el estado local
     try {
       const data = await shareAPI.compartir(id)
       setShareData(data)
       setShowShare(true)
+      setPrimeraVezCompartiendo(esPrimeraVez)
       shareAPI.eventos(id).then(setEventos).catch(() => {})
+      // el backend marca el proyecto como 'enviado' la primera vez que se comparte
+      // (ver share.py: compartir()) — reflejarlo localmente, si no, reabrir este
+      // mismo modal mas tarde en la misma sesion seguiria viendo 'borrador' y el
+      // recordatorio nunca se activaria sin recargar la pagina
+      setP(prevP => prevP && prevP.estado === 'borrador' ? { ...prevP, estado: 'enviado' } : prevP)
     } catch (e) { toast.error(e.message) }
   }
 
@@ -561,8 +569,8 @@ export default function Editor() {
     const nombreCliente = p?.cliente_nombre || ''
     const vioAlguna = eventos?.total_vistas > 0
     const mensaje = vioAlguna
-      ? `Hola ${nombreCliente}! Solo quería confirmar si alcanzaste a revisar el presupuesto de *${p?.nombre}* que te compartí. Cualquier duda, con gusto te la resuelvo 🙂`
-      : `Hola ${nombreCliente}! Te reenvío el presupuesto de *${p?.nombre}* por si no te llegó bien la primera vez. Cualquier cosa me avisas.`
+      ? `¡Hola ${nombreCliente}! 👋 Quería saber si alcanzaste a revisar la propuesta de *${p?.nombre}* que te envié. Cualquier duda, con gusto te la resuelvo.`
+      : `¡Hola ${nombreCliente}! 👋 Te reenvío la propuesta de *${p?.nombre}*, por si no te llegó bien la primera vez. Cualquier cosa, me avisas.`
     const texto = encodeURIComponent(`${mensaje} ${urlPreview}`)
     const base = shareData.telefono_cliente ? shareData.whatsapp_url_base : 'https://wa.me/'
     window.open(`${base}?text=${texto}`, '_blank')
@@ -878,7 +886,7 @@ export default function Editor() {
             {!esPublico && (
             <button onClick={compartir}
                     className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
-              <MessageCircle className="w-4 h-4" /> <span className="hidden sm:inline">WhatsApp</span>
+              <MessageCircle className="w-4 h-4" /> <span className="hidden sm:inline">Enviar propuesta</span>
             </button>
             )}
           </div>
@@ -2568,7 +2576,7 @@ export default function Editor() {
                       <>
                         <button onClick={() => avisarCliente(`Hola! Te propuse un adicional para tu obra "${p.nombre}" por ${COP(o.totales?.total || 0)}. Apruébalo con tu firma aquí:`)}
                                 className="text-[10px] font-bold bg-emerald-500 text-white rounded-lg px-2 py-1">
-                          Enviar por WhatsApp
+                          📨 Enviar propuesta
                         </button>
                         <button onClick={async () => {
                                   try { await otrosiesAPI.eliminar(o.id); setOtrosies(prev => prev.filter(x => x.id !== o.id)); toast.success('Eliminado') }
@@ -3301,7 +3309,7 @@ export default function Editor() {
               </div>
             )}
 
-            {eventos && !eventos.aceptado && (
+            {eventos && !eventos.aceptado && !primeraVezCompartiendo && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                 <p className="text-xs text-amber-800">
                   {eventos.total_vistas === 0
