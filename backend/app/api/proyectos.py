@@ -546,6 +546,12 @@ def actualizar(proyecto_id: int, req: ProyectoUpdate, user: Usuario = Depends(us
         if _ORDEN.get(p.estado, 0) >= _ORDEN["aceptado"] and _ORDEN[req.estado] < _ORDEN[p.estado]:
             raise HTTPException(400, "El presupuesto esta sellado — no se retrocede el estado; "
                                      "los cambios entran por adicionales")
+        if req.estado == "aceptado" and _ORDEN.get(p.estado, 0) < _ORDEN["aceptado"]:
+            # el frontend ya lo exige (boton "marcar contrato como firmado" en
+            # obra publica) pero el servidor manda: nunca confiar solo en la UI
+            items_actuales = req.items if req.items is not None else json.loads(p.items_json or "[]")
+            if not items_actuales:
+                raise HTTPException(400, "Agrega items al presupuesto antes de marcarlo como aceptado")
         p.estado = req.estado
     if req.notas is not None: p.notas = req.notas[:2000]
 
