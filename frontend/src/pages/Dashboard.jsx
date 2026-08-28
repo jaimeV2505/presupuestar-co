@@ -585,7 +585,9 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-3">
             {proyectos.map(p => {
-              const badge = ESTADO_BADGE[p.estado] || ESTADO_BADGE.borrador
+              const badge = p.estado === 'aceptado' && p.sector === 'publico'
+                ? { txt: '🏗️ En ejecución', cls: 'bg-emerald-100 text-emerald-700' }
+                : (ESTADO_BADGE[p.estado] || ESTADO_BADGE.borrador)
               return (
                 <div key={p.id} onClick={() => nav(`/editor/${p.id}`)}
                      className="bg-white rounded-xl border border-slate-200 p-4 hover:border-navy-300 hover:shadow-md transition cursor-pointer">
