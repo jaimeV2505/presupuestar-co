@@ -2155,7 +2155,9 @@ export default function Editor() {
                   {cargandoMasivo ? 'Cargando...' : `📤 Cargar mi base de precios (Excel/CSV) — hasta ${2500} filas`}
                 </button>
                 <p className="text-[10px] text-slate-400 -mt-2 mb-3">
-                  Columnas: nombre del insumo, unidad (opcional), precio. En cualquier orden.
+                  Columnas: nombre del insumo, unidad (opcional), precio. En cualquier orden. {' '}
+                  <a href="/plantillas/plantilla_mis_precios.xlsx" download
+                     className="text-navy-500 font-semibold hover:underline">📥 Descargar plantilla de ejemplo</a>
                 </p>
                 {provSel.precios.map(pc => (
                   <div key={pc.id} className="flex items-center justify-between text-xs border-b border-slate-50 py-1.5">
@@ -2698,9 +2700,26 @@ export default function Editor() {
                       } catch (err) { toast.error(err.message) }
                       finally { setCronoGuardando(false) }
                     }}
-                    className="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition disabled:opacity-50 mb-5">
+                    className="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition disabled:opacity-50 mb-2">
               {cronoGuardando ? 'Guardando...' : '💾 Guardar cronograma'}
             </button>
+            {cronoData?.filas?.length > 0 && !cronoData?.error && (
+              <button onClick={async () => {
+                        try {
+                          const res = await exportarAPI.cronogramaPdf({ proyecto_id: id })
+                          const url = URL.createObjectURL(res.data)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = `cronograma_${p.nombre.replace(/[^a-z0-9]/gi, '_')}.pdf`
+                          a.click()
+                          URL.revokeObjectURL(url)
+                          toast.success('Descargado ✓')
+                        } catch (err) { toast.error(err.message) }
+                      }}
+                      className="w-full py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 mb-5">
+                ⬇️ Descargar PDF
+              </button>
+            )}
 
             {/* Gantt visual */}
             {cronoData?.filas?.length > 0 && (() => {
