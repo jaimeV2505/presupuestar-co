@@ -638,10 +638,33 @@ export default function Editor() {
                 </p>
               )}
 
+              {esPublico && p.estado === 'borrador' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-2">
+                  <p className="text-xs text-amber-800 mb-2">
+                    ✍️ Obra pública: el contrato se firma por fuera de la plataforma (con la entidad).
+                    Cuando ya esté firmado, activá el proyecto acá.
+                  </p>
+                  <button onClick={async () => {
+                            if (!items.length) { toast.error('Agrega ítems al presupuesto antes de marcarlo como firmado'); return }
+                            if (!(await confirmarDialogo({ titulo: '✍️ ¿Marcar el contrato como firmado?',
+                                  mensaje: '• El proyecto pasa a "En ejecución"\n• Las cantidades y precios de la tabla quedan fijos — para cambios, usá Adicionales\n• Se habilitan Avances, Cobros, Adicionales y Cronograma',
+                                  confirmar: 'Marcar como firmado' }))) return
+                            try {
+                              const d = await proyectosAPI.actualizar(id, { estado: 'aceptado' })
+                              setP(d); setShowPanel(false)
+                              toast.success('Contrato activado — ya podés registrar avances 🏗️')
+                            } catch (e2) { toast.error(e2.message) }
+                          }}
+                          className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition">
+                    Marcar contrato como firmado
+                  </button>
+                </div>
+              )}
+
               {(esPublico || ['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado)) ? (
                 <>
                   <p className="text-[9px] text-slate-400 uppercase font-bold px-1 pt-1">Ejecución</p>
-                  {(p.estado === 'aceptado' || (esPublico && p.estado !== 'terminado')) && (
+                  {(p.estado === 'aceptado' || (esPublico && !['terminado', 'borrador'].includes(p.estado))) && (
                     <button onClick={() => {
                               setShowPanel(false); setShowAvances(true)
                               avancesAPI.listar(id).then(res => {
@@ -678,7 +701,7 @@ export default function Editor() {
                     <span><span className="block text-sm font-semibold text-slate-700">Cobros</span>
                     <span className="block text-[10px] text-slate-400">Cuentas, abonos y retegarantía</span></span>
                   </button>
-                  {(['aceptado', 'entrega_solicitada'].includes(p.estado) || (esPublico && p.estado !== 'terminado')) && (
+                  {(['aceptado', 'entrega_solicitada'].includes(p.estado) || (esPublico && !['terminado', 'borrador'].includes(p.estado))) && (
                     <button onClick={() => { setShowPanel(false); setShowOtrosi(true) }}
                             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 text-left">
                       <span className="text-lg">➕</span>
