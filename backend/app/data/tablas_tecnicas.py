@@ -100,18 +100,21 @@ def calcular_kg_acero_por_especificacion(especificacion: str) -> float:
 # ══════════════════════════════════════════════════════════════════════════════
 DOSIFICACION_CONCRETO = [
     # proporcion, kg/cm2, psi, mpa, cemento_sacos, arena_m3, grava_m3, agua_lts
-    {"proporcion": "1-2-2",   "kg_cm2": 280, "psi": 4000, "mpa": 27, "cemento_sacos": 420/42.5, "arena_m3": 0.67, "grava_m3": 0.67, "agua_lts": 190},
-    {"proporcion": "1-2-2.5", "kg_cm2": 240, "psi": 3555, "mpa": 24, "cemento_sacos": 380/42.5, "arena_m3": 0.60, "grava_m3": 0.76, "agua_lts": 180},
-    {"proporcion": "1-2-3",   "kg_cm2": 226, "psi": 3224, "mpa": 22, "cemento_sacos": 350/42.5, "arena_m3": 0.55, "grava_m3": 0.84, "agua_lts": 170},
-    {"proporcion": "1-2-3.5", "kg_cm2": 210, "psi": 3000, "mpa": 20, "cemento_sacos": 320/42.5, "arena_m3": 0.52, "grava_m3": 0.90, "agua_lts": 170},
-    {"proporcion": "1-2-43",  "kg_cm2": 200, "psi": 2850, "mpa": 19, "cemento_sacos": 300/42.5, "arena_m3": 0.48, "grava_m3": 0.95, "agua_lts": 158},
-    {"proporcion": "1-2.5-4", "kg_cm2": 189, "psi": 2700, "mpa": 18, "cemento_sacos": 280/42.5, "arena_m3": 0.55, "grava_m3": 0.89, "agua_lts": 158},
-    {"proporcion": "1-3-3",   "kg_cm2": 168, "psi": 2400, "mpa": 16, "cemento_sacos": 300/42.5, "arena_m3": 0.72, "grava_m3": 0.72, "agua_lts": 158},
-    {"proporcion": "1-3-4",   "kg_cm2": 159, "psi": 2275, "mpa": 15, "cemento_sacos": 260/42.5, "arena_m3": 0.63, "grava_m3": 0.83, "agua_lts": 163},
-    {"proporcion": "1-3-5",   "kg_cm2": 140, "psi": 2000, "mpa": 14, "cemento_sacos": 230/42.5, "arena_m3": 0.55, "grava_m3": 0.92, "agua_lts": 148},
-    {"proporcion": "1-3-6",   "kg_cm2": 119, "psi": 1700, "mpa": 12, "cemento_sacos": 110/42.5, "arena_m3": 0.50, "grava_m3": 0.90, "agua_lts": 143},
-    {"proporcion": "1-4-7",   "kg_cm2": 109, "psi": 1560, "mpa": 11, "cemento_sacos": 175/42.5, "arena_m3": 0.55, "grava_m3": 0.98, "agua_lts": 133},
-    {"proporcion": "1-4-8",   "kg_cm2":  99, "psi": 1420, "mpa": 10, "cemento_sacos": 160/42.5, "arena_m3": 0.55, "grava_m3": 0.03, "agua_lts": 125},
+    # cemento_sacos asume bulto de 50kg — el mismo tamano usado en toda la
+    # base de insumos y las recetas APU de la app (antes decia 42.5kg, un
+    # tamano de bulto que no coincide con nada mas del sistema)
+    {"proporcion": "1-2-2",   "kg_cm2": 280, "psi": 4000, "mpa": 27, "cemento_sacos": 420/50, "arena_m3": 0.67, "grava_m3": 0.67, "agua_lts": 190},
+    {"proporcion": "1-2-2.5", "kg_cm2": 240, "psi": 3555, "mpa": 24, "cemento_sacos": 380/50, "arena_m3": 0.60, "grava_m3": 0.76, "agua_lts": 180},
+    {"proporcion": "1-2-3",   "kg_cm2": 226, "psi": 3224, "mpa": 22, "cemento_sacos": 350/50, "arena_m3": 0.55, "grava_m3": 0.84, "agua_lts": 170},
+    {"proporcion": "1-2-3.5", "kg_cm2": 210, "psi": 3000, "mpa": 20, "cemento_sacos": 320/50, "arena_m3": 0.52, "grava_m3": 0.90, "agua_lts": 170},
+    {"proporcion": "1-2-43",  "kg_cm2": 200, "psi": 2850, "mpa": 19, "cemento_sacos": 300/50, "arena_m3": 0.48, "grava_m3": 0.95, "agua_lts": 158},
+    {"proporcion": "1-2.5-4", "kg_cm2": 189, "psi": 2700, "mpa": 18, "cemento_sacos": 280/50, "arena_m3": 0.55, "grava_m3": 0.89, "agua_lts": 158},
+    {"proporcion": "1-3-3",   "kg_cm2": 168, "psi": 2400, "mpa": 16, "cemento_sacos": 300/50, "arena_m3": 0.72, "grava_m3": 0.72, "agua_lts": 158},
+    {"proporcion": "1-3-4",   "kg_cm2": 159, "psi": 2275, "mpa": 15, "cemento_sacos": 260/50, "arena_m3": 0.63, "grava_m3": 0.83, "agua_lts": 163},
+    {"proporcion": "1-3-5",   "kg_cm2": 140, "psi": 2000, "mpa": 14, "cemento_sacos": 230/50, "arena_m3": 0.55, "grava_m3": 0.92, "agua_lts": 148},
+    {"proporcion": "1-3-6",   "kg_cm2": 119, "psi": 1700, "mpa": 12, "cemento_sacos": 110/50, "arena_m3": 0.50, "grava_m3": 0.90, "agua_lts": 143},
+    {"proporcion": "1-4-7",   "kg_cm2": 109, "psi": 1560, "mpa": 11, "cemento_sacos": 175/50, "arena_m3": 0.55, "grava_m3": 0.98, "agua_lts": 133},
+    {"proporcion": "1-4-8",   "kg_cm2":  99, "psi": 1420, "mpa": 10, "cemento_sacos": 160/50, "arena_m3": 0.55, "grava_m3": 0.03, "agua_lts": 125},  # grava=0.03 sospechoso vs vecinas (0.90/0.98) -- posible error de la fuente original, no corregido a ciegas
 ]
 
 

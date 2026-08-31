@@ -70,5 +70,5 @@ def get_dosificacion_concreto(fc_mpa: float = 20.7):
         "dosificacion": get_materiales_por_m3(fc_mpa),
         "tabla_completa": DOSIFICACION_CONCRETO,
         "fuente": "Tabla de dosificación de concreto — Colombia",
-        "nota": "Cantidades por m³ de concreto. Cemento: saco de 42.5kg"
+        "nota": "Cantidades por m³ de concreto. Cemento: saco de 50kg"
     }

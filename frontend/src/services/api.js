@@ -206,6 +206,8 @@ export const preciosAPI = {
   buscar: (params) => api.get('/precios/', { params }).then(r => r.data),
   regiones: () => api.get('/precios/regiones').then(r => r.data),
   stats: () => api.get('/precios/stats').then(r => r.data),
+  varillas: () => api.get('/precios/varillas').then(r => r.data),
+  dosificacion: (fc_mpa) => api.get('/precios/dosificacion-concreto', { params: { fc_mpa } }).then(r => r.data),
 }
 
 export const disenosAPI = {

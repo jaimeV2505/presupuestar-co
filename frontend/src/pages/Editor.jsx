@@ -51,6 +51,11 @@ export default function Editor() {
   const [respondiendo, setRespondiendo] = useState({})  // {avance_id: texto}
   const [catalogo, setCatalogo] = useState(null)        // {categorias} | {insumos}
   const [showCatalogo, setShowCatalogo] = useState(false)
+  const [showCalculadora, setShowCalculadora] = useState(null)  // null | 'elegir' | 'concreto' | 'acero'
+  const [tablaDosificacion, setTablaDosificacion] = useState(null)
+  const [tablaVarillas, setTablaVarillas] = useState(null)
+  const [calcConcreto, setCalcConcreto] = useState({ idx: 3 })  // indice en tablaDosificacion (default 1-2-3.5, 3000 psi)
+  const [calcAcero, setCalcAcero] = useState({ numero: 4, metros: '', desperdicio: 5 })
 
   // Calculadora de cantidades + Preview
   const [calcAbierta, setCalcAbierta] = useState(null)  // idx del item con calc abierta
@@ -1970,6 +1975,8 @@ export default function Editor() {
                       className="text-xs font-medium text-navy-600">+ agregar insumo</button>
               <button onClick={() => { insumosAPI.catalogo().then(setCatalogo).catch(() => {}); setShowCatalogo(true) }}
                       className="text-xs font-medium text-emerald-600">📦 Catálogo de referencia</button>
+              <button onClick={() => setShowCalculadora('elegir')}
+                      className="text-xs font-medium text-amber-600">🧮 Calculadora de materiales</button>
             </div>
 
             <button onClick={async () => {
@@ -2142,6 +2149,127 @@ export default function Editor() {
       )}
 
       {/* Modal CATALOGO DE INSUMOS (referencia curada, dentro del constructor) */}
+      {/* Modal CALCULADORA DE MATERIALES — dosificación de concreto y peso de acero */}
+      {showCalculadora && (
+        <div className="fixed inset-0 bg-black/40 z-[70] flex items-start justify-center p-4 pt-[8vh]" onClick={() => setShowCalculadora(null)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-md max-h-[84vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-slate-800">🧮 Calculadora de materiales</h3>
+              <button onClick={() => setShowCalculadora(null)} className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
+            </div>
+
+            {showCalculadora === 'elegir' && (
+              <div className="space-y-2">
+                <button onClick={async () => {
+                          if (!tablaDosificacion) {
+                            const d = await preciosAPI.dosificacion(20.7).catch(() => null)
+                            if (d) setTablaDosificacion(d.tabla_completa)
+                          }
+                          setShowCalculadora('concreto')
+                        }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-left">
+                  <span className="text-2xl">🧱</span>
+                  <span><span className="block text-sm font-semibold text-slate-700">Dosificación de concreto</span>
+                  <span className="block text-[11px] text-slate-400">Cemento, arena, grava y agua por 1 m³</span></span>
+                </button>
+                <button onClick={async () => {
+                          if (!tablaVarillas) {
+                            const v = await preciosAPI.varillas().catch(() => null)
+                            if (v) setTablaVarillas(v.varillas)
+                          }
+                          setShowCalculadora('acero')
+                        }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-left">
+                  <span className="text-2xl">🔩</span>
+                  <span><span className="block text-sm font-semibold text-slate-700">Peso de acero de refuerzo</span>
+                  <span className="block text-[11px] text-slate-400">Convierte metros de varilla a kilos, con desperdicio</span></span>
+                </button>
+              </div>
+            )}
+
+            {showCalculadora === 'concreto' && tablaDosificacion && (() => {
+              const d = tablaDosificacion[calcConcreto.idx]
+              return (
+                <div>
+                  <label className="text-xs font-medium text-slate-500">Tipo de concreto</label>
+                  <select value={calcConcreto.idx} onChange={e => setCalcConcreto({ idx: parseInt(e.target.value) })}
+                          className="w-full mt-1 mb-3 text-sm border border-slate-200 rounded-xl px-3 py-2">
+                    {tablaDosificacion.map((row, i) => (
+                      <option key={i} value={i}>{row.proporcion} — {row.psi} PSI ({row.mpa} MPa)</option>
+                    ))}
+                  </select>
+                  <div className="bg-slate-50 rounded-xl p-3 text-xs space-y-1.5">
+                    <p className="font-semibold text-slate-600 mb-1">Por cada 1 m³:</p>
+                    <p className="flex justify-between"><span>Cemento</span><strong>{d.cemento_sacos.toFixed(2)} sacos (50kg)</strong></p>
+                    <p className="flex justify-between"><span>Arena</span><strong>{d.arena_m3} m³</strong></p>
+                    <p className="flex justify-between"><span>Grava</span><strong>{d.grava_m3} m³</strong></p>
+                    <p className="flex justify-between"><span>Agua</span><strong>{d.agua_lts} lts</strong></p>
+                  </div>
+                  <button onClick={() => {
+                            const nuevos = [
+                              { nombre: 'Cemento gris 50kg', cantidad: d.cemento_sacos.toFixed(2), precio: '' },
+                              { nombre: 'Arena de río', cantidad: d.arena_m3, precio: '' },
+                              { nombre: 'Grava / triturado', cantidad: d.grava_m3, precio: '' },
+                              { nombre: 'Agua', cantidad: d.agua_lts, precio: '' },
+                            ]
+                            setConstruyendo(c => ({ ...c, insumos: [...c.insumos, ...nuevos] }))
+                            setShowCalculadora(null)
+                            toast.success('4 materiales agregados — completá los precios', { duration: 2500 })
+                          }}
+                          className="w-full mt-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition">
+                    + Agregar los 4 al APU
+                  </button>
+                  <button onClick={() => setShowCalculadora('elegir')} className="w-full mt-2 text-[11px] text-slate-400">← volver</button>
+                </div>
+              )
+            })()}
+
+            {showCalculadora === 'acero' && tablaVarillas && (() => {
+              const v = tablaVarillas.find(x => x.numero === calcAcero.numero) || tablaVarillas[0]
+              const metros = parseFloat(calcAcero.metros) || 0
+              const desp = parseFloat(calcAcero.desperdicio) || 0
+              const kgBruto = metros * v.peso_kg_m
+              const kgFinal = kgBruto * (1 + desp / 100)
+              return (
+                <div>
+                  <label className="text-xs font-medium text-slate-500">Diámetro de varilla</label>
+                  <select value={calcAcero.numero} onChange={e => setCalcAcero(c => ({ ...c, numero: parseInt(e.target.value) }))}
+                          className="w-full mt-1 mb-3 text-sm border border-slate-200 rounded-xl px-3 py-2">
+                    {tablaVarillas.map(row => (
+                      <option key={row.numero} value={row.numero}>#{row.numero} — {row.pulg}" ({row.mm}mm) — {row.peso_kg_m} kg/m</option>
+                    ))}
+                  </select>
+                  <label className="text-xs font-medium text-slate-500">Metros lineales necesarios</label>
+                  <input type="number" min="0" value={calcAcero.metros}
+                         onChange={e => setCalcAcero(c => ({ ...c, metros: e.target.value }))}
+                         placeholder="ej: 120" className="w-full mt-1 mb-3 text-sm border border-slate-200 rounded-xl px-3 py-2" />
+                  <label className="text-xs font-medium text-slate-500">% adicional por desperdicio y traslapos</label>
+                  <input type="number" min="0" max="30" value={calcAcero.desperdicio}
+                         onChange={e => setCalcAcero(c => ({ ...c, desperdicio: e.target.value }))}
+                         className="w-full mt-1 mb-3 text-sm border border-slate-200 rounded-xl px-3 py-2" />
+                  <p className="text-[10px] text-slate-400 -mt-2 mb-3">Recomendado: 5-10% para traslapos y desperdicio de corte.</p>
+                  <div className="bg-slate-50 rounded-xl p-3 text-xs space-y-1">
+                    <p className="flex justify-between"><span>Peso bruto ({metros}m × {v.peso_kg_m}kg/m)</span><span>{kgBruto.toFixed(1)} kg</span></p>
+                    <p className="flex justify-between font-semibold text-slate-700"><span>Peso final (+{desp}%)</span><span>{kgFinal.toFixed(1)} kg</span></p>
+                  </div>
+                  <button disabled={metros <= 0}
+                          onClick={() => {
+                            setConstruyendo(c => ({ ...c, insumos: [...c.insumos,
+                              { nombre: `Varilla #${v.numero} (${v.pulg}")`, cantidad: kgFinal.toFixed(1), precio: '' }] }))
+                            setShowCalculadora(null)
+                            toast.success('Insumo agregado — completá el precio', { duration: 2500 })
+                          }}
+                          className="w-full mt-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition disabled:opacity-50">
+                    + Agregar al APU
+                  </button>
+                  <button onClick={() => setShowCalculadora('elegir')} className="w-full mt-2 text-[11px] text-slate-400">← volver</button>
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+
       {showCatalogo && (
         <div className="fixed inset-0 bg-black/40 z-[70] flex items-start justify-center p-4 pt-[8vh]" onClick={() => { setShowCatalogo(false); setCatalogo(null) }}>
           <div className="bg-white rounded-2xl p-5 w-full max-w-md max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
