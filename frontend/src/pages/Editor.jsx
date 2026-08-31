@@ -2163,7 +2163,8 @@ export default function Editor() {
                 <button onClick={async () => {
                           if (!tablaDosificacion) {
                             const d = await preciosAPI.dosificacion(20.7).catch(() => null)
-                            if (d) setTablaDosificacion(d.tabla_completa)
+                            if (!d) { toast.error('No se pudo cargar la tabla de dosificación — intentá de nuevo'); return }
+                            setTablaDosificacion(d.tabla_completa)
                           }
                           setShowCalculadora('concreto')
                         }}
@@ -2175,7 +2176,8 @@ export default function Editor() {
                 <button onClick={async () => {
                           if (!tablaVarillas) {
                             const v = await preciosAPI.varillas().catch(() => null)
-                            if (v) setTablaVarillas(v.varillas)
+                            if (!v) { toast.error('No se pudo cargar la tabla de varillas — intentá de nuevo'); return }
+                            setTablaVarillas(v.varillas)
                           }
                           setShowCalculadora('acero')
                         }}
@@ -2188,7 +2190,7 @@ export default function Editor() {
             )}
 
             {showCalculadora === 'concreto' && tablaDosificacion && (() => {
-              const d = tablaDosificacion[calcConcreto.idx]
+              const d = tablaDosificacion[calcConcreto.idx] || tablaDosificacion[0]
               return (
                 <div>
                   <label className="text-xs font-medium text-slate-500">Tipo de concreto</label>
@@ -2227,7 +2229,7 @@ export default function Editor() {
             {showCalculadora === 'acero' && tablaVarillas && (() => {
               const v = tablaVarillas.find(x => x.numero === calcAcero.numero) || tablaVarillas[0]
               const metros = parseFloat(calcAcero.metros) || 0
-              const desp = parseFloat(calcAcero.desperdicio) || 0
+              const desp = Math.max(0, parseFloat(calcAcero.desperdicio) || 0)
               const kgBruto = metros * v.peso_kg_m
               const kgFinal = kgBruto * (1 + desp / 100)
               return (
