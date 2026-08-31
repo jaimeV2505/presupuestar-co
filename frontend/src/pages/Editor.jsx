@@ -2207,16 +2207,30 @@ export default function Editor() {
                     <p className="flex justify-between"><span>Grava</span><strong>{d.grava_m3} m³</strong></p>
                     <p className="flex justify-between"><span>Agua</span><strong>{d.agua_lts} lts</strong></p>
                   </div>
-                  <button onClick={() => {
+                  <button onClick={async () => {
                             const nuevos = [
-                              { nombre: 'Cemento gris 50kg', cantidad: d.cemento_sacos.toFixed(2), precio: '' },
-                              { nombre: 'Arena de río', cantidad: d.arena_m3, precio: '' },
-                              { nombre: 'Grava / triturado', cantidad: d.grava_m3, precio: '' },
-                              { nombre: 'Agua', cantidad: d.agua_lts, precio: '' },
+                              { nombre: 'Cemento gris 50kg', busqueda: 'cemento', cantidad: d.cemento_sacos.toFixed(2), precio: '' },
+                              { nombre: 'Arena de río', busqueda: 'arena', cantidad: d.arena_m3, precio: '' },
+                              { nombre: 'Grava / triturado', busqueda: 'triturado', cantidad: d.grava_m3, precio: '' },
+                              { nombre: 'Agua', busqueda: 'agua', cantidad: d.agua_lts, precio: '' },
                             ]
-                            setConstruyendo(c => ({ ...c, insumos: [...c.insumos, ...nuevos] }))
+                            // buscar un precio sugerido de la base real de insumos para cada uno —
+                            // mejor un precio de referencia que el usuario ajusta, que arrancar en blanco.
+                            // Se busca por una palabra clave simple, no el nombre completo (el buscador
+                            // exige que la consulta sea sub-cadena exacta del insumo real — "Grava / triturado"
+                            // con la barra no calzaria con nada, "triturado" solo si)
+                            await Promise.all(nuevos.map(async (ins) => {
+                              try {
+                                const r = await insumosAPI.buscar(ins.busqueda)
+                                if (r?.resultados?.[0]?.precio) ins.precio = r.resultados[0].precio
+                              } catch { /* sin sugerencia, se completa a mano */ }
+                            }))
+                            setConstruyendo(c => ({ ...c, insumos: [...c.insumos, ...nuevos.map(({ busqueda, ...ins }) => ins)] }))
                             setShowCalculadora(null)
-                            toast.success('4 materiales agregados — completá los precios', { duration: 2500 })
+                            const sugeridos = nuevos.filter(n => n.precio).length
+                            toast.success(sugeridos > 0
+                              ? `4 materiales agregados — ${sugeridos} con precio sugerido, revisalos`
+                              : '4 materiales agregados — completá los precios', { duration: 2800 })
                           }}
                           className="w-full mt-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition">
                     + Agregar los 4 al APU
@@ -2255,11 +2269,21 @@ export default function Editor() {
                     <p className="flex justify-between font-semibold text-slate-700"><span>Peso final (+{desp}%)</span><span>{kgFinal.toFixed(1)} kg</span></p>
                   </div>
                   <button disabled={metros <= 0}
-                          onClick={() => {
+                          onClick={async () => {
+                            const nombreVarilla = `Varilla #${v.numero} (${v.pulg}")`
+                            let precioSugerido = ''
+                            try {
+                              // buscar solo por el diametro en pulgadas — mas probable que
+                              // coincida con como esta nombrada la varilla real en la base
+                              const r = await insumosAPI.buscar(`varilla ${v.pulg}`)
+                              if (r?.resultados?.[0]?.precio) precioSugerido = r.resultados[0].precio
+                            } catch { /* sin sugerencia, se completa a mano */ }
                             setConstruyendo(c => ({ ...c, insumos: [...c.insumos,
-                              { nombre: `Varilla #${v.numero} (${v.pulg}")`, cantidad: kgFinal.toFixed(1), precio: '' }] }))
+                              { nombre: nombreVarilla, cantidad: kgFinal.toFixed(1), precio: precioSugerido }] }))
                             setShowCalculadora(null)
-                            toast.success('Insumo agregado — completá el precio', { duration: 2500 })
+                            toast.success(precioSugerido
+                              ? 'Insumo agregado con precio sugerido — revisalo'
+                              : 'Insumo agregado — completá el precio', { duration: 2500 })
                           }}
                           className="w-full mt-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition disabled:opacity-50">
                     + Agregar al APU
