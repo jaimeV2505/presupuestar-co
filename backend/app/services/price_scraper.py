@@ -132,11 +132,22 @@ async def get_ipc_materiales() -> Dict:
     }
 
     try:
+        # DANE publica el IPC con ~1 mes de rezago -- se apunta al mes anterior,
+        # calculado dinamicamente (antes estaba hardcodeado a "agosto2026" para
+        # siempre, lo que hubiera traido datos silenciosamente desactualizados
+        # cada mes que pasara sin que nadie lo notara)
+        MESES_ES = ["enero","febrero","marzo","abril","mayo","junio","julio",
+                    "agosto","septiembre","octubre","noviembre","diciembre"]
+        hoy = datetime.now()
+        mes_anterior = hoy.month - 1 or 12
+        anio_reporte = hoy.year if hoy.month > 1 else hoy.year - 1
+        nombre_mes = MESES_ES[mes_anterior - 1]
+
         async with httpx.AsyncClient(timeout=8.0) as client:
             # API DANE IPC construcción
             resp = await client.get(
                 "https://www.dane.gov.co/files/investigaciones/boletines/ipc/"
-                "ipc_agosto2026.json",
+                f"ipc_{nombre_mes}{anio_reporte}.json",
                 follow_redirects=True,
                 headers={"User-Agent": "PresupuestarCO/6.0"}
             )
