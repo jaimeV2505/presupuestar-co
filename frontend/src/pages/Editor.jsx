@@ -339,6 +339,31 @@ export default function Editor() {
       setDesgloses({ porId, porCodigo, codigoAId })
     }).catch(() => {})
   }, [id])
+  const codigosBaseIntentados = useRef(new Set())
+  useEffect(() => {
+    // Items agregados DIRECTO desde la Base 2026 (sin pasar por "Mis APUs")
+    // traen codigo pero nunca apu_id (ver agregarItem) — por eso su desglose
+    // real nunca aparecia: el efecto de arriba solo carga Mis APUs, jamas la
+    // base completa. Se trae el desglose real (el mismo que ya usa el 👁 del
+    // buscador) para cada codigo de base efectivamente usado en el presupuesto.
+    const codigosFaltantes = [...new Set(
+      items
+        .filter(it => !it.apu_id && it.codigo && !it.codigo.startsWith('MIO-'))
+        .map(it => it.codigo)
+    )].filter(cod => !desgloses.porCodigo[cod] && !codigosBaseIntentados.current.has(cod))
+    if (!codigosFaltantes.length) return
+    codigosFaltantes.forEach(cod => codigosBaseIntentados.current.add(cod))
+    Promise.all(codigosFaltantes.map(cod =>
+      apusAPI.desgloseBase(cod, p?.region || 'bogota').then(d => [cod, d]).catch(() => [cod, null])
+    )).then(resultados => {
+      const nuevos = resultados.filter(([, d]) => d)
+      if (!nuevos.length) return
+      setDesgloses(prev => ({
+        ...prev,
+        porCodigo: { ...prev.porCodigo, ...Object.fromEntries(nuevos) },
+      }))
+    })
+  }, [items, p?.region])
   const desgloseDe = (it) => {
     if (it.apu_id && desgloses.porId[it.apu_id]) return desgloses.porId[it.apu_id]
     const cod = (it.codigo || '').trim()
