@@ -12,7 +12,7 @@ CACHE_PATH = os.path.join(os.path.dirname(__file__), "../../data/precios_cache.j
 # Precios base enero 2026 (COP)
 PRECIOS_BASE_2026 = {
     "cemento_50kg":        38500,   # Promedio Argos/Cemex/Holcim saco 50kg
-    "cemento_42.5kg":      32700,   # Saco 42.5kg (estándar APU)
+    "cemento_42.5kg":      32700,   # Saco 42.5kg (variante menos comun -- el estandar real de la app es 50kg, ver cemento_50kg)
     "acero_kg":             3850,   # Varilla corrugada G60 $/kg Paz del Río
     "acero_malla_kg":       4200,   # Malla electrosoldada $/kg
     "perfil_PTE_kg":        6800,   # PTE A500 puesto obra $/kg
