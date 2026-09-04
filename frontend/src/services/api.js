@@ -147,6 +147,7 @@ export const otrosiesAPI = {
   aprobarInterno: (id) => api.post(`/otrosies/${id}/aprobar-interno`).then(r => r.data),
   listar: (proyectoId) => api.get(`/otrosies/${proyectoId}`).then(r => r.data),
   crear: (data) => api.post('/otrosies', data).then(r => r.data),
+  actualizar: (id, data) => api.put(`/otrosies/${id}`, data).then(r => r.data),
   eliminar: (id) => api.delete(`/otrosies/${id}`).then(r => r.data),
 }
 

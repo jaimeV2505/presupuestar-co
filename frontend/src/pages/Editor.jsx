@@ -82,6 +82,7 @@ export default function Editor() {
   const [otMotivo, setOtMotivo] = useState('')
   const [otItems, setOtItems] = useState([{ descripcion: '', unidad: 'un', cantidad: 1, precio_unitario: '' }])
   const [otBusca, setOtBusca] = useState('')
+  const [otEditandoId, setOtEditandoId] = useState(null)
   const [otResultados, setOtResultados] = useState([])
   const [valorTotalDirecto, setValorTotalDirecto] = useState(0)
   const [subiendoAvance, setSubiendoAvance] = useState(false)
@@ -2862,8 +2863,23 @@ export default function Editor() {
                                 className="text-[10px] font-bold bg-emerald-500 text-white rounded-lg px-2 py-1">
                           📨 Enviar propuesta
                         </button>
+                        <button onClick={() => {
+                                  setOtEditandoId(o.id)
+                                  setOtMotivo(o.motivo || '')
+                                  setOtItems(o.items.map(i => ({
+                                    descripcion: i.descripcion, unidad: i.unidad || 'un',
+                                    cantidad: i.cantidad, precio_unitario: i.precio_unitario,
+                                  })))
+                                }}
+                                className="text-[10px] font-bold text-navy-600 border border-navy-200 rounded-lg px-2 py-1">
+                          ✏️ Editar
+                        </button>
                         <button onClick={async () => {
-                                  try { await otrosiesAPI.eliminar(o.id); setOtrosies(prev => prev.filter(x => x.id !== o.id)); toast.success('Eliminado') }
+                                  try {
+                                    await otrosiesAPI.eliminar(o.id); setOtrosies(prev => prev.filter(x => x.id !== o.id))
+                                    if (otEditandoId === o.id) { setOtEditandoId(null); setOtMotivo(''); setOtItems([{ descripcion: '', unidad: 'un', cantidad: 1, precio_unitario: '' }]) }
+                                    toast.success('Eliminado')
+                                  }
                                   catch (e) { toast.error(e.message) }
                                 }}
                                 className="text-[10px] text-red-500 border border-red-200 rounded-lg px-2 py-1">
@@ -2875,9 +2891,20 @@ export default function Editor() {
                 </div>
               ))}
 
-              {/* Nuevo adicional */}
+              {/* Nuevo adicional / edicion de uno propuesto */}
               <div className="border-2 border-dashed border-slate-200 rounded-xl p-3 space-y-2">
-                <p className="text-xs font-semibold text-slate-600">Proponer nuevo adicional</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-slate-600">
+                    {otEditandoId ? '✏️ Editando adicional propuesto' : 'Proponer nuevo adicional'}
+                  </p>
+                  {otEditandoId && (
+                    <button onClick={() => {
+                              setOtEditandoId(null); setOtMotivo('')
+                              setOtItems([{ descripcion: '', unidad: 'un', cantidad: 1, precio_unitario: '' }])
+                            }}
+                            className="text-[10px] text-slate-400 hover:text-slate-600">Cancelar edición</button>
+                  )}
+                </div>
                 <input className="input !py-2 text-xs" placeholder="Motivo (ej: El cliente pidió además el mesón en granito)"
                        value={otMotivo} onChange={e => setOtMotivo(e.target.value)} maxLength={300} />
 
@@ -2936,15 +2963,22 @@ export default function Editor() {
                           const filas = otItems.filter(r => r.descripcion.trim() && parseFloat(r.precio_unitario) > 0)
                           if (filas.length === 0) { toast.error('Agrega al menos un trabajo con precio'); return }
                           try {
-                            const nuevo = await otrosiesAPI.crear({ proyecto_id: parseInt(id), motivo: otMotivo, items: filas })
-                            setOtrosies(prev => [...prev, nuevo])
+                            if (otEditandoId) {
+                              const actualizado = await otrosiesAPI.actualizar(otEditandoId, { proyecto_id: parseInt(id), motivo: otMotivo, items: filas })
+                              setOtrosies(prev => prev.map(x => x.id === otEditandoId ? actualizado : x))
+                              setOtEditandoId(null)
+                              toast.success('Adicional actualizado')
+                            } else {
+                              const nuevo = await otrosiesAPI.crear({ proyecto_id: parseInt(id), motivo: otMotivo, items: filas })
+                              setOtrosies(prev => [...prev, nuevo])
+                              toast.success(`Otrosí N.${nuevo.numero} propuesto — envíaselo al cliente por WhatsApp`)
+                            }
                             setOtItems([{ descripcion: '', unidad: 'un', cantidad: 1, precio_unitario: '' }])
                             setOtMotivo('')
-                            toast.success(`Otrosí N.${nuevo.numero} propuesto — envíaselo al cliente por WhatsApp`)
                           } catch (e) { toast.error(e.message) }
                         }}
                         className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition">
-                  Proponer al cliente
+                  {otEditandoId ? 'Guardar cambios' : 'Proponer al cliente'}
                 </button>
               </div>
             </div>
