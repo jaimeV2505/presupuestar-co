@@ -1,5 +1,7 @@
 """API de precios de mercado en tiempo real y análisis de sensibilidad."""
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
+from typing import List, Dict
 from app.services.price_scraper import (
     get_precios_actualizados, get_factor_iccv, analisis_sensibilidad,
     calcular_costo_materiales_concreto, PRECIOS_BASE_2026
@@ -27,10 +29,14 @@ async def costo_concreto(
     """Calcula costo de materiales para concreto por volumen y resistencia."""
     return calcular_costo_materiales_concreto(volumen_m3, fc_mpa, region)
 
+class SensibilidadRequest(BaseModel):
+    presupuesto_total: float
+    items: List[Dict]
+
 @router.post("/sensibilidad")
-async def sensibilidad(presupuesto_total: float, items: list):
+async def sensibilidad(req: SensibilidadRequest):
     """Análisis de sensibilidad ante alzas de precios."""
-    return analisis_sensibilidad(presupuesto_total, items)
+    return analisis_sensibilidad(req.presupuesto_total, req.items)
 
 # ── Modulo D: Flete por distancia ────────────────────────────────────────────
 from app.services.flete_service import calcular_factor_flete, get_regiones_disponibles

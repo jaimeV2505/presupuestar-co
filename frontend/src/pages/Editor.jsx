@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
          Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
-import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI, insumosAPI, disenosAPI, cronogramaAPI } from '../services/api'
+import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI, insumosAPI, disenosAPI, cronogramaAPI, mercadoAPI } from '../services/api'
 import { comprimirImagen } from '../utils/imagen'
 import InfoTip from '../components/InfoTip'
 import { pedirTexto, confirmarDialogo } from '../components/Dialogo'
@@ -52,6 +52,9 @@ export default function Editor() {
   const [catalogo, setCatalogo] = useState(null)        // {categorias} | {insumos}
   const [showCatalogo, setShowCatalogo] = useState(false)
   const [showCalculadora, setShowCalculadora] = useState(null)  // null | 'elegir' | 'concreto' | 'acero'
+  const [showSensibilidad, setShowSensibilidad] = useState(false)
+  const [sensibilidadData, setSensibilidadData] = useState(null)
+  const [cargandoSensibilidad, setCargandoSensibilidad] = useState(false)
   const [tablaDosificacion, setTablaDosificacion] = useState(null)
   const [tablaVarillas, setTablaVarillas] = useState(null)
   const [calcConcreto, setCalcConcreto] = useState({ idx: 3 })  // indice en tablaDosificacion (default 1-2-3.5, 3000 psi)
@@ -1330,6 +1333,22 @@ export default function Editor() {
             <p className="text-[11px] text-slate-400 mb-3">
               Al aceptar, tu cliente firma un Contrato de Ejecución de Obra Civil generado con estas condiciones.
             </p>
+            <button onClick={async () => {
+                      setShowSensibilidad(true)
+                      setCargandoSensibilidad(true)
+                      try {
+                        const itemsMercado = items.map(it => ({
+                          nombre: it.descripcion || '', capitulo: it.capitulo || '',
+                          precio_total: (parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0),
+                        }))
+                        const d = await mercadoAPI.sensibilidad(totales.total, itemsMercado)
+                        setSensibilidadData(d)
+                      } catch (e) { toast.error(e.message); setShowSensibilidad(false) }
+                      finally { setCargandoSensibilidad(false) }
+                    }}
+                    className="mb-3 text-[11px] font-medium text-amber-600 hover:underline">
+              📈 Ver sensibilidad ante alzas de precios
+            </button>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <label className="text-[10px] text-slate-400 block mb-1">Plazo (días hábiles)</label>
@@ -2317,6 +2336,67 @@ export default function Editor() {
                 </div>
               )
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Modal SENSIBILIDAD ANTE ALZAS DE PRECIOS */}
+      {showSensibilidad && (
+        <div className="fixed inset-0 bg-black/40 z-[65] flex items-start justify-center p-4 pt-[8vh]" onClick={() => setShowSensibilidad(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-lg max-h-[84vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-semibold text-slate-800">📈 Sensibilidad ante alzas de precios</h3>
+              <button onClick={() => setShowSensibilidad(false)} className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
+            </div>
+            <p className="text-[11px] text-slate-400 mb-4">Qué le pasa a tu presupuesto si sube el precio del acero o el concreto durante la obra.</p>
+
+            {cargandoSensibilidad && <p className="text-sm text-slate-400 text-center py-6">Calculando...</p>}
+
+            {sensibilidadData && (
+              <div>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="bg-slate-50 rounded-xl p-2.5 text-center">
+                    <p className="text-[10px] text-slate-400">Acero</p>
+                    <p className="text-sm font-bold text-slate-700">{sensibilidadData.distribucion.acero_pct}%</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-2.5 text-center">
+                    <p className="text-[10px] text-slate-400">Concreto</p>
+                    <p className="text-sm font-bold text-slate-700">{sensibilidadData.distribucion.concreto_pct}%</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-2.5 text-center">
+                    <p className="text-[10px] text-slate-400">Metálica</p>
+                    <p className="text-sm font-bold text-slate-700">{sensibilidadData.distribucion.metalica_pct}%</p>
+                  </div>
+                </div>
+
+                {sensibilidadData.escenarios.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-4">
+                    No hay ítems de acero, concreto o estructura metálica en este presupuesto para analizar.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {[...new Set(sensibilidadData.escenarios.map(e => e.material))].map(mat => (
+                      <div key={mat}>
+                        <p className="text-xs font-semibold text-slate-600 mb-1">{mat}</p>
+                        <div className="space-y-1">
+                          {sensibilidadData.escenarios.filter(e => e.material === mat).map(e => (
+                            <div key={e.alza_pct} className="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-2.5 py-1.5">
+                              <span className="text-slate-500">+{e.alza_pct}%</span>
+                              <span className="text-red-500 font-medium">+{COP(e.impacto_cop)}</span>
+                              <span className="text-slate-400">({e.impacto_total_pct}% del total)</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-4">
+                  <p className="text-[11px] text-amber-800">💡 {sensibilidadData.recomendacion}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

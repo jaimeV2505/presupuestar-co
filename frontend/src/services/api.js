@@ -202,6 +202,11 @@ export const soporteAPI = {
   misTickets: () => api.get('/soporte/mis-tickets').then(r => r.data),
 }
 
+export const mercadoAPI = {
+  sensibilidad: (presupuesto_total, items) =>
+    api.post('/mercado/sensibilidad', { presupuesto_total, items }).then(r => r.data),
+}
+
 export const preciosAPI = {
   buscar: (params) => api.get('/precios/', { params }).then(r => r.data),
   regiones: () => api.get('/precios/regiones').then(r => r.data),
