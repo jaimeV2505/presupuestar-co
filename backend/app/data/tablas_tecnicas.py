@@ -139,7 +139,7 @@ def get_materiales_por_m3(fc_mpa: float) -> dict:
         "fc_psi": dos["psi"],
         "proporcion": dos["proporcion"],
         "cemento_sacos_m3": round(dos["cemento_sacos"], 2),
-        "cemento_kg_m3": round(dos["cemento_sacos"] * 42.5, 1),
+        "cemento_kg_m3": round(dos["cemento_sacos"] * 50, 1),  # bulto de 50kg (ver DOSIFICACION_CONCRETO)
         "arena_m3_por_m3": dos["arena_m3"],
         "grava_m3_por_m3": dos["grava_m3"],
         "agua_lts_m3": dos["agua_lts"],

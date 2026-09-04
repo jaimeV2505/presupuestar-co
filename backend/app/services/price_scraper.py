@@ -246,7 +246,7 @@ def calcular_costo_materiales_concreto(
                "proporcion": "1-2-3.5"}
 
     fr = {"bogota":1.00,"medellin":0.95,"cali":0.92,"barranquilla":0.97}.get(region, 1.00)
-    p_c = round(PRECIOS_BASE_2026["cemento_42.5kg"] * fr)  # por saco 42.5kg
+    p_c = round(PRECIOS_BASE_2026["cemento_50kg"] * fr)  # por saco 50kg — consistente con dos["cemento_sacos_m3"]
     p_a = round(PRECIOS_BASE_2026["arena_m3"] * fr)
     p_g = round(PRECIOS_BASE_2026["gravilla_m3"] * fr)
 
