@@ -84,7 +84,7 @@ export default function Editor() {
         try {
           const r = await insumosAPI.buscar(b)
           const match = mejorMatchLM(r?.resultados, b, 'nombre')
-          nuevos[b] = match?.precio || null
+          nuevos[b] = match ? match.precio : null
         } catch { nuevos[b] = null }
       }))
       if (solicitudPreciosRef.current !== miSolicitud) return  // llego tarde, ya no es la seleccion actual
@@ -1371,7 +1371,7 @@ export default function Editor() {
                                     <span className="col-span-3 text-right font-medium">
                                       {f.cantidadTotal.toFixed(2)}{f.unidadRef ? ` ${f.unidadRef}` : ''}
                                     </span>
-                                    <span className="col-span-3 text-right text-slate-500">{precioFilaAn ? COP(f.cantidadTotal * precioFilaAn) : '—'}</span>
+                                    <span className="col-span-3 text-right text-slate-500">{precioFilaAn != null ? COP(f.cantidadTotal * precioFilaAn) : '—'}</span>
                                   </div>
                                 )})}
                                 {totalLM > 0 && (
@@ -2300,7 +2300,7 @@ export default function Editor() {
                           <span className="col-span-3 text-right font-medium">
                             {f.cantidadTotal.toFixed(2)}{f.unidadRef ? ` ${f.unidadRef}` : ''}
                           </span>
-                          <span className="col-span-3 text-right text-slate-500">{precioFila ? COP(f.cantidadTotal * precioFila) : '—'}</span>
+                          <span className="col-span-3 text-right text-slate-500">{precioFila != null ? COP(f.cantidadTotal * precioFila) : '—'}</span>
                         </div>
                       )})}
                       {totalEstimado > 0 && (
@@ -2565,7 +2565,7 @@ export default function Editor() {
                               try {
                                 const r = await insumosAPI.buscar(ins.busqueda)
                                 const match = mejorMatchLM(r?.resultados, ins.busqueda, 'nombre')
-                                if (match?.precio) ins.precio = match.precio
+                                if (match && match.precio != null) ins.precio = match.precio
                               } catch { /* sin sugerencia, se completa a mano */ }
                             }))
                             setConstruyendo(c => ({ ...c, insumos: [...c.insumos, ...nuevos.map(({ busqueda, ...ins }) => ins)] }))
@@ -2622,7 +2622,7 @@ export default function Editor() {
                               // coincida con como esta nombrada la varilla real en la base
                               const r = await insumosAPI.buscar(`varilla ${v.pulg}`)
                               const match = mejorMatchLM(r?.resultados, 'varilla', 'nombre')
-                              if (match?.precio) precioSugerido = match.precio
+                              if (match && match.precio != null) precioSugerido = match.precio
                             } catch { /* sin sugerencia, se completa a mano */ }
                             setConstruyendo(c => ({ ...c, insumos: [...c.insumos,
                               { nombre: nombreVarilla, cantidad: kgFinal.toFixed(1), precio: precioSugerido }] }))
