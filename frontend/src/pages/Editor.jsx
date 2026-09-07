@@ -136,15 +136,16 @@ export default function Editor() {
       const cant = parseFloat(it.cantidad) || 0
       const pu = parseFloat(it.precio_unitario) || 0
       const pl = parseFloat(it.precio_lista) || 0
-      const v = Math.round(cant * pu)
-      sub += v
-      subLista += Math.round(cant * (pl > pu ? pl : pu))
+      const producto = cant * pu  // sin redondear -- se redondea una sola vez al final, igual que el backend
+      sub += producto
+      subLista += cant * (pl > pu ? pl : pu)
       const cap = it.capitulo || 'OTROS'
-      porCap[cap] = (porCap[cap] || 0) + v
+      porCap[cap] = (porCap[cap] || 0) + producto
     })
     sub = Math.round(sub)
+    subLista = Math.round(subLista)
     const capitulos = Object.entries(porCap)
-      .map(([capitulo, valor]) => ({ capitulo, valor, pct: sub ? Math.round(valor * 1000 / sub) / 10 : 0 }))
+      .map(([capitulo, valorSr]) => { const valor = Math.round(valorSr); return { capitulo, valor, pct: sub ? Math.round(valor * 1000 / sub) / 10 : 0 } })
       .sort((x, y) => y.valor - x.valor)
     const descuento_valor = Math.max(0, subLista - sub)
     const descuento_pct = subLista ? Math.round(descuento_valor * 1000 / subLista) / 10 : 0

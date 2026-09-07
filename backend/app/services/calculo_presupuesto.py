@@ -75,12 +75,13 @@ def calcular_totales(items: List[Dict], aiu: Dict) -> Dict:
     # ── F7: Descuento de negociacion (prorrateado, con precio de lista) ─────
     # El descuento vive en los items (precio_lista = antes, precio_unitario =
     # pactado): los APUs quedan honestos, la cadena del dinero no se bifurca.
-    subtotal_lista = 0
+    subtotal_lista_sr = 0.0
     for it in items:
         cant = _num(it.get("cantidad")) or 0
         pu = _num(it.get("precio_unitario")) or 0
         pl = _num(it.get("precio_lista")) or 0
-        subtotal_lista += round(cant * (pl if pl > pu else pu))
+        subtotal_lista_sr += cant * (pl if pl > pu else pu)
+    subtotal_lista = round(subtotal_lista_sr)
     descuento_valor = max(0, subtotal_lista - subtotal)
     descuento_pct = round(descuento_valor * 100 / subtotal_lista, 1) if subtotal_lista else 0
 
