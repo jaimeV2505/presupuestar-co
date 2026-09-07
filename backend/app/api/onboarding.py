@@ -82,16 +82,18 @@ def sembrar_demo(user: Usuario, db: Session):
                            documento_firma="000000"))
 
         # Un avance publicado para explorar Avances/Cobros con datos
-        detalle, total, ejec = [], 0, 0
+        detalle, total_sr, ejec = [], 0.0, 0
         for i, it in enumerate(items):
-            vi = round(it["cantidad"] * it["precio_unitario"])
+            producto = it["cantidad"] * it["precio_unitario"]
+            vi = round(producto)
             pct = 100 if i < 2 else (50 if i < 4 else 0)
             ve = round(vi * pct / 100)
-            total += vi
+            total_sr += producto
             ejec += ve
             detalle.append({"id": it["id"], "descripcion": it["descripcion"][:120],
                             "capitulo": it["capitulo"], "unidad": it["unidad"],
                             "valor_item": vi, "pct": pct, "valor_ejec": ve})
+        total = round(total_sr)  # mismo criterio que subtotal_directo en calcular_totales
         db.add(Avance(
             proyecto_id=p.id,
             titulo="Corte 1 — Demolición y alistado",

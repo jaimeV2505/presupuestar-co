@@ -12,21 +12,22 @@ def balance_de_obra(items_efectivos: list, pct_por_item: dict, cuentas: list) ->
     cuentas:         [{"total": int, "pagada": bool}]  (actas parciales emitidas)
     """
     filas = []
-    valor_base = 0
-    valor_adicionales = 0
+    valor_base_sr = 0.0  # sin redondear -- para que el total coincida EXACTO con subtotal_directo
+    valor_adicionales_sr = 0.0
     ejecutado = 0
     for it in items_efectivos or []:
         iid = str(it.get("id") or "")
         cant = float(it.get("cantidad") or 0)
         pu = float(it.get("precio_unitario") or 0)
-        valor = round(cant * pu)
+        producto = cant * pu
+        valor = round(producto)  # redondeado solo para MOSTRAR el valor de esta fila
         pct = max(0.0, min(100.0, float(pct_por_item.get(iid, 0))))
         v_ejec = round(valor * pct / 100)
         es_adicional = iid.startswith("ot")
         if es_adicional:
-            valor_adicionales += valor
+            valor_adicionales_sr += producto
         else:
-            valor_base += valor
+            valor_base_sr += producto
         ejecutado += v_ejec
         filas.append({
             "id": iid, "descripcion": str(it.get("descripcion") or "")[:200],
@@ -37,6 +38,8 @@ def balance_de_obra(items_efectivos: list, pct_por_item: dict, cuentas: list) ->
             "valor_ejecutado": v_ejec, "saldo": valor - v_ejec,
             "es_adicional": es_adicional,
         })
+    valor_base = round(valor_base_sr)  # mismo criterio que subtotal_directo en calcular_totales
+    valor_adicionales = round(valor_adicionales_sr)
     valor_total = valor_base + valor_adicionales
     facturado = sum(int(c.get("total") or 0) for c in cuentas or [])
     pagado = sum(int(c.get("total") or 0) for c in cuentas or [] if c.get("pagada"))

@@ -158,8 +158,8 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
     for it in items:
         cap = it.get("capitulo", "OTROS")
         if cap not in capitulos:
-            capitulos[cap] = {"items": [], "subtotal": 0}
-        precio_total = round(it["cantidad"] * it["precio_unitario"])
+            capitulos[cap] = {"items": [], "subtotal": 0.0}  # sin redondear hasta el final
+        precio_total = round(it["cantidad"] * it["precio_unitario"])  # redondeado solo para MOSTRAR esta fila
         capitulos[cap]["items"].append({
             "descripcion": it["descripcion"],
             "unidad": it["unidad"],
@@ -167,7 +167,9 @@ def ver_publico(token: str, request: Request, db: Session = Depends(get_db)):
             "precio_unitario": it["precio_unitario"],
             "precio_total": precio_total,
         })
-        capitulos[cap]["subtotal"] += precio_total
+        capitulos[cap]["subtotal"] += it["cantidad"] * it["precio_unitario"]  # producto SIN redondear
+    for cap in capitulos:
+        capitulos[cap]["subtotal"] = round(capitulos[cap]["subtotal"])  # una sola vez, al final
 
     ya_aceptado = (
         db.query(EventoShare)
@@ -614,14 +616,16 @@ def _demo_payload():
     for it in DEMO_ITEMS:
         cap = it["capitulo"]
         if cap not in capitulos:
-            capitulos[cap] = {"items": [], "subtotal": 0}
+            capitulos[cap] = {"items": [], "subtotal": 0.0}
         pt = round(it["cantidad"] * it["precio_unitario"])
         capitulos[cap]["items"].append({
             "descripcion": it["descripcion"], "unidad": it["unidad"],
             "cantidad": it["cantidad"], "precio_unitario": it["precio_unitario"],
             "precio_total": pt,
         })
-        capitulos[cap]["subtotal"] += pt
+        capitulos[cap]["subtotal"] += it["cantidad"] * it["precio_unitario"]
+    for cap in capitulos:
+        capitulos[cap]["subtotal"] = round(capitulos[cap]["subtotal"])
     return {
         "demo": True,
         "proyecto": "Construccion local comercial — Covenas, Sucre",
