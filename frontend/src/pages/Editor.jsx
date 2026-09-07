@@ -56,18 +56,22 @@ export default function Editor() {
   const [showListaMateriales, setShowListaMateriales] = useState(false)
   const [proveedorPreciosSel, setProveedorPreciosSel] = useState('')  // '' = base de datos por defecto
   const [preciosExpandidos, setPreciosExpandidos] = useState({})  // busqueda -> precio, para la fuente actual
-  const [preciosProveedorCache, setPreciosProveedorCache] = useState({})  // proveedorId -> [{insumo,precio,...}]
+  const solicitudPreciosRef = useRef(0)
   const resolverPreciosExpandidos = async (busquedas, proveedorId) => {
     if (!busquedas.length) return
+    const miSolicitud = ++solicitudPreciosRef.current  // token: si llega una solicitud mas nueva antes de que esta responda, esta se descarta
+    setPreciosExpandidos({})  // limpiar de inmediato -- mejor mostrar "—" mientras carga que precios viejos del proveedor anterior
     if (proveedorId) {
-      let lista = preciosProveedorCache[proveedorId]
-      if (!lista) {
-        try {
-          const r = await proveedoresAPI.precios(proveedorId)
-          lista = r.precios || []
-          setPreciosProveedorCache(prev => ({ ...prev, [proveedorId]: lista }))
-        } catch { lista = [] }
-      }
+      // Siempre se pide fresco al servidor (sin cache) -- si el usuario acaba de
+      // agregar un precio nuevo a este proveedor en "Mis proveedores", tiene que
+      // verse reflejado de inmediato aca, no quedarse con una version vieja de
+      // la lista guardada en memoria desde la primera vez que se abrio.
+      let lista
+      try {
+        const r = await proveedoresAPI.precios(proveedorId)
+        lista = r.precios || []
+      } catch { lista = [] }
+      if (solicitudPreciosRef.current !== miSolicitud) return  // llego tarde, ya no es la seleccion actual
       const nuevos = {}
       for (const b of busquedas) {
         const match = lista.find(x => _sinTildesLM(x.insumo).includes(b))
@@ -82,6 +86,7 @@ export default function Editor() {
           nuevos[b] = r?.resultados?.[0]?.precio || null
         } catch { nuevos[b] = null }
       }))
+      if (solicitudPreciosRef.current !== miSolicitud) return  // llego tarde, ya no es la seleccion actual
       setPreciosExpandidos(nuevos)
     }
   }
