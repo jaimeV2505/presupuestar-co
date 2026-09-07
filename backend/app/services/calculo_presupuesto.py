@@ -57,11 +57,15 @@ def calcular_totales(items: List[Dict], aiu: Dict) -> Dict:
     # ── F3: Incidencia por capitulo (el ojo del presupuestador senior) ──────
     # % que pesa cada capitulo sobre el costo directo — detecta errores gruesos
     # ("¿cimentacion al 2%? falta algo") de un vistazo.
-    por_cap: Dict[str, int] = {}
+    por_cap: Dict[str, float] = {}
     for it in items:
-        v = round((_num(it.get("cantidad")) or 0) * (_num(it.get("precio_unitario")) or 0))
+        v = (_num(it.get("cantidad")) or 0) * (_num(it.get("precio_unitario")) or 0)
         cap = str(it.get("capitulo") or "OTROS")
         por_cap[cap] = por_cap.get(cap, 0) + v
+    # redondear UNA vez por capitulo (sobre la suma sin redondear de sus items),
+    # no por item individual -- mismo principio que "subtotal" de arriba, para
+    # que sum(capitulos) se acerque al maximo posible a subtotal_directo
+    por_cap = {k: round(v) for k, v in por_cap.items()}
     capitulos = sorted(
         [{"capitulo": k, "valor": v,
           "pct": round(v * 100 / subtotal, 1) if subtotal else 0}
