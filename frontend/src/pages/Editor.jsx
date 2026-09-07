@@ -432,7 +432,7 @@ export default function Editor() {
           { nombre: `↳ Cemento (dosif. ${mejor.proporcion})`, cantidadTotal: mejor.cemento_sacos * cantidadTotal, unidadRef: 'sacos 50kg', busqueda: 'cemento' },
           { nombre: '↳ Arena', cantidadTotal: mejor.arena_m3 * cantidadTotal, unidadRef: 'm³', busqueda: 'arena' },
           { nombre: '↳ Grava / triturado', cantidadTotal: mejor.grava_m3 * cantidadTotal, unidadRef: 'm³', busqueda: 'triturado' },
-          { nombre: '↳ Agua', cantidadTotal: mejor.agua_lts * cantidadTotal, unidadRef: 'lts', busqueda: 'agua' },
+          { nombre: '↳ Agua', cantidadTotal: mejor.agua_lts * cantidadTotal, unidadRef: 'lts' },  // sin busqueda a proposito: "agua" es muy ambiguo en la base (canales, tanques, bombas tambien la contienen) -- se maneja aparte
         ]
       },
     },
@@ -2538,7 +2538,7 @@ export default function Editor() {
                               { nombre: 'Cemento gris 50kg', busqueda: 'cemento', cantidad: d.cemento_sacos.toFixed(2), precio: '' },
                               { nombre: 'Arena de río', busqueda: 'arena', cantidad: d.arena_m3, precio: '' },
                               { nombre: 'Grava / triturado', busqueda: 'triturado', cantidad: d.grava_m3, precio: '' },
-                              { nombre: 'Agua', busqueda: 'agua', cantidad: d.agua_lts, precio: '' },
+                              { nombre: 'Agua', cantidad: d.agua_lts, precio: '' },  // sin busqueda a proposito: "agua" es muy ambiguo en la base (canales, tanques, bombas tambien la contienen)
                             ]
                             // buscar un precio sugerido de la base real de insumos para cada uno —
                             // mejor un precio de referencia que el usuario ajusta, que arrancar en blanco.
@@ -2546,6 +2546,7 @@ export default function Editor() {
                             // exige que la consulta sea sub-cadena exacta del insumo real — "Grava / triturado"
                             // con la barra no calzaria con nada, "triturado" solo si)
                             await Promise.all(nuevos.map(async (ins) => {
+                              if (!ins.busqueda) return  // sin palabra clave -> no buscar (una consulta vacia calzaria con TODO en la base)
                               try {
                                 const r = await insumosAPI.buscar(ins.busqueda)
                                 if (r?.resultados?.[0]?.precio) ins.precio = r.resultados[0].precio
