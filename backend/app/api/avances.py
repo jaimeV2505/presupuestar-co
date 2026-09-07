@@ -53,15 +53,16 @@ def _calcular_avance(proyecto: Proyecto, items_pct: List[ItemAvance]):
         items_presupuesto = json.loads(proyecto.items_json or "[]")
     pct_map = {i.id: max(0.0, min(100.0, float(i.pct or 0))) for i in items_pct}
 
-    total = 0.0
+    total_sin_redondear = 0.0  # para que 'total' coincida EXACTO con subtotal_directo
     ejecutado = 0.0
     detalle = []
 
     for it in items_presupuesto:
-        valor_item = round((it.get("cantidad") or 0) * (it.get("precio_unitario") or 0))
+        producto = (it.get("cantidad") or 0) * (it.get("precio_unitario") or 0)
+        valor_item = round(producto)  # redondeado solo para MOSTRAR el detalle por fila
         pct = pct_map.get(it.get("id"), 0.0)
         valor_ejec = round(valor_item * pct / 100)
-        total += valor_item
+        total_sin_redondear += producto
         ejecutado += valor_ejec
         detalle.append({
             "id": it.get("id"),
@@ -73,8 +74,9 @@ def _calcular_avance(proyecto: Proyecto, items_pct: List[ItemAvance]):
             "valor_ejec": valor_ejec,
         })
 
+    total = round(total_sin_redondear)  # mismo criterio que subtotal_directo en calcular_totales
     porcentaje = round(ejecutado / total * 100, 1) if total > 0 else 0.0
-    return porcentaje, round(ejecutado), detalle, round(total)
+    return porcentaje, round(ejecutado), detalle, total
 
 
 def _avance_out(a: Avance):
