@@ -52,6 +52,7 @@ export default function Editor() {
   const [catalogo, setCatalogo] = useState(null)        // {categorias} | {insumos}
   const [showCatalogo, setShowCatalogo] = useState(false)
   const [showCalculadora, setShowCalculadora] = useState(null)  // null | 'elegir' | 'concreto' | 'acero'
+  const [calculadoraStandalone, setCalculadoraStandalone] = useState(false)  // abierta desde Herramientas, sin APU en curso
   const [showListaMateriales, setShowListaMateriales] = useState(false)
   const [showSensibilidad, setShowSensibilidad] = useState(false)
   const [sensibilidadData, setSensibilidadData] = useState(null)
@@ -370,6 +371,50 @@ export default function Editor() {
       }))
     })
   }, [items, p?.region])
+  const _sinTildesLM = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  // Reglas de desglose para "Lista de materiales" -- estructura generica y
+  // extensible: cada regla sabe detectar SI un insumo aplica (por nombre) y
+  // CÓMO desglosarlo en sub-materiales usando una tabla de referencia propia.
+  // Hoy solo existe la regla de concreto (con la tabla de dosificacion real
+  // cemento/arena/grava/agua). Si mas adelante identificamos otro material
+  // con composicion conocida (ej. mortero/pega con relacion cemento:arena),
+  // se agrega OTRA regla aca sin tocar nada del resto del codigo. El acero no
+  // tiene una regla propia porque ya es el material final -- no se
+  // descompone en sub-materiales comprables, a diferencia del concreto.
+  const REGLAS_DESGLOSE_LM = [
+    {
+      aplica: (nombre) => _sinTildesLM(nombre).includes('concreto'),
+      expandir: (nombre, cantidadTotal, tablaDosif) => {
+        if (!tablaDosif || !tablaDosif.length || !(cantidadTotal > 0)) return null
+        const mMpa = nombre.match(/(\d+[.,]?\d*)\s*mpa/i)
+        const mPsi = nombre.match(/(\d+[.,]?\d*)\s*psi/i)
+        let objetivo = null, campo = null
+        if (mMpa) { objetivo = parseFloat(mMpa[1].replace(',', '.')); campo = 'mpa' }
+        else if (mPsi) { objetivo = parseFloat(mPsi[1].replace(',', '.')); campo = 'psi' }
+        if (objetivo == null || isNaN(objetivo)) return null
+        let mejor = tablaDosif[0], mejorDif = Math.abs(tablaDosif[0][campo] - objetivo)
+        for (const row of tablaDosif) {
+          const dif = Math.abs(row[campo] - objetivo)
+          if (dif < mejorDif) { mejor = row; mejorDif = dif }
+        }
+        return [
+          { nombre: `↳ Cemento (dosif. ${mejor.proporcion})`, cantidadTotal: mejor.cemento_sacos * cantidadTotal, unidadRef: 'sacos 50kg' },
+          { nombre: '↳ Arena', cantidadTotal: mejor.arena_m3 * cantidadTotal, unidadRef: 'm³' },
+          { nombre: '↳ Grava / triturado', cantidadTotal: mejor.grava_m3 * cantidadTotal, unidadRef: 'm³' },
+          { nombre: '↳ Agua', cantidadTotal: mejor.agua_lts * cantidadTotal, unidadRef: 'lts' },
+        ]
+      },
+    },
+  ]
+  const expandirFilaLM = (fila, tablaDosif) => {
+    for (const regla of REGLAS_DESGLOSE_LM) {
+      if (regla.aplica(fila.nombre)) {
+        const sub = regla.expandir(fila.nombre, fila.cantidadTotal, tablaDosif)
+        if (sub) return sub.map(s => ({ ...s, esDesglose: true }))
+      }
+    }
+    return [fila]
+  }
   const desgloseDe = (it) => {
     if (it.apu_id && desgloses.porId[it.apu_id]) return desgloses.porId[it.apu_id]
     const cod = (it.codigo || '').trim()
@@ -655,6 +700,22 @@ export default function Editor() {
   // Contenido del panel de herramientas — compartido: sidebar fija (desktop) y drawer (movil)
   const panelHerramientas = (
     <div className="p-3 space-y-1">
+              <button onClick={async () => {
+                        setShowPanel(false)
+                        if (!tablaDosificacion) {
+                          const d = await preciosAPI.dosificacion(20.7).catch(() => null)
+                          if (d) setTablaDosificacion(d.tabla_completa)
+                        }
+                        setCalculadoraStandalone(true)
+                        setShowCalculadora('elegir')
+                      }}
+                      className="w-full flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-50 text-left">
+                <span className="text-lg">🧮</span>
+                <span>
+                  <span className="block text-sm font-semibold text-slate-700">Calculadora de materiales</span>
+                  <span className="block text-[10px] text-slate-400">Dosificación de concreto y peso de acero — consulta rápida, sin atarla a ningún ítem</span>
+                </span>
+              </button>
               {!esPublico && (
                 <button onClick={() => {
                           setShowPanel(false); setShowDisenos(true)
@@ -1194,20 +1255,27 @@ export default function Editor() {
                           </div>
                           <p className="text-slate-400 mt-1">💡 Herramienta es un <strong>porcentaje</strong> de la mano de obra (práctica estándar 3-10%). Si lo tuyo es un flete en <strong>pesos</strong>, ese va en la fila 4 · Transporte 🚚.</p>
 
-                          <button onClick={() => setShowListaMaterialesAn(v => !v)}
+                          <button onClick={async () => {
+                                    if (!tablaDosificacion) {
+                                      const d = await preciosAPI.dosificacion(20.7).catch(() => null)
+                                      if (d) setTablaDosificacion(d.tabla_completa)
+                                    }
+                                    setShowListaMaterialesAn(v => !v)
+                                  }}
                                   className="w-full mt-2 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 font-bold text-[10px]">
                             📋 {showListaMaterialesAn ? 'Ocultar' : 'Lista de materiales'} — para los {_num2(it.cantidad)} {it.unidad} de esta actividad
                           </button>
                           {showListaMaterialesAn && (() => {
                             const cantidadItem = _num2(it.cantidad)
-                            const filasLM = anEdit.insumos
+                            const filasBaseAn = anEdit.insumos
                               .filter(x => (x.nombre || '').trim() && _num2(x.cantidad) > 0)
                               .map(x => ({
                                 nombre: x.nombre,
                                 cantidadTotal: _num2(x.cantidad) * (1 + _num2(x.desperdicio_pct) / 100) * cantidadItem,
                                 precio: _num2(x.precio),
                               }))
-                            const totalLM = filasLM.reduce((s, f) => s + f.cantidadTotal * f.precio, 0)
+                            const filasLM = filasBaseAn.flatMap(f => expandirFilaLM(f, tablaDosificacion))
+                            const totalLM = filasBaseAn.reduce((s, f) => s + f.cantidadTotal * f.precio, 0)
                             return (
                               <div className="mt-1.5 bg-white rounded-lg border border-amber-100 overflow-hidden">
                                 <div className="grid grid-cols-12 gap-1 px-2 py-1 bg-amber-500 text-white font-bold">
@@ -1218,10 +1286,12 @@ export default function Editor() {
                                 {filasLM.length === 0 ? (
                                   <p className="text-slate-400 text-center py-2">Sin materiales con cantidad cargada</p>
                                 ) : filasLM.map((f, i) => (
-                                  <div key={i} className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-amber-50 text-slate-700">
+                                  <div key={i} className={`grid grid-cols-12 gap-1 px-2 py-1 border-t border-amber-50 text-slate-700 ${f.esDesglose ? 'bg-amber-50/60 text-slate-500' : ''}`}>
                                     <span className="col-span-6 truncate" title={f.nombre}>{f.nombre}</span>
-                                    <span className="col-span-3 text-right font-medium">{f.cantidadTotal.toFixed(2)}</span>
-                                    <span className="col-span-3 text-right text-slate-500">{f.precio ? COP(f.cantidadTotal * f.precio) : '—'}</span>
+                                    <span className="col-span-3 text-right font-medium">
+                                      {f.cantidadTotal.toFixed(2)}{f.unidadRef ? ` ${f.unidadRef}` : ''}
+                                    </span>
+                                    <span className="col-span-3 text-right text-slate-500">{!f.esDesglose && f.precio ? COP(f.cantidadTotal * f.precio) : '—'}</span>
                                   </div>
                                 ))}
                                 {totalLM > 0 && (
@@ -2063,7 +2133,7 @@ export default function Editor() {
                       className="text-xs font-medium text-navy-600">+ agregar insumo</button>
               <button onClick={() => { insumosAPI.catalogo().then(setCatalogo).catch(() => {}); setShowCatalogo(true) }}
                       className="text-xs font-medium text-emerald-600">📦 Catálogo de referencia</button>
-              <button onClick={() => setShowCalculadora('elegir')}
+              <button onClick={() => { setCalculadoraStandalone(false); setShowCalculadora('elegir') }}
                       className="text-xs font-medium text-amber-600">🧮 Calculadora de materiales</button>
             </div>
 
@@ -2078,7 +2148,13 @@ export default function Editor() {
                          placeholder={`ej: 13 (${construyendo.unidad})`}
                          className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" />
                   <button disabled={!construyendo.cantidad_total || parseFloat(construyendo.cantidad_total) <= 0}
-                          onClick={() => setShowListaMateriales(v => !v)}
+                          onClick={async () => {
+                                    if (!tablaDosificacion) {
+                                      const d = await preciosAPI.dosificacion(20.7).catch(() => null)
+                                      if (d) setTablaDosificacion(d.tabla_completa)
+                                    }
+                                    setShowListaMateriales(v => !v)
+                                  }}
                           className="px-3 py-2 rounded-xl bg-navy-600 text-white text-xs font-bold disabled:opacity-40 whitespace-nowrap">
                     📋 {showListaMateriales ? 'Ocultar' : 'Lista de materiales'}
                   </button>
@@ -2086,14 +2162,15 @@ export default function Editor() {
 
                 {showListaMateriales && parseFloat(construyendo.cantidad_total) > 0 && (() => {
                   const totalActividad = parseFloat(construyendo.cantidad_total)
-                  const filas = construyendo.insumos
+                  const filasBase = construyendo.insumos
                     .filter(i => i.nombre.trim() && parseFloat(i.cantidad) > 0)
                     .map(i => ({
                       nombre: i.nombre,
                       cantidadTotal: (parseFloat(i.cantidad) || 0) * totalActividad,
                       precio: parseFloat(i.precio) || 0,
                     }))
-                  const totalEstimado = filas.reduce((s, f) => s + (f.precio ? f.cantidadTotal * f.precio : 0), 0)
+                  const filas = filasBase.flatMap(f => expandirFilaLM(f, tablaDosificacion))
+                  const totalEstimado = filasBase.reduce((s, f) => s + (f.precio ? f.cantidadTotal * f.precio : 0), 0)
                   return (
                     <div className="mt-3 bg-white rounded-xl border border-slate-200 overflow-hidden">
                       <div className="grid grid-cols-12 gap-1 px-2.5 py-1.5 bg-navy-700 text-white text-[10px] font-bold">
@@ -2104,10 +2181,12 @@ export default function Editor() {
                       {filas.length === 0 ? (
                         <p className="text-[11px] text-slate-400 text-center py-3">Agregá insumos con nombre y cantidad para ver la lista</p>
                       ) : filas.map((f, i) => (
-                        <div key={i} className="grid grid-cols-12 gap-1 px-2.5 py-1.5 border-t border-slate-100 text-xs">
+                        <div key={i} className={`grid grid-cols-12 gap-1 px-2.5 py-1.5 border-t border-slate-100 text-xs ${f.esDesglose ? 'bg-amber-50/60 text-slate-500' : ''}`}>
                           <span className="col-span-6 truncate" title={f.nombre}>{f.nombre}</span>
-                          <span className="col-span-3 text-right font-medium">{f.cantidadTotal.toFixed(2)}</span>
-                          <span className="col-span-3 text-right text-slate-500">{f.precio ? COP(f.cantidadTotal * f.precio) : '—'}</span>
+                          <span className="col-span-3 text-right font-medium">
+                            {f.cantidadTotal.toFixed(2)}{f.unidadRef ? ` ${f.unidadRef}` : ''}
+                          </span>
+                          <span className="col-span-3 text-right text-slate-500">{!f.esDesglose && f.precio ? COP(f.cantidadTotal * f.precio) : '—'}</span>
                         </div>
                       ))}
                       {totalEstimado > 0 && (
@@ -2118,6 +2197,7 @@ export default function Editor() {
                       )}
                       <p className="text-[9px] text-slate-400 px-2.5 py-1.5">
                         Cantidad por {construyendo.unidad} × {totalActividad} = lo que necesitás comprar para toda la actividad.
+                        {filas.some(f => f.esDesglose) && ' El concreto se desglosó en cemento/arena/grava/agua según nuestra tabla de dosificación.'}
                       </p>
                     </div>
                   )
@@ -2297,11 +2377,11 @@ export default function Editor() {
       {/* Modal CATALOGO DE INSUMOS (referencia curada, dentro del constructor) */}
       {/* Modal CALCULADORA DE MATERIALES — dosificación de concreto y peso de acero */}
       {showCalculadora && (
-        <div className="fixed inset-0 bg-black/40 z-[70] flex items-start justify-center p-4 pt-[8vh]" onClick={() => setShowCalculadora(null)}>
+        <div className="fixed inset-0 bg-black/40 z-[70] flex items-start justify-center p-4 pt-[8vh]" onClick={() => { setShowCalculadora(null); setCalculadoraStandalone(false) }}>
           <div className="bg-white rounded-2xl p-5 w-full max-w-md max-h-[84vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-slate-800">🧮 Calculadora de materiales</h3>
-              <button onClick={() => setShowCalculadora(null)} className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
+              <button onClick={() => { setShowCalculadora(null); setCalculadoraStandalone(false) }} className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
             </div>
 
             {showCalculadora === 'elegir' && (
@@ -2353,6 +2433,7 @@ export default function Editor() {
                     <p className="flex justify-between"><span>Grava</span><strong>{d.grava_m3} m³</strong></p>
                     <p className="flex justify-between"><span>Agua</span><strong>{d.agua_lts} lts</strong></p>
                   </div>
+                  {!calculadoraStandalone && (
                   <button onClick={async () => {
                             const nuevos = [
                               { nombre: 'Cemento gris 50kg', busqueda: 'cemento', cantidad: d.cemento_sacos.toFixed(2), precio: '' },
@@ -2381,6 +2462,7 @@ export default function Editor() {
                           className="w-full mt-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition">
                     + Agregar los 4 al APU
                   </button>
+                  )}
                   <button onClick={() => setShowCalculadora('elegir')} className="w-full mt-2 text-[11px] text-slate-400">← volver</button>
                 </div>
               )
@@ -2414,6 +2496,7 @@ export default function Editor() {
                     <p className="flex justify-between"><span>Peso bruto ({metros}m × {v.peso_kg_m}kg/m)</span><span>{kgBruto.toFixed(1)} kg</span></p>
                     <p className="flex justify-between font-semibold text-slate-700"><span>Peso final (+{desp}%)</span><span>{kgFinal.toFixed(1)} kg</span></p>
                   </div>
+                  {!calculadoraStandalone && (
                   <button disabled={metros <= 0}
                           onClick={async () => {
                             const nombreVarilla = `Varilla #${v.numero} (${v.pulg}")`
@@ -2434,6 +2517,7 @@ export default function Editor() {
                           className="w-full mt-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition disabled:opacity-50">
                     + Agregar al APU
                   </button>
+                  )}
                   <button onClick={() => setShowCalculadora('elegir')} className="w-full mt-2 text-[11px] text-slate-400">← volver</button>
                 </div>
               )
