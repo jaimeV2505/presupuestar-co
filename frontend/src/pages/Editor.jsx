@@ -54,6 +54,37 @@ export default function Editor() {
   const [showCalculadora, setShowCalculadora] = useState(null)  // null | 'elegir' | 'concreto' | 'acero'
   const [calculadoraStandalone, setCalculadoraStandalone] = useState(false)  // abierta desde Herramientas, sin APU en curso
   const [showListaMateriales, setShowListaMateriales] = useState(false)
+  const [proveedorPreciosSel, setProveedorPreciosSel] = useState('')  // '' = base de datos por defecto
+  const [preciosExpandidos, setPreciosExpandidos] = useState({})  // busqueda -> precio, para la fuente actual
+  const [preciosProveedorCache, setPreciosProveedorCache] = useState({})  // proveedorId -> [{insumo,precio,...}]
+  const resolverPreciosExpandidos = async (busquedas, proveedorId) => {
+    if (!busquedas.length) return
+    if (proveedorId) {
+      let lista = preciosProveedorCache[proveedorId]
+      if (!lista) {
+        try {
+          const r = await proveedoresAPI.precios(proveedorId)
+          lista = r.precios || []
+          setPreciosProveedorCache(prev => ({ ...prev, [proveedorId]: lista }))
+        } catch { lista = [] }
+      }
+      const nuevos = {}
+      for (const b of busquedas) {
+        const match = lista.find(x => _sinTildesLM(x.insumo).includes(b))
+        nuevos[b] = match ? match.precio : null
+      }
+      setPreciosExpandidos(nuevos)
+    } else {
+      const nuevos = {}
+      await Promise.all(busquedas.map(async (b) => {
+        try {
+          const r = await insumosAPI.buscar(b)
+          nuevos[b] = r?.resultados?.[0]?.precio || null
+        } catch { nuevos[b] = null }
+      }))
+      setPreciosExpandidos(nuevos)
+    }
+  }
   const [showSensibilidad, setShowSensibilidad] = useState(false)
   const [sensibilidadData, setSensibilidadData] = useState(null)
   const [cargandoSensibilidad, setCargandoSensibilidad] = useState(false)
@@ -398,10 +429,10 @@ export default function Editor() {
           if (dif < mejorDif) { mejor = row; mejorDif = dif }
         }
         return [
-          { nombre: `↳ Cemento (dosif. ${mejor.proporcion})`, cantidadTotal: mejor.cemento_sacos * cantidadTotal, unidadRef: 'sacos 50kg' },
-          { nombre: '↳ Arena', cantidadTotal: mejor.arena_m3 * cantidadTotal, unidadRef: 'm³' },
-          { nombre: '↳ Grava / triturado', cantidadTotal: mejor.grava_m3 * cantidadTotal, unidadRef: 'm³' },
-          { nombre: '↳ Agua', cantidadTotal: mejor.agua_lts * cantidadTotal, unidadRef: 'lts' },
+          { nombre: `↳ Cemento (dosif. ${mejor.proporcion})`, cantidadTotal: mejor.cemento_sacos * cantidadTotal, unidadRef: 'sacos 50kg', busqueda: 'cemento' },
+          { nombre: '↳ Arena', cantidadTotal: mejor.arena_m3 * cantidadTotal, unidadRef: 'm³', busqueda: 'arena' },
+          { nombre: '↳ Grava / triturado', cantidadTotal: mejor.grava_m3 * cantidadTotal, unidadRef: 'm³', busqueda: 'triturado' },
+          { nombre: '↳ Agua', cantidadTotal: mejor.agua_lts * cantidadTotal, unidadRef: 'lts', busqueda: 'agua' },
         ]
       },
     },
@@ -429,6 +460,7 @@ export default function Editor() {
   }
   const [anEdit, setAnEdit] = useState(null)          // copia editable del desglose abierto
   const [showListaMaterialesAn, setShowListaMaterialesAn] = useState(false)
+  const [proveedoresListaLM, setProveedoresListaLM] = useState(null)
   const [anGuardando, setAnGuardando] = useState(false)
   const abrirAnalisis = (it) => {
     if (analisisAbierto === it._idx) { setAnalisisAbierto(null); setAnEdit(null); return }
@@ -1256,9 +1288,21 @@ export default function Editor() {
                           <p className="text-slate-400 mt-1">💡 Herramienta es un <strong>porcentaje</strong> de la mano de obra (práctica estándar 3-10%). Si lo tuyo es un flete en <strong>pesos</strong>, ese va en la fila 4 · Transporte 🚚.</p>
 
                           <button onClick={async () => {
-                                    if (!tablaDosificacion) {
+                                    let tablaDosifActual = tablaDosificacion
+                                    if (!tablaDosifActual) {
                                       const d = await preciosAPI.dosificacion(20.7).catch(() => null)
-                                      if (d) setTablaDosificacion(d.tabla_completa)
+                                      if (d) { tablaDosifActual = d.tabla_completa; setTablaDosificacion(d.tabla_completa) }
+                                    }
+                                    if (!proveedoresListaLM) {
+                                      proveedoresAPI.listar().then(r => setProveedoresListaLM(r.proveedores || r || [])).catch(() => setProveedoresListaLM([]))
+                                    }
+                                    if (!showListaMaterialesAn) {
+                                      const cantidadItemAct = _num2(it.cantidad)
+                                      const filasB = anEdit.insumos
+                                        .filter(x => (x.nombre || '').trim() && _num2(x.cantidad) > 0)
+                                        .map(x => ({ nombre: x.nombre, cantidadTotal: _num2(x.cantidad) * (1 + _num2(x.desperdicio_pct) / 100) * cantidadItemAct }))
+                                      const busquedas = [...new Set(filasB.flatMap(f => expandirFilaLM(f, tablaDosifActual)).filter(f => f.busqueda).map(f => f.busqueda))]
+                                      resolverPreciosExpandidos(busquedas, proveedorPreciosSel)
                                     }
                                     setShowListaMaterialesAn(v => !v)
                                   }}
@@ -1275,9 +1319,28 @@ export default function Editor() {
                                 precio: _num2(x.precio),
                               }))
                             const filasLM = filasBaseAn.flatMap(f => expandirFilaLM(f, tablaDosificacion))
-                            const totalLM = filasBaseAn.reduce((s, f) => s + f.cantidadTotal * f.precio, 0)
+                            const totalLM = filasLM.reduce((s, f) => {
+                              const precio = f.esDesglose ? (preciosExpandidos[f.busqueda] || 0) : (f.precio || 0)
+                              return s + (precio ? f.cantidadTotal * precio : 0)
+                            }, 0)
+                            const cambiarProveedorAn = (val) => {
+                              setProveedorPreciosSel(val)
+                              const busquedas = [...new Set(filasLM.filter(f => f.busqueda).map(f => f.busqueda))]
+                              resolverPreciosExpandidos(busquedas, val)
+                            }
                             return (
                               <div className="mt-1.5 bg-white rounded-lg border border-amber-100 overflow-hidden">
+                                {proveedoresListaLM?.length > 0 && filasLM.some(f => f.esDesglose) && (
+                                  <div className="px-2 py-1 bg-slate-50 border-b border-amber-100">
+                                    <select value={proveedorPreciosSel} onChange={e => cambiarProveedorAn(e.target.value)}
+                                            className="w-full text-[10px] border border-slate-200 rounded-lg px-1.5 py-1">
+                                      <option value="">📚 Precios: Base de datos</option>
+                                      {proveedoresListaLM.map(pv => (
+                                        <option key={pv.id} value={pv.id}>🏪 {pv.nombre}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
                                 <div className="grid grid-cols-12 gap-1 px-2 py-1 bg-amber-500 text-white font-bold">
                                   <span className="col-span-6">Material</span>
                                   <span className="col-span-3 text-right">Cantidad total</span>
@@ -1285,15 +1348,17 @@ export default function Editor() {
                                 </div>
                                 {filasLM.length === 0 ? (
                                   <p className="text-slate-400 text-center py-2">Sin materiales con cantidad cargada</p>
-                                ) : filasLM.map((f, i) => (
+                                ) : filasLM.map((f, i) => {
+                                  const precioFilaAn = f.esDesglose ? preciosExpandidos[f.busqueda] : f.precio
+                                  return (
                                   <div key={i} className={`grid grid-cols-12 gap-1 px-2 py-1 border-t border-amber-50 text-slate-700 ${f.esDesglose ? 'bg-amber-50/60 text-slate-500' : ''}`}>
                                     <span className="col-span-6 truncate" title={f.nombre}>{f.nombre}</span>
                                     <span className="col-span-3 text-right font-medium">
                                       {f.cantidadTotal.toFixed(2)}{f.unidadRef ? ` ${f.unidadRef}` : ''}
                                     </span>
-                                    <span className="col-span-3 text-right text-slate-500">{!f.esDesglose && f.precio ? COP(f.cantidadTotal * f.precio) : '—'}</span>
+                                    <span className="col-span-3 text-right text-slate-500">{precioFilaAn ? COP(f.cantidadTotal * precioFilaAn) : '—'}</span>
                                   </div>
-                                ))}
+                                )})}
                                 {totalLM > 0 && (
                                   <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t-2 border-amber-200 bg-amber-50 font-black">
                                     <span className="col-span-9">Total estimado</span>
@@ -2149,9 +2214,21 @@ export default function Editor() {
                          className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" />
                   <button disabled={!construyendo.cantidad_total || parseFloat(construyendo.cantidad_total) <= 0}
                           onClick={async () => {
-                                    if (!tablaDosificacion) {
+                                    let tablaDosifActual = tablaDosificacion
+                                    if (!tablaDosifActual) {
                                       const d = await preciosAPI.dosificacion(20.7).catch(() => null)
-                                      if (d) setTablaDosificacion(d.tabla_completa)
+                                      if (d) { tablaDosifActual = d.tabla_completa; setTablaDosificacion(d.tabla_completa) }
+                                    }
+                                    if (!proveedoresListaLM) {
+                                      proveedoresAPI.listar().then(r => setProveedoresListaLM(r.proveedores || r || [])).catch(() => setProveedoresListaLM([]))
+                                    }
+                                    if (!showListaMateriales) {
+                                      const totalAct = parseFloat(construyendo.cantidad_total) || 0
+                                      const filasB = construyendo.insumos
+                                        .filter(i => i.nombre.trim() && parseFloat(i.cantidad) > 0)
+                                        .map(i => ({ nombre: i.nombre, cantidadTotal: (parseFloat(i.cantidad) || 0) * totalAct }))
+                                      const busquedas = [...new Set(filasB.flatMap(f => expandirFilaLM(f, tablaDosifActual)).filter(f => f.busqueda).map(f => f.busqueda))]
+                                      resolverPreciosExpandidos(busquedas, proveedorPreciosSel)
                                     }
                                     setShowListaMateriales(v => !v)
                                   }}
@@ -2170,9 +2247,29 @@ export default function Editor() {
                       precio: parseFloat(i.precio) || 0,
                     }))
                   const filas = filasBase.flatMap(f => expandirFilaLM(f, tablaDosificacion))
-                  const totalEstimado = filasBase.reduce((s, f) => s + (f.precio ? f.cantidadTotal * f.precio : 0), 0)
+                  const totalEstimado = filas.reduce((s, f) => {
+                    const precio = f.esDesglose ? (preciosExpandidos[f.busqueda] || 0) : (f.precio || 0)
+                    return s + (precio ? f.cantidadTotal * precio : 0)
+                  }, 0)
+                  const cambiarProveedorLM = (val) => {
+                    setProveedorPreciosSel(val)
+                    const busquedas = [...new Set(filas.filter(f => f.busqueda).map(f => f.busqueda))]
+                    resolverPreciosExpandidos(busquedas, val)
+                  }
                   return (
                     <div className="mt-3 bg-white rounded-xl border border-slate-200 overflow-hidden">
+                      {proveedoresListaLM?.length > 0 && filas.some(f => f.esDesglose) && (
+                        <div className="px-2.5 py-1.5 bg-slate-50 border-b border-slate-200">
+                          <label className="text-[9px] text-slate-400">Precios de materiales expandidos (cemento/arena/grava/agua):</label>
+                          <select value={proveedorPreciosSel} onChange={e => cambiarProveedorLM(e.target.value)}
+                                  className="w-full mt-0.5 text-[11px] border border-slate-200 rounded-lg px-2 py-1">
+                            <option value="">📚 Base de datos (por defecto)</option>
+                            {proveedoresListaLM.map(pv => (
+                              <option key={pv.id} value={pv.id}>🏪 {pv.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       <div className="grid grid-cols-12 gap-1 px-2.5 py-1.5 bg-navy-700 text-white text-[10px] font-bold">
                         <span className="col-span-6">Material</span>
                         <span className="col-span-3 text-right">Cantidad total</span>
@@ -2180,15 +2277,17 @@ export default function Editor() {
                       </div>
                       {filas.length === 0 ? (
                         <p className="text-[11px] text-slate-400 text-center py-3">Agregá insumos con nombre y cantidad para ver la lista</p>
-                      ) : filas.map((f, i) => (
+                      ) : filas.map((f, i) => {
+                        const precioFila = f.esDesglose ? preciosExpandidos[f.busqueda] : f.precio
+                        return (
                         <div key={i} className={`grid grid-cols-12 gap-1 px-2.5 py-1.5 border-t border-slate-100 text-xs ${f.esDesglose ? 'bg-amber-50/60 text-slate-500' : ''}`}>
                           <span className="col-span-6 truncate" title={f.nombre}>{f.nombre}</span>
                           <span className="col-span-3 text-right font-medium">
                             {f.cantidadTotal.toFixed(2)}{f.unidadRef ? ` ${f.unidadRef}` : ''}
                           </span>
-                          <span className="col-span-3 text-right text-slate-500">{!f.esDesglose && f.precio ? COP(f.cantidadTotal * f.precio) : '—'}</span>
+                          <span className="col-span-3 text-right text-slate-500">{precioFila ? COP(f.cantidadTotal * precioFila) : '—'}</span>
                         </div>
-                      ))}
+                      )})}
                       {totalEstimado > 0 && (
                         <div className="grid grid-cols-12 gap-1 px-2.5 py-1.5 border-t-2 border-slate-200 text-xs font-bold bg-slate-50">
                           <span className="col-span-9">Total estimado para {totalActividad} {construyendo.unidad}</span>
