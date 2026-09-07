@@ -74,7 +74,7 @@ export default function Editor() {
       if (solicitudPreciosRef.current !== miSolicitud) return  // llego tarde, ya no es la seleccion actual
       const nuevos = {}
       for (const b of busquedas) {
-        const match = lista.find(x => _sinTildesLM(x.insumo).includes(b))
+        const match = mejorMatchLM(lista, b, 'insumo')
         nuevos[b] = match ? match.precio : null
       }
       setPreciosExpandidos(nuevos)
@@ -83,7 +83,8 @@ export default function Editor() {
       await Promise.all(busquedas.map(async (b) => {
         try {
           const r = await insumosAPI.buscar(b)
-          nuevos[b] = r?.resultados?.[0]?.precio || null
+          const match = mejorMatchLM(r?.resultados, b, 'nombre')
+          nuevos[b] = match?.precio || null
         } catch { nuevos[b] = null }
       }))
       if (solicitudPreciosRef.current !== miSolicitud) return  // llego tarde, ya no es la seleccion actual
@@ -408,6 +409,15 @@ export default function Editor() {
     })
   }, [items, p?.region])
   const _sinTildesLM = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  // Preferir un resultado que EMPIEZA con la palabra clave ("Cemento gris...")
+  // por sobre uno que solo la CONTIENE en el medio ("Bloque cemento...",
+  // "Microcemento...", "Teja fibrocemento...") -- si ninguno empieza con la
+  // palabra, cae a la coincidencia mas laxa para no quedarse sin nada.
+  const mejorMatchLM = (resultados, busqueda, campoNombre = 'nombre') => {
+    if (!resultados || !resultados.length) return null
+    const exacto = resultados.find(r => _sinTildesLM(r[campoNombre]).startsWith(busqueda))
+    return exacto || resultados.find(r => _sinTildesLM(r[campoNombre]).includes(busqueda)) || null
+  }
   // Reglas de desglose para "Lista de materiales" -- estructura generica y
   // extensible: cada regla sabe detectar SI un insumo aplica (por nombre) y
   // CÓMO desglosarlo en sub-materiales usando una tabla de referencia propia.
@@ -436,7 +446,7 @@ export default function Editor() {
         return [
           { nombre: `↳ Cemento (dosif. ${mejor.proporcion})`, cantidadTotal: mejor.cemento_sacos * cantidadTotal, unidadRef: 'sacos 50kg', busqueda: 'cemento' },
           { nombre: '↳ Arena', cantidadTotal: mejor.arena_m3 * cantidadTotal, unidadRef: 'm³', busqueda: 'arena' },
-          { nombre: '↳ Grava / triturado', cantidadTotal: mejor.grava_m3 * cantidadTotal, unidadRef: 'm³', busqueda: 'triturado' },
+          { nombre: '↳ Grava / triturado', cantidadTotal: mejor.grava_m3 * cantidadTotal, unidadRef: 'm³', busqueda: 'triturad' },  // raiz sin genero: calza "triturado" y "triturada" (grava es femenino)
           { nombre: '↳ Agua', cantidadTotal: mejor.agua_lts * cantidadTotal, unidadRef: 'lts' },  // sin busqueda a proposito: "agua" es muy ambiguo en la base (canales, tanques, bombas tambien la contienen) -- se maneja aparte
         ]
       },
@@ -2542,7 +2552,7 @@ export default function Editor() {
                             const nuevos = [
                               { nombre: 'Cemento gris 50kg', busqueda: 'cemento', cantidad: d.cemento_sacos.toFixed(2), precio: '' },
                               { nombre: 'Arena de río', busqueda: 'arena', cantidad: d.arena_m3, precio: '' },
-                              { nombre: 'Grava / triturado', busqueda: 'triturado', cantidad: d.grava_m3, precio: '' },
+                              { nombre: 'Grava / triturado', busqueda: 'triturad', cantidad: d.grava_m3, precio: '' },  // raiz sin genero: calza "triturado" y "triturada"
                               { nombre: 'Agua', cantidad: d.agua_lts, precio: '' },  // sin busqueda a proposito: "agua" es muy ambiguo en la base (canales, tanques, bombas tambien la contienen)
                             ]
                             // buscar un precio sugerido de la base real de insumos para cada uno —
@@ -2554,7 +2564,8 @@ export default function Editor() {
                               if (!ins.busqueda) return  // sin palabra clave -> no buscar (una consulta vacia calzaria con TODO en la base)
                               try {
                                 const r = await insumosAPI.buscar(ins.busqueda)
-                                if (r?.resultados?.[0]?.precio) ins.precio = r.resultados[0].precio
+                                const match = mejorMatchLM(r?.resultados, ins.busqueda, 'nombre')
+                                if (match?.precio) ins.precio = match.precio
                               } catch { /* sin sugerencia, se completa a mano */ }
                             }))
                             setConstruyendo(c => ({ ...c, insumos: [...c.insumos, ...nuevos.map(({ busqueda, ...ins }) => ins)] }))
@@ -2610,7 +2621,8 @@ export default function Editor() {
                               // buscar solo por el diametro en pulgadas — mas probable que
                               // coincida con como esta nombrada la varilla real en la base
                               const r = await insumosAPI.buscar(`varilla ${v.pulg}`)
-                              if (r?.resultados?.[0]?.precio) precioSugerido = r.resultados[0].precio
+                              const match = mejorMatchLM(r?.resultados, 'varilla', 'nombre')
+                              if (match?.precio) precioSugerido = match.precio
                             } catch { /* sin sugerencia, se completa a mano */ }
                             setConstruyendo(c => ({ ...c, insumos: [...c.insumos,
                               { nombre: nombreVarilla, cantidad: kgFinal.toFixed(1), precio: precioSugerido }] }))
