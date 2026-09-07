@@ -39,7 +39,7 @@ export default function Editor() {
   const [conflictosMasivo, setConflictosMasivo] = useState(null)   // {proveedorId, lista: [...]}
   const fileMasivoRef = useRef(null)
   const [showConstructor, setShowConstructor] = useState(false)
-  const [construyendo, setConstruyendo] = useState({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5, transporte: '' })
+  const [construyendo, setConstruyendo] = useState({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5, transporte: '', cantidad_total: '' })
   const [previewComp, setPreviewComp] = useState(null)
   const [showBalance, setShowBalance] = useState(false)
   const [showSeguimiento, setShowSeguimiento] = useState(false)
@@ -52,6 +52,7 @@ export default function Editor() {
   const [catalogo, setCatalogo] = useState(null)        // {categorias} | {insumos}
   const [showCatalogo, setShowCatalogo] = useState(false)
   const [showCalculadora, setShowCalculadora] = useState(null)  // null | 'elegir' | 'concreto' | 'acero'
+  const [showListaMateriales, setShowListaMateriales] = useState(false)
   const [showSensibilidad, setShowSensibilidad] = useState(false)
   const [sensibilidadData, setSensibilidadData] = useState(null)
   const [cargandoSensibilidad, setCargandoSensibilidad] = useState(false)
@@ -1758,7 +1759,7 @@ export default function Editor() {
                 ))}
                 {fuenteApu === 'mios' && (
                   <>
-                  <button onClick={() => { setShowConstructor(true); setPreviewComp(null); setConstruyendo({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5, transporte: '' }) }}
+                  <button onClick={() => { setShowConstructor(true); setPreviewComp(null); setConstruyendo({ descripcion: '', unidad: 'm2', insumos: [], mano_obra: '', herramienta_pct: 5, transporte: '', cantidad_total: '' }) }}
                           data-testid="btn-abrir-constructor" className="text-xs font-bold px-3 py-1.5 rounded-lg bg-navy-600 text-white ml-auto">
                     + Construir APU
                   </button>
@@ -2024,6 +2025,64 @@ export default function Editor() {
               <button onClick={() => setShowCalculadora('elegir')}
                       className="text-xs font-medium text-amber-600">🧮 Calculadora de materiales</button>
             </div>
+
+            {construyendo.insumos.length > 0 && (
+              <div className="bg-slate-50 rounded-xl p-3 mb-3">
+                <label className="text-[11px] font-medium text-slate-500">
+                  ¿Cuántos {construyendo.unidad} va a tener esta actividad en total?
+                </label>
+                <div className="flex gap-2 mt-1.5">
+                  <input type="number" min="0" step="any" value={construyendo.cantidad_total}
+                         onChange={e => setConstruyendo(c => ({ ...c, cantidad_total: e.target.value }))}
+                         placeholder={`ej: 13 (${construyendo.unidad})`}
+                         className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2" />
+                  <button disabled={!construyendo.cantidad_total || parseFloat(construyendo.cantidad_total) <= 0}
+                          onClick={() => setShowListaMateriales(v => !v)}
+                          className="px-3 py-2 rounded-xl bg-navy-600 text-white text-xs font-bold disabled:opacity-40 whitespace-nowrap">
+                    📋 {showListaMateriales ? 'Ocultar' : 'Lista de materiales'}
+                  </button>
+                </div>
+
+                {showListaMateriales && parseFloat(construyendo.cantidad_total) > 0 && (() => {
+                  const totalActividad = parseFloat(construyendo.cantidad_total)
+                  const filas = construyendo.insumos
+                    .filter(i => i.nombre.trim() && parseFloat(i.cantidad) > 0)
+                    .map(i => ({
+                      nombre: i.nombre,
+                      cantidadTotal: (parseFloat(i.cantidad) || 0) * totalActividad,
+                      precio: parseFloat(i.precio) || 0,
+                    }))
+                  const totalEstimado = filas.reduce((s, f) => s + (f.precio ? f.cantidadTotal * f.precio : 0), 0)
+                  return (
+                    <div className="mt-3 bg-white rounded-xl border border-slate-200 overflow-hidden">
+                      <div className="grid grid-cols-12 gap-1 px-2.5 py-1.5 bg-navy-700 text-white text-[10px] font-bold">
+                        <span className="col-span-6">Material</span>
+                        <span className="col-span-3 text-right">Cantidad total</span>
+                        <span className="col-span-3 text-right">Subtotal</span>
+                      </div>
+                      {filas.length === 0 ? (
+                        <p className="text-[11px] text-slate-400 text-center py-3">Agregá insumos con nombre y cantidad para ver la lista</p>
+                      ) : filas.map((f, i) => (
+                        <div key={i} className="grid grid-cols-12 gap-1 px-2.5 py-1.5 border-t border-slate-100 text-xs">
+                          <span className="col-span-6 truncate" title={f.nombre}>{f.nombre}</span>
+                          <span className="col-span-3 text-right font-medium">{f.cantidadTotal.toFixed(2)}</span>
+                          <span className="col-span-3 text-right text-slate-500">{f.precio ? COP(f.cantidadTotal * f.precio) : '—'}</span>
+                        </div>
+                      ))}
+                      {totalEstimado > 0 && (
+                        <div className="grid grid-cols-12 gap-1 px-2.5 py-1.5 border-t-2 border-slate-200 text-xs font-bold bg-slate-50">
+                          <span className="col-span-9">Total estimado para {totalActividad} {construyendo.unidad}</span>
+                          <span className="col-span-3 text-right text-emerald-700">{COP(totalEstimado)}</span>
+                        </div>
+                      )}
+                      <p className="text-[9px] text-slate-400 px-2.5 py-1.5">
+                        Cantidad por {construyendo.unidad} × {totalActividad} = lo que necesitás comprar para toda la actividad.
+                      </p>
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
 
             <button onClick={async () => {
                       try {
