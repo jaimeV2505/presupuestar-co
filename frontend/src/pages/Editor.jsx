@@ -383,6 +383,7 @@ export default function Editor() {
     return desgloses.codigoAId?.[cod] || null
   }
   const [anEdit, setAnEdit] = useState(null)          // copia editable del desglose abierto
+  const [showListaMaterialesAn, setShowListaMaterialesAn] = useState(false)
   const [anGuardando, setAnGuardando] = useState(false)
   const abrirAnalisis = (it) => {
     if (analisisAbierto === it._idx) { setAnalisisAbierto(null); setAnEdit(null); return }
@@ -1192,6 +1193,46 @@ export default function Editor() {
                             </div>
                           </div>
                           <p className="text-slate-400 mt-1">💡 Herramienta es un <strong>porcentaje</strong> de la mano de obra (práctica estándar 3-10%). Si lo tuyo es un flete en <strong>pesos</strong>, ese va en la fila 4 · Transporte 🚚.</p>
+
+                          <button onClick={() => setShowListaMaterialesAn(v => !v)}
+                                  className="w-full mt-2 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 font-bold text-[10px]">
+                            📋 {showListaMaterialesAn ? 'Ocultar' : 'Lista de materiales'} — para los {_num2(it.cantidad)} {it.unidad} de esta actividad
+                          </button>
+                          {showListaMaterialesAn && (() => {
+                            const cantidadItem = _num2(it.cantidad)
+                            const filasLM = anEdit.insumos
+                              .filter(x => (x.nombre || '').trim() && _num2(x.cantidad) > 0)
+                              .map(x => ({
+                                nombre: x.nombre,
+                                cantidadTotal: _num2(x.cantidad) * (1 + _num2(x.desperdicio_pct) / 100) * cantidadItem,
+                                precio: _num2(x.precio),
+                              }))
+                            const totalLM = filasLM.reduce((s, f) => s + f.cantidadTotal * f.precio, 0)
+                            return (
+                              <div className="mt-1.5 bg-white rounded-lg border border-amber-100 overflow-hidden">
+                                <div className="grid grid-cols-12 gap-1 px-2 py-1 bg-amber-500 text-white font-bold">
+                                  <span className="col-span-6">Material</span>
+                                  <span className="col-span-3 text-right">Cantidad total</span>
+                                  <span className="col-span-3 text-right">Subtotal</span>
+                                </div>
+                                {filasLM.length === 0 ? (
+                                  <p className="text-slate-400 text-center py-2">Sin materiales con cantidad cargada</p>
+                                ) : filasLM.map((f, i) => (
+                                  <div key={i} className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-amber-50 text-slate-700">
+                                    <span className="col-span-6 truncate" title={f.nombre}>{f.nombre}</span>
+                                    <span className="col-span-3 text-right font-medium">{f.cantidadTotal.toFixed(2)}</span>
+                                    <span className="col-span-3 text-right text-slate-500">{f.precio ? COP(f.cantidadTotal * f.precio) : '—'}</span>
+                                  </div>
+                                ))}
+                                {totalLM > 0 && (
+                                  <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t-2 border-amber-200 bg-amber-50 font-black">
+                                    <span className="col-span-9">Total estimado</span>
+                                    <span className="col-span-3 text-right text-emerald-700">{COP(totalLM)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })()}
                           <div className="flex gap-2 mt-2 items-center">
                             <button disabled={anGuardando} onClick={() => recalcularAnalisis(it, false)}
                                     data-testid="btn-guardar-apu" className="flex-1 py-1.5 rounded-lg border border-violet-300 text-violet-700 font-bold hover:bg-violet-100 disabled:opacity-50">
