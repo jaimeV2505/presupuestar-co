@@ -237,6 +237,24 @@ function MockCronograma() {
     </div>
   )
 }
+function MockCalculadora() {
+  return (
+    <div className="text-[11px]">
+      <p className="text-[10px] font-bold text-amber-700 mb-1.5">🧮 CONCRETO 20.7 MPa → se desglosa solo</p>
+      {[['↳ Cemento', '16,85 sacos', '$480.245'], ['↳ Arena', '1,37 m³', '$75.350']].map(([n, c, v]) => (
+        <div key={n} className="flex justify-between py-1 border-b border-slate-100">
+          <span className="font-medium text-slate-700">{n}</span><span className="text-slate-500">{c}</span>
+          <span className="font-bold text-slate-700">{v}</span>
+        </div>
+      ))}
+      <div className="flex items-center justify-between mt-1.5">
+        <span className="text-[8px] font-black bg-navy-800 text-white px-1.5 py-0.5 rounded-full">📚 Base de datos</span>
+        <span className="text-[8px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">🏪 o TU proveedor</span>
+      </div>
+      <p className="text-[9px] text-slate-400 mt-1.5">elige y el precio cambia solo — sin recalcular nada a mano</p>
+    </div>
+  )
+}
 
 const DETALLE_HERRAMIENTA = [
   { titulo: 'El precio es TUYO, no de una tabla', puntos: ['Edita cemento, arena y M.O. con los precios de TU ferretería', 'Recalcula en el servidor y ⚡ aplica al ítem en un clic', 'El desglose queda guardado — tu propuesta 100% sustentada'] },
@@ -249,8 +267,9 @@ const DETALLE_HERRAMIENTA = [
   { titulo: 'Mira antes de agregar', puntos: ['Cada actividad de la base muestra su desglose real: materiales, mano de obra, herramienta y transporte', 'Elige solo lo que necesitas — material por material — para armar TU propio APU', 'Nada entra a tu presupuesto a ciegas'] },
   { titulo: 'Tu base, no la de un genérico', puntos: ['Sube tu Excel o CSV con tus precios negociados', 'Hasta 2.500 filas por carga — sin ahogar el proceso', 'Si un precio ya existe distinto, TÚ decides si se actualiza'] },
   { titulo: 'El cronograma que exige la entidad, sin Excel a mano', puntos: ['Genera el Gantt con un clic desde tus propios capítulos del presupuesto', 'Dependencias entre actividades — arranca sola la que sigue', 'Se cruza con tu avance real cargado y se exporta en PDF'] },
+  { titulo: 'Sabe cuánto cemento necesitás, antes de comprarlo', puntos: ['Detecta el concreto en la actividad y lo desglosa en cemento, arena, grava y agua solo', 'Precios de la base de datos por defecto, o de cualquiera de TUS proveedores', 'Cambia de proveedor y el precio se recalcula solo, sin tocar nada más'] },
 ]
-const MOCKS_DOCK = [MockAnalisis, MockRecetario, MockDescuento, MockDisenos, MockIncidencia, MockExplosion, MockActas, MockVistaPrevia, MockMiBase, MockCronograma]
+const MOCKS_DOCK = [MockAnalisis, MockRecetario, MockDescuento, MockDisenos, MockIncidencia, MockExplosion, MockActas, MockVistaPrevia, MockMiBase, MockCronograma, MockCalculadora]
 
 // ── EL DOCK: las herramientas que se magnifican ──
 const HERRAMIENTAS = [
@@ -264,6 +283,7 @@ const HERRAMIENTAS = [
   { e: '👁️', t: 'Vista previa', d: 'El desglose real antes de agregar' },
   { e: '📤', t: 'Mi base', d: 'Sube tu propia lista de precios' },
   { e: '📅', t: 'Cronograma', d: 'Diagrama de Gantt — exclusivo obra pública' },
+  { e: '🧮', t: 'Calculadora', d: 'Dosifica el concreto, elige tu proveedor' },
 ]
 function Dock({ sel, setSel }) {
   const [cerca, setCerca] = useState(-1)
