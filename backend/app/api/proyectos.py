@@ -21,16 +21,24 @@ def _mes_actual() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m")
 
 
-def _verificar_limite(user: Usuario, db: Session):
-    """Plan gratis: limite de 3 presupuestos al mes. Pro: ilimitado."""
-    # auditoria pre-live: el Pro VENCIDO vuelve a ser gratis (plan_vence manda)
+def _es_pro_vigente(user: Usuario) -> bool:
     ahora = datetime.now(timezone.utc).replace(tzinfo=None)
     # plan_vence puede volver tz-aware o naive segun el driver de DB — normalizar
     # ANTES de comparar (mismo patron que el resto de este archivo: .replace(tzinfo=None)).
     # Sin esto, comparar aware vs naive tira TypeError y crashea al crear un proyecto.
     vence = user.plan_vence.replace(tzinfo=None) if user.plan_vence else None
-    es_pro_vigente = user.plan == "pro" and (vence is None or vence >= ahora)
-    if es_pro_vigente:
+    return user.plan == "pro" and (vence is None or vence >= ahora)
+
+
+def _verificar_limite(user: Usuario, db: Session):
+    """Plan gratis (o pro VENCIDO): limite de 3 presupuestos al mes. Pro vigente: ilimitado.
+    Solo verifica -- de solo lectura, se llama al INICIO del endpoint antes de
+    validar el resto del request. El incremento real ocurre en _contar_presupuesto,
+    al final, solo si la creacion fue exitosa (para no gastarle un cupo mensual
+    a un intento que fallo por otra razon, ej. nombre vacio).
+    """
+    # auditoria pre-live: el Pro VENCIDO vuelve a ser gratis (plan_vence manda)
+    if _es_pro_vigente(user):
         return
     if user.plan not in ("gratis", "pro"):   # cortesias/admin pasan; el pro VENCIDO cae a la puerta
         return
@@ -45,6 +53,18 @@ def _verificar_limite(user: Usuario, db: Session):
             f"Plan gratis: limite de {LIMITE_GRATIS} presupuestos/mes alcanzado. "
             f"Pasa a Pro para presupuestos ilimitados."
         )
+
+
+def _contar_presupuesto(user: Usuario):
+    """Se llama al final de una creacion EXITOSA (antes del commit final).
+    Misma condicion que _verificar_limite (_es_pro_vigente) -- antes esto usaba
+    `if user.plan == "gratis"`, lo que dejaba a un Pro VENCIDO con el contador
+    congelado en 0 para siempre (su plan sigue diciendo "pro" en la BD, ese
+    chequeo nunca lo contaba) -- el limite nunca se aplicaba de verdad para una
+    cuenta Pro vencida, aunque _verificar_limite si la bloqueaba en teoria.
+    """
+    if not _es_pro_vigente(user) and user.plan in ("gratis", "pro"):
+        user.presupuestos_mes += 1
 
 
 def _generar_numero(user_id: int, db: Session) -> str:
@@ -418,8 +438,7 @@ def crear(req: ProyectoCreate, user: Usuario = Depends(usuario_actual), db: Sess
     db.add(p)
     from app.api.clientes import vincular_cliente
     vincular_cliente(p, user.id, db)
-    if user.plan == "gratis":
-        user.presupuestos_mes += 1
+    _contar_presupuesto(user)
     db.commit()
     db.refresh(p)
     logger.info(f"Proyecto creado: {p.id} por user {user.id}")
@@ -483,8 +502,7 @@ def crear_desde_plantilla(req: DesdePlantillaRequest,
     db.add(p)
     from app.api.clientes import vincular_cliente
     vincular_cliente(p, user.id, db)
-    if user.plan == "gratis":
-        user.presupuestos_mes += 1   # las plantillas TAMBIEN cuentan (bypass cerrado)
+    _contar_presupuesto(user)
     db.commit()
     db.refresh(p)
     logger.info(f"Proyecto desde plantilla '{req.plantilla_id}': {len(items)} items para {user.email}")
@@ -677,8 +695,7 @@ def duplicar(proyecto_id: int, req: DuplicarRequest = None,
     db.add(nuevo)
     from app.api.clientes import vincular_cliente
     vincular_cliente(nuevo, user.id, db)
-    if user.plan == "gratis":
-        user.presupuestos_mes += 1
+    _contar_presupuesto(user)
     db.commit()
     db.refresh(nuevo)
     return _proyecto_out(nuevo, incluir_items=True)
