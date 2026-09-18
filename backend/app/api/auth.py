@@ -292,7 +292,7 @@ import hashlib
 import secrets as _secrets
 from datetime import timedelta as _td
 
-APP_URL = os.environ.get("APP_URL", "https://presupuestar-co.vercel.app").rstrip("/")
+APP_URL = os.environ.get("APP_URL", "https://presupuestarco.com").rstrip("/")
 
 
 def _enviar_email_reset(destino: str, nombre: str, link: str) -> bool:
@@ -320,7 +320,7 @@ def _enviar_email_reset(destino: str, nombre: str, link: str) -> bool:
             "https://api.resend.com/emails",
             headers={"Authorization": f"Bearer {api_key}"},
             json={
-                "from": "PresupuestarCO <onboarding@resend.dev>",
+                "from": "PresupuestarCO <soporte@presupuestarco.com>",
                 "to": [destino],
                 "subject": "Restablece tu contrasena — PresupuestarCO",
                 "html": html,

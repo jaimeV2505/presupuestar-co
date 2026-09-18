@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Building2 } from 'lucide-react'
+import { Building2, Loader2 } from 'lucide-react'
 import { authAPI, recuperarAPI } from '../services/api'
 
 export default function Login({ modo = 'login' }) {
@@ -81,13 +81,15 @@ export default function Login({ modo = 'login' }) {
             </label>
           )}
           <button data-testid="auth-submit" disabled={loading}
-                  className="w-full bg-navy-600 hover:bg-navy-700 text-white font-semibold rounded-xl py-3 transition disabled:opacity-50">
+                  className="w-full bg-navy-600 hover:bg-navy-700 text-white font-semibold rounded-xl py-3 transition disabled:opacity-50 flex items-center justify-center gap-2">
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Un momento...' : olvide ? 'Enviarme el enlace' : esRegistro ? 'Crear cuenta gratis' : 'Entrar'}
           </button>
 
           {olvide && enviado && (
-            <p className="text-center text-xs text-emerald-600 bg-emerald-50 rounded-xl p-3">
-              ✓ Si el correo existe, te enviamos el enlace (revisa spam). Vale por 30 minutos.
+            <p className="text-center text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3 animate-[fadeIn_0.3s_ease-out]">
+              ✓ Listo — si ese correo tiene una cuenta con nosotros, ya te llegó el enlace.<br />
+              Revisá también spam o promociones. Es válido por 30 minutos.
             </p>
           )}
           {!esRegistro && (

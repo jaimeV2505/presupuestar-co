@@ -12,7 +12,14 @@ app = FastAPI(title="PresupuestarCO", version="8.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # "*" combinado con allow_credentials=True termina reflejando CUALQUIER origen
+    # (un navegador rechaza el "*" literal junto con credenciales, asi que el
+    # middleware cae a reflejar el Origin de cada request) -- cualquier sitio
+    # externo podia hacer peticiones autenticadas a la API. Cerrado al dominio
+    # real de produccion + los previews de Vercel (via regex, cambian de
+    # subdominio en cada deploy, ej. presupuestar-co-git-main-...vercel.app).
+    allow_origins=["https://presupuestarco.com", "https://www.presupuestarco.com"],
+    allow_origin_regex=r"https://presupuestar(-co)?-[a-zA-Z0-9-]+\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -168,7 +175,7 @@ def preview_social(token: str):
         except Exception:
             pass
         imagen = f"/api/s/{token}/foto.jpg" if tiene_foto else "/og.png"
-        base = os.environ.get("APP_URL", "https://presupuestar-co.vercel.app").rstrip("/")
+        base = os.environ.get("APP_URL", "https://presupuestarco.com").rstrip("/")
         return HTMLResponse(f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
 <title>{titulo}</title>

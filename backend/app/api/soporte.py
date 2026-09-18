@@ -5,8 +5,8 @@ Soporte: el usuario reporta errores/dudas con evidencia (screenshots).
 Doble garantia de que el reporte llega:
 1. SIEMPRE se guarda en la BD (visible en el panel /admin)
 2. Se envia por email a SOPORTE_EMAIL via Resend si RESEND_API_KEY esta configurada
-   (resend.com — gratis 100 emails/dia, el 'from' onboarding@resend.dev
-    funciona sin verificar dominio para enviar a tu propio correo)
+   (resend.com — gratis 100 emails/dia, el 'from' soporte@presupuestarco.com
+    ya con el dominio propio verificado en Resend)
 
 Variables de entorno:
   SOPORTE_EMAIL   = jdvv25@gmail.com   (destino; ese es el default)
@@ -86,7 +86,7 @@ def _enviar_email(user: Usuario, ticket: TicketSoporte, fotos: List[str]) -> boo
                 pass
 
         payload = {
-            "from": "PresupuestarCO Soporte <onboarding@resend.dev>",
+            "from": "PresupuestarCO Soporte <soporte@presupuestarco.com>",
             "to": [SOPORTE_EMAIL],
             "subject": f"[Soporte #{ticket.id}] {ticket.asunto[:80]} — {user.email}",
             "html": html,

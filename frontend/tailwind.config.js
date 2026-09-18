@@ -7,6 +7,9 @@ export default {
     },
     fontFamily: { sans:['Inter','system-ui','sans-serif'], mono:['JetBrains Mono','monospace'] },
     borderRadius: { xl:'0.75rem', '2xl':'1rem', '3xl':'1.5rem' },
+    keyframes: {
+      fadeIn: { '0%': { opacity: '0', transform: 'translateY(-4px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+    },
   }},
   plugins:[]
 }

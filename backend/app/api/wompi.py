@@ -18,7 +18,7 @@ Arquitectura (la fuente de verdad es el WEBHOOK, nunca el redirect):
 
 Env vars (Vercel): WOMPI_PUBLIC_KEY, WOMPI_INTEGRITY_SECRET,
 WOMPI_EVENTS_SECRET, PRO_PRECIO_COP (opcional, default 79000),
-APP_URL (opcional, default https://presupuestar-co.vercel.app).
+APP_URL (opcional, default https://presupuestarco.com).
 """
 import os
 import json
@@ -47,7 +47,7 @@ def _cfg():
         "integrity": os.environ.get("WOMPI_INTEGRITY_SECRET", "").strip(),
         "events": os.environ.get("WOMPI_EVENTS_SECRET", "").strip(),
         "precio_cop": int(os.environ.get("PRO_PRECIO_COP", "79000")),
-        "app_url": os.environ.get("APP_URL", "https://presupuestar-co.vercel.app").rstrip("/"),
+        "app_url": os.environ.get("APP_URL", "https://presupuestarco.com").rstrip("/"),
     }
 
 
