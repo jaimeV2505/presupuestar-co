@@ -27,8 +27,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<Login modo="login" />} />
-        <Route path="/registro" element={<Login modo="registro" />} />
+        <Route path="/login" element={<Login key="login" modo="login" />} />
+        <Route path="/registro" element={<Login key="registro" modo="registro" />} />
         <Route path="/p/:token" element={<VistaPublica />} />
         <Route path="/" element={<Inicio />} />
         <Route path="/editor/:id" element={<Privada><Editor /></Privada>} />
