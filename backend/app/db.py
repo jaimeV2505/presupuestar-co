@@ -422,8 +422,8 @@ def init_db():
                     "ALTER TABLE cuentas_cobro ALTER COLUMN deducciones TYPE BIGINT",
                     "ALTER TABLE cuentas_cobro ALTER COLUMN retencion TYPE BIGINT",
                     "ALTER TABLE cuentas_cobro ALTER COLUMN amortizacion TYPE BIGINT",
-                    "ALTER TABLE abonos ALTER COLUMN monto_centavos TYPE BIGINT",
-                    "ALTER TABLE otrosies ALTER COLUMN valor TYPE BIGINT",
+                    "ALTER TABLE abonos ALTER COLUMN monto TYPE BIGINT",
+                    "ALTER TABLE pagos_wompi ALTER COLUMN monto_centavos TYPE BIGINT",
                     "ALTER TABLE gastos ALTER COLUMN valor TYPE BIGINT",
                     "ALTER TABLE precios_proveedor ALTER COLUMN precio TYPE BIGINT",
                 ]:
