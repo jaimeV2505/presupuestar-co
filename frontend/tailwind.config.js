@@ -10,10 +10,14 @@ export default {
     keyframes: {
       fadeIn: { '0%': { opacity: '0', transform: 'translateY(-4px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
       slideIn: { '0%': { opacity: '0', transform: 'translateX(16px)' }, '100%': { opacity: '1', transform: 'translateX(0)' } },
+      popIn: { '0%': { opacity: '0', transform: 'scale(0.9) translateY(8px)' }, '60%': { opacity: '1', transform: 'scale(1.02) translateY(0)' }, '100%': { opacity: '1', transform: 'scale(1) translateY(0)' } },
+      wave: { '0%,100%': { transform: 'rotate(0deg)' }, '20%': { transform: 'rotate(14deg)' }, '40%': { transform: 'rotate(-8deg)' }, '60%': { transform: 'rotate(14deg)' }, '80%': { transform: 'rotate(-4deg)' } },
     },
     animation: {
       fadeIn: 'fadeIn 0.3s ease-out',
       slideIn: 'slideIn 0.35s ease-out',
+      popIn: 'popIn 0.45s cubic-bezier(0.34,1.56,0.64,1)',
+      wave: 'wave 1.8s ease-in-out 1',
     },
   }},
   plugins:[]

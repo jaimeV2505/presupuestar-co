@@ -496,9 +496,11 @@ export default function Dashboard() {
 
         {/* ONBOARDING: bienvenida */}
         {onb && !onb.tipo && !onb.cerrado && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md text-center">
-              <p className="text-3xl mb-2">👋</p>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fadeIn">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md text-center relative animate-popIn">
+              <button onClick={() => { onboardingAPI.marcar('cerrado').catch(() => {}); setOnb(o => ({ ...o, cerrado: true })) }}
+                      className="absolute top-3 right-3 text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
+              <p className="text-3xl mb-2 inline-block animate-wave" style={{ transformOrigin: '70% 70%' }}>👋</p>
               <h3 className="font-bold text-slate-800 mb-1">¡Bienvenido a PresupuestarCO!</h3>
               <p className="text-xs text-slate-400 mb-5">Una pregunta para acomodarte todo: ¿a qué te dedicas?</p>
               <div className="grid grid-cols-3 gap-2">
@@ -515,6 +517,10 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
+              <button onClick={() => { onboardingAPI.marcar('cerrado').catch(() => {}); setOnb(o => ({ ...o, cerrado: true })) }}
+                      className="text-[11px] text-slate-400 hover:text-slate-600 underline mt-4">
+                Prefiero explorar solo →
+              </button>
             </div>
           </div>
         )}
