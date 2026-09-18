@@ -56,9 +56,10 @@ export default function Login({ modo = 'login' }) {
           <p className="text-blue-200 text-sm mt-1">Presupuestos de obra profesionales en minutos</p>
         </div>
 
-        <form onSubmit={submit} className="bg-white rounded-2xl shadow-2xl p-6 space-y-4">
+        <form key={`${esRegistro}-${olvide}`} onSubmit={submit}
+              className="bg-white rounded-2xl shadow-2xl p-6 space-y-4 animate-[slideIn_0.35s_ease-out]">
           <h2 className="font-semibold text-slate-800">
-            {esRegistro ? 'Crea tu cuenta gratis' : 'Inicia sesión'}
+            {esRegistro ? 'Crea tu cuenta gratis' : olvide ? 'Recupera tu contraseña' : 'Inicia sesión'}
           </h2>
 
           {esRegistro && (

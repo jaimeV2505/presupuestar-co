@@ -9,6 +9,7 @@ export default {
     borderRadius: { xl:'0.75rem', '2xl':'1rem', '3xl':'1.5rem' },
     keyframes: {
       fadeIn: { '0%': { opacity: '0', transform: 'translateY(-4px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+      slideIn: { '0%': { opacity: '0', transform: 'translateX(16px)' }, '100%': { opacity: '1', transform: 'translateX(0)' } },
     },
   }},
   plugins:[]
