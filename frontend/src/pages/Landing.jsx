@@ -738,17 +738,17 @@ export default function Landing() {
         </div>
       </header>
 
+      {/* EL DOCK 2.0: showcase con pantalla viva — movido arriba, justo despues del hero */}
+      <section className="py-20 px-5 text-center bg-navy-900">
+        <h2 className="text-2xl sm:text-3xl font-black text-white">Las herramientas de la obra, en un solo lugar</h2>
+        <p className="text-navy-300 mt-2 text-sm">Toca cada herramienta — la pantalla te la muestra viva.</p>
+        <DockShowcase />
+      </section>
+
       <Marquee />
 
       {/* EL EMBUDO */}
       <SeccionEmbudo />
-
-      {/* EL DOCK 2.0: showcase con pantalla viva */}
-      <section className="py-20 px-5 text-center">
-        <h2 className="text-2xl sm:text-3xl font-black">Las herramientas de la obra, en un solo lugar</h2>
-        <p className="text-navy-300 mt-2 text-sm">Toca cada herramienta — la pantalla te la muestra viva.</p>
-        <DockShowcase />
-      </section>
 
       {/* LOS DOS UNIVERSOS */}
       <section ref={refU} className="py-20 px-5 bg-gradient-to-b from-navy-900 to-navy-800">
