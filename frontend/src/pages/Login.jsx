@@ -4,6 +4,71 @@ import toast from 'react-hot-toast'
 import { Building2, Loader2 } from 'lucide-react'
 import { authAPI, recuperarAPI } from '../services/api'
 
+// ── Fuerza de contraseña: largo, mayúscula, minúscula, número, símbolo ──
+function evaluarFuerza(pw) {
+  const reglas = [
+    { ok: pw.length >= 8, label: '8+ caracteres' },
+    { ok: /[A-Z]/.test(pw), label: 'Una mayúscula' },
+    { ok: /[a-z]/.test(pw), label: 'Una minúscula' },
+    { ok: /[0-9]/.test(pw), label: 'Un número' },
+    { ok: /[^A-Za-z0-9]/.test(pw), label: 'Un símbolo (opcional)' },
+  ]
+  const cumplidas = reglas.filter(r => r.ok).length
+  const nivel = pw.length === 0 ? 0 : cumplidas <= 1 ? 1 : cumplidas === 2 ? 2 : cumplidas === 3 ? 3 : 4
+  const estilos = [
+    { texto: '', color: '' },
+    { texto: 'Muy débil', color: 'bg-red-400', tcolor: 'text-red-500' },
+    { texto: 'Débil', color: 'bg-orange-400', tcolor: 'text-orange-500' },
+    { texto: 'Aceptable', color: 'bg-amber-400', tcolor: 'text-amber-600' },
+    { texto: 'Fuerte', color: 'bg-emerald-500', tcolor: 'text-emerald-600' },
+  ]
+  return { reglas, nivel, ...estilos[nivel] }
+}
+
+function BarraFuerza({ password }) {
+  const f = evaluarFuerza(password)
+  if (!password) return null
+  return (
+    <div className="animate-fadeIn -mt-1">
+      <div className="flex gap-1">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= f.nivel ? f.color : 'bg-slate-200'}`} />
+        ))}
+      </div>
+      <div className="flex items-center justify-between mt-1.5">
+        <span className={`text-[10px] font-semibold ${f.tcolor}`}>{f.texto}</span>
+        <span className="text-[9px] text-slate-400">
+          {f.reglas.filter(r => !r.ok && r.label !== 'Un símbolo (opcional)').map(r => r.label).join(' · ') || '✓ cumple lo básico'}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ── Calculadorita animada — el momento de "abrimos la cuenta" ──
+function CalculadoraAnimada() {
+  return (
+    <svg viewBox="0 0 64 64" className="w-9 h-9">
+      <rect x="8" y="4" width="48" height="56" rx="6" fill="#1C3A5E" />
+      <rect x="14" y="10" width="36" height="14" rx="3" fill="#EEF2F8" />
+      <text x="44" y="20" textAnchor="end" fontSize="10" fontFamily="monospace" fill="#1C3A5E">
+        <animate attributeName="x" values="44;44" dur="0.01s" />
+        <set attributeName="opacity" to="1" />
+        0
+        <animate attributeName="opacity" values="0;1;1;0" dur="1.6s" repeatCount="indefinite" begin="0s" />
+      </text>
+      {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => {
+        const col = i % 3, row = Math.floor(i / 3)
+        return (
+          <rect key={i} x={14 + col * 13} y={30 + row * 10} width="10" height="7" rx="1.5" fill="#3D70A9">
+            <animate attributeName="opacity" values="0.35;1;0.35" dur="1.2s" repeatCount="indefinite" begin={`${i * 0.12}s`} />
+          </rect>
+        )
+      })}
+    </svg>
+  )
+}
+
 export default function Login({ modo = 'login' }) {
   const nav = useNavigate()
   const [form, setForm] = useState({ email: '', password: '', nombre: '', empresa: '', telefono: '' , acepta_terminos: false })
@@ -57,7 +122,7 @@ export default function Login({ modo = 'login' }) {
         </div>
 
         <form key={`${esRegistro}-${olvide}`} onSubmit={submit}
-              className="bg-white rounded-2xl shadow-2xl p-6 space-y-4 animate-[slideIn_0.35s_ease-out]">
+              className="bg-white rounded-2xl shadow-2xl p-6 space-y-4 animate-slideIn">
           <h2 className="font-semibold text-slate-800">
             {esRegistro ? 'Crea tu cuenta gratis' : olvide ? 'Recupera tu contraseña' : 'Inicia sesión'}
           </h2>
@@ -73,6 +138,7 @@ export default function Login({ modo = 'login' }) {
           <input data-testid="auth-email" className="input" type="email" placeholder="Email *" value={form.email} onChange={set('email')} autoComplete="email" />
           {!olvide && <input data-testid="auth-password" className="input" type="password" placeholder={esRegistro ? 'Contraseña (mínimo 8 caracteres) *' : 'Contraseña *'}
                  value={form.password} onChange={set('password')} autoComplete={esRegistro ? 'new-password' : 'current-password'} />}
+          {esRegistro && !olvide && <BarraFuerza password={form.password} />}
 
           {esRegistro && (
             <label className="flex items-start gap-2 text-[11px] text-slate-500 cursor-pointer">
@@ -83,12 +149,12 @@ export default function Login({ modo = 'login' }) {
           )}
           <button data-testid="auth-submit" disabled={loading}
                   className="w-full bg-navy-600 hover:bg-navy-700 text-white font-semibold rounded-xl py-3 transition disabled:opacity-50 flex items-center justify-center gap-2">
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? 'Un momento...' : olvide ? 'Enviarme el enlace' : esRegistro ? 'Crear cuenta gratis' : 'Entrar'}
+            {loading && (esRegistro ? <CalculadoraAnimada /> : <Loader2 className="w-4 h-4 animate-spin" />)}
+            {loading ? (esRegistro ? 'Armando tu cuenta...' : 'Un momento...') : olvide ? 'Enviarme el enlace' : esRegistro ? 'Crear cuenta gratis' : 'Entrar'}
           </button>
 
           {olvide && enviado && (
-            <p className="text-center text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3 animate-[fadeIn_0.3s_ease-out]">
+            <p className="text-center text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3 animate-fadeIn">
               ✓ Listo — si ese correo tiene una cuenta con nosotros, ya te llegó el enlace.<br />
               Revisá también spam o promociones. Es válido por 30 minutos.
             </p>

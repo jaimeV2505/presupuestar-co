@@ -418,12 +418,27 @@ function Marquee() {
 
 function DockShowcase() {
   const [sel, setSel] = useState(0)
+  const [auto, setAuto] = useState(true)   // se apaga solo en la primera interaccion manual
+  const [progreso, setProgreso] = useState(0)
+  const DURACION_MS = 4200
+  useEffect(() => {
+    if (!auto) return
+    setProgreso(0)
+    const inicio = Date.now()
+    const tick = setInterval(() => setProgreso(Math.min(100, (Date.now() - inicio) / DURACION_MS * 100)), 60)
+    const avance = setTimeout(() => setSel(s => (s + 1) % HERRAMIENTAS.length), DURACION_MS)
+    return () => { clearInterval(tick); clearTimeout(avance) }
+  }, [sel, auto])
+  const elegirManual = (i) => { setAuto(false); setSel(i) }
   const Mock = MOCKS_DOCK[sel]
   const det = DETALLE_HERRAMIENTA[sel]
   return (
     <div className="max-w-5xl mx-auto mt-10 grid lg:grid-cols-5 gap-6 items-start text-left">
       <div key={'d' + sel} className="lg:col-span-2 lg:pt-6 animate-[aparecer_.35s_ease-out]">
-        <p className="text-[10px] font-black tracking-widest text-amber-400">{HERRAMIENTAS[sel].e} {HERRAMIENTAS[sel].t.toUpperCase()}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-[10px] font-black tracking-widest text-amber-400">{HERRAMIENTAS[sel].e} {HERRAMIENTAS[sel].t.toUpperCase()}</p>
+          {auto && <span className="text-[9px] text-navy-400">▶ recorrido automático</span>}
+        </div>
         <h3 className="text-xl font-black mt-2 leading-snug">{det.titulo}</h3>
         <ul className="mt-4 space-y-2.5">
           {det.puntos.map(p => (
@@ -440,12 +455,20 @@ function DockShowcase() {
           <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
           <span className="text-[10px] text-slate-400 ml-2 font-medium">{HERRAMIENTAS[sel].e} {HERRAMIENTAS[sel].t} — {HERRAMIENTAS[sel].d}</span>
+          {auto && (
+            <button onClick={() => setAuto(false)} className="ml-auto text-[9px] text-slate-400 hover:text-slate-600 font-medium">⏸ pausar</button>
+          )}
         </div>
+        {auto && (
+          <div className="h-0.5 bg-slate-100">
+            <div className="h-full bg-amber-400 transition-[width]" style={{ width: `${progreso}%`, transitionDuration: '60ms' }} />
+          </div>
+        )}
         <div key={sel} className="p-5 min-h-[168px] animate-[aparecer_.35s_ease-out]">
           <Mock />
         </div>
       </div>
-        <div className="mt-6 pb-4"><Dock sel={sel} setSel={setSel} /></div>
+        <div className="mt-6 pb-4"><Dock sel={sel} setSel={elegirManual} /></div>
       </div>
     </div>
   )
