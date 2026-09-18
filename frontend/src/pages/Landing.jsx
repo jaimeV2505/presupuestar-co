@@ -288,12 +288,13 @@ const HERRAMIENTAS = [
 function Dock({ sel, setSel }) {
   const [cerca, setCerca] = useState(-1)
   return (
-    <div className="flex items-end justify-center gap-1.5 sm:gap-2" onMouseLeave={() => setCerca(-1)}>
+    <div className="flex items-end justify-center sm:justify-center gap-1.5 sm:gap-2 overflow-x-auto px-4 -mx-4 sm:overflow-visible sm:px-0 sm:mx-0"
+         onMouseLeave={() => setCerca(-1)}>
       {HERRAMIENTAS.map((h, i) => {
         const d = cerca < 0 ? 3 : Math.abs(i - cerca)
         const esc = d === 0 ? 1.45 : d === 1 ? 1.18 : 1
         return (
-          <div key={h.t} className="relative flex flex-col items-center"
+          <div key={h.t} className="relative flex flex-col items-center shrink-0"
                onMouseEnter={() => { setCerca(i); setSel(i) }} onClick={() => setSel(i)}>
             {sel === i && <span className="absolute -bottom-2 w-1 h-1 rounded-full bg-amber-400" />}
             <div style={{ transform: `scale(${esc}) translateY(${d === 0 ? -10 : d === 1 ? -4 : 0}px)` }}
@@ -450,13 +451,13 @@ function DockShowcase() {
       </div>
       <div className="lg:col-span-3">
         <div className="bg-white rounded-2xl shadow-2xl shadow-navy-900/50 border border-slate-200 overflow-hidden text-left">
-        <div className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
-          <span className="w-2.5 h-2.5 rounded-full bg-red-300" />
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
-          <span className="text-[10px] text-slate-400 ml-2 font-medium">{HERRAMIENTAS[sel].e} {HERRAMIENTAS[sel].t} — {HERRAMIENTAS[sel].d}</span>
+        <div className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-50 border-b border-slate-200 min-w-0">
+          <span className="w-2.5 h-2.5 rounded-full bg-red-300 shrink-0" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-300 shrink-0" />
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-300 shrink-0" />
+          <span className="text-[10px] text-slate-400 ml-2 font-medium truncate min-w-0">{HERRAMIENTAS[sel].e} {HERRAMIENTAS[sel].t} — {HERRAMIENTAS[sel].d}</span>
           {auto && (
-            <button onClick={() => setAuto(false)} className="ml-auto text-[9px] text-slate-400 hover:text-slate-600 font-medium">⏸ pausar</button>
+            <button onClick={() => setAuto(false)} className="ml-auto text-[9px] text-slate-400 hover:text-slate-600 font-medium shrink-0">⏸ pausar</button>
           )}
         </div>
         {auto && (
