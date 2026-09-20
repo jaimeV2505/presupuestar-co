@@ -968,15 +968,17 @@ export default function Editor() {
             </button>
             <div className="min-w-0">
               <h1 className="font-semibold text-slate-800 truncate">{p.nombre}</h1>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 truncate">
                 <span className="font-semibold text-navy-600">{p.numero}</span>
                 {' · '}{p.sector === 'publico' ? ('🏛️ ' + (p.entidad_nombre || 'Sin entidad')) : (p.cliente_nombre || 'Sin cliente')}
-                {' · '}{p.actualizado ? new Date(p.actualizado).toLocaleDateString('es-CO') : ''}
+              </p>
+              <p className="text-[10px] text-slate-400 truncate">
+                {p.actualizado ? new Date(p.actualizado).toLocaleDateString('es-CO') : ''}
                 {' · '}{sinRed ? (navigator.onLine === false ? '⚠️ Sin conexión — reintentando' : '⏳ Servidor lento — reintentando') : guardando ? 'Guardando...' : 'Guardado ✓'}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 overflow-x-auto max-w-[55vw] sm:max-w-none py-1 -my-1">
             {eventos?.total_vistas > 0 && (
               <span className="hidden sm:flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2.5 py-1.5 rounded-full font-medium">
                 <Eye className="w-3 h-3" /> {eventos.total_vistas} vista{eventos.total_vistas !== 1 ? 's' : ''}
@@ -1265,6 +1267,8 @@ export default function Editor() {
                         <div className="pt-2 text-[10px]">
                           <p className="font-bold text-violet-700 mb-1">🔬 Juega con el análisis — el servidor recalcula y todo se actualiza (ítem, totales, anexo y lista de materiales):</p>
                           <div className="bg-white rounded-lg border border-violet-100 overflow-hidden">
+                            <div className="overflow-x-auto">
+                            <div className="min-w-[480px]">
                             <div className="grid grid-cols-12 gap-1 px-2 py-1 bg-violet-600 text-white font-bold">
                               <span className="col-span-5">1. MATERIALES</span><span>Und</span><span className="text-right">Cant.</span><span className="text-right">Desp.%</span><span className="col-span-2 text-right">Vr. unit.</span><span className="col-span-2 text-right">Parcial</span>
                             </div>
@@ -1298,6 +1302,8 @@ export default function Editor() {
                             </div>
                             <div className="grid grid-cols-12 gap-1 px-2 py-1 border-t border-violet-200 bg-violet-100 font-black text-violet-800">
                               <span className="col-span-10">PRECIO UNITARIO ANALIZADO (previo)</span><span className="col-span-2 text-right">{COP(_prevTot)}</span>
+                            </div>
+                            </div>
                             </div>
                           </div>
                           <p className="text-slate-400 mt-1">💡 Herramienta es un <strong>porcentaje</strong> de la mano de obra (práctica estándar 3-10%). Si lo tuyo es un flete en <strong>pesos</strong>, ese va en la fila 4 · Transporte 🚚.</p>
@@ -1356,6 +1362,8 @@ export default function Editor() {
                                     </select>
                                   </div>
                                 )}
+                                <div className="overflow-x-auto">
+                                <div className="min-w-[420px]">
                                 <div className="grid grid-cols-12 gap-1 px-2 py-1 bg-amber-500 text-white font-bold">
                                   <span className="col-span-6">Material</span>
                                   <span className="col-span-3 text-right">Cantidad total</span>
@@ -1380,6 +1388,8 @@ export default function Editor() {
                                     <span className="col-span-3 text-right text-emerald-700">{COP(totalLM)}</span>
                                   </div>
                                 )}
+                                </div>
+                                </div>
                               </div>
                             )
                           })()}
@@ -1718,6 +1728,8 @@ export default function Editor() {
               </div>
             ) : (
               <div className="mt-3 overflow-y-auto flex-1 border border-slate-100 rounded-xl">
+                <div className="overflow-x-auto">
+                <div className="min-w-[480px]">
                 <div className="grid grid-cols-12 gap-1 px-3 py-2 bg-navy-700 text-white text-[10px] font-bold sticky top-0">
                   <span className="col-span-4">Insumo</span><span>Und</span><span className="text-right col-span-2">Cantidad</span><span className="text-right col-span-2">Precio</span><span className="text-right col-span-3">Subtotal</span>
                 </div>
@@ -1739,6 +1751,8 @@ export default function Editor() {
                 <div className="grid grid-cols-12 gap-1 px-3 py-2 border-t border-slate-200 bg-slate-50 text-xs font-black text-slate-800">
                   <span className="col-span-9">TOTAL MATERIALES ESTIMADO</span>
                   <span className="text-right col-span-3">{COP(explosionData.total_estimado)}</span>
+                </div>
+                </div>
                 </div>
               </div>
             )}
@@ -2033,6 +2047,8 @@ export default function Editor() {
             ) : previewBase.data && (
               <>
                 <div className="bg-violet-50/60 rounded-xl border border-violet-100 overflow-hidden text-[11px]">
+                  <div className="overflow-x-auto">
+                  <div className="min-w-[440px]">
                   {previewBase.data.insumos.length > 0 && (
                     <>
                       <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-violet-600 text-white font-bold">
@@ -2071,6 +2087,8 @@ export default function Editor() {
                   <div className="grid grid-cols-12 gap-1 px-2.5 py-2 border-t-2 border-violet-300 bg-violet-100 items-center">
                     <span className="col-span-8 font-bold text-violet-800">PRECIO UNITARIO</span>
                     <span className="col-span-4 text-right font-black text-violet-800">{COP(previewBase.data.precio_unitario)}</span>
+                  </div>
+                  </div>
                   </div>
                 </div>
                 <button onClick={(e) => { duplicarComoMio({ codigo: previewBase.codigo }, e); setPreviewBase(null) }}
@@ -2285,6 +2303,8 @@ export default function Editor() {
                           </select>
                         </div>
                       )}
+                      <div className="overflow-x-auto">
+                      <div className="min-w-[420px]">
                       <div className="grid grid-cols-12 gap-1 px-2.5 py-1.5 bg-navy-700 text-white text-[10px] font-bold">
                         <span className="col-span-6">Material</span>
                         <span className="col-span-3 text-right">Cantidad total</span>
@@ -2309,6 +2329,8 @@ export default function Editor() {
                           <span className="col-span-3 text-right text-emerald-700">{COP(totalEstimado)}</span>
                         </div>
                       )}
+                      </div>
+                      </div>
                       <p className="text-[9px] text-slate-400 px-2.5 py-1.5">
                         Cantidad por {construyendo.unidad} × {totalActividad} = lo que necesitás comprar para toda la actividad.
                         {filas.some(f => f.esDesglose) && ' El concreto se desglosó en cemento/arena/grava/agua según nuestra tabla de dosificación.'}

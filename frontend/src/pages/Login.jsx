@@ -93,19 +93,21 @@ export default function Login({ modo = 'login' }) {
 
   useEffect(() => {
     if (!clientId || olvide) return
-    const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
-    script.async = true
-    script.onload = () => {
+    const iniciar = () => {
       if (!window.google || !googleBtnRef.current) return
       window.google.accounts.id.initialize({ client_id: clientId, callback: entrarConGoogle })
+      googleBtnRef.current.innerHTML = ''
       window.google.accounts.id.renderButton(googleBtnRef.current, {
         theme: 'outline', size: 'large', width: 360,
         text: esRegistro ? 'signup_with' : 'signin_with',
       })
     }
+    if (window.google?.accounts?.id) { iniciar(); return }
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.onload = iniciar
     document.body.appendChild(script)
-    return () => { document.body.contains(script) && document.body.removeChild(script) }
   }, [olvide, esRegistro])
 
   const submit = async (e) => {
