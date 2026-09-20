@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Building2, Loader2 } from 'lucide-react'
@@ -76,6 +76,37 @@ export default function Login({ modo = 'login' }) {
   const esRegistro = modo === 'registro'
   const [olvide, setOlvide] = useState(false)
   const [enviado, setEnviado] = useState(false)
+  const googleBtnRef = useRef(null)
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
+  const entrarConGoogle = async (respuesta) => {
+    try {
+      const { token, usuario } = await authAPI.google(respuesta.credential)
+      localStorage.setItem('token', token)
+      localStorage.setItem('usuario', JSON.stringify(usuario))
+      toast.success(`¡Bienvenido, ${usuario.nombre}!`)
+      nav('/dashboard')
+    } catch {
+      toast.error('No se pudo entrar con Google — intenta de nuevo')
+    }
+  }
+
+  useEffect(() => {
+    if (!clientId || olvide) return
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.onload = () => {
+      if (!window.google || !googleBtnRef.current) return
+      window.google.accounts.id.initialize({ client_id: clientId, callback: entrarConGoogle })
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        theme: 'outline', size: 'large', width: 360,
+        text: esRegistro ? 'signup_with' : 'signin_with',
+      })
+    }
+    document.body.appendChild(script)
+    return () => { document.body.contains(script) && document.body.removeChild(script) }
+  }, [olvide, esRegistro])
 
   const submit = async (e) => {
     e.preventDefault()
@@ -121,7 +152,8 @@ export default function Login({ modo = 'login' }) {
             <Building2 className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">PresupuestarCO</h1>
-          <p className="text-blue-200 text-sm mt-1">Presupuestos de obra profesionales en minutos</p>
+          <p className="text-red-400 text-[10px] font-mono break-all px-4">DEBUG clientId = "{String(clientId)}"</p>
+          <p className="text-blue-200 text-sm mt-1">Presupuestos de obra, listos en minutos ⚡</p>
         </div>
 
         <form key={`${esRegistro}-${olvide}`} onSubmit={submit}
@@ -155,6 +187,15 @@ export default function Login({ modo = 'login' }) {
             {loading && (esRegistro ? <CalculadoraAnimada /> : <Loader2 className="w-4 h-4 animate-spin" />)}
             {loading ? (esRegistro ? 'Armando tu cuenta...' : 'Un momento...') : olvide ? 'Enviarme el enlace' : esRegistro ? 'Crear cuenta gratis' : 'Entrar'}
           </button>
+
+          {!olvide && clientId && (
+            <>
+              <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                <span className="flex-1 h-px bg-slate-200" /> o <span className="flex-1 h-px bg-slate-200" />
+              </div>
+              <div ref={googleBtnRef} className="flex justify-center" />
+            </>
+          )}
 
           {olvide && enviado && (
             <p className="text-center text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3 animate-fadeIn">
