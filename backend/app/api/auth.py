@@ -269,19 +269,23 @@ def login_google(req: GoogleAuthRequest, db: Session = Depends(get_db)):
     if not payload.get("email_verified"):
         raise HTTPException(400, "Ese email de Google no esta verificado — no podemos confiar en el para tu cuenta")
     nombre = payload.get("name") or email.split("@")[0]
-    user = db.query(Usuario).filter(Usuario.google_id == google_id).first()
-    if not user:
-        # ¿Ya existe una cuenta con ese email (creada con contraseña)? La vinculamos.
-        user = db.query(Usuario).filter(Usuario.email == email).first()
-        if user:
-            user.google_id = google_id
-        else:
-            user = Usuario(
-                email=email, nombre=nombre, google_id=google_id,
-                password_hash=_hash_password(_secrets.token_urlsafe(32)),  # inutilizable — solo entra por Google
-            )
-            db.add(user)
-        db.commit()
+    try:
+        user = db.query(Usuario).filter(Usuario.google_id == google_id).first()
+        if not user:
+            # ¿Ya existe una cuenta con ese email (creada con contraseña)? La vinculamos.
+            user = db.query(Usuario).filter(Usuario.email == email).first()
+            if user:
+                user.google_id = google_id
+            else:
+                user = Usuario(
+                    email=email, nombre=nombre, google_id=google_id,
+                    password_hash=_hash_password(_secrets.token_urlsafe(32)),  # inutilizable — solo entra por Google
+                )
+                db.add(user)
+            db.commit()
+    except Exception as _e:
+        db.rollback()
+        raise HTTPException(500, f"DEBUG error real: {type(_e).__name__}: {_e}")
     return {"token": crear_token(user.id), "usuario": _user_out(user)}
 
 
