@@ -152,7 +152,6 @@ export default function Login({ modo = 'login' }) {
             <Building2 className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">PresupuestarCO</h1>
-          <p className="text-red-400 text-[10px] font-mono break-all px-4">DEBUG clientId = "{String(clientId)}"</p>
           <p className="text-blue-200 text-sm mt-1">Presupuestos de obra, listos en minutos ⚡</p>
         </div>
 
