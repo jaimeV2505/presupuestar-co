@@ -48,6 +48,7 @@ api.interceptors.response.use(r => r, err => {
 export const authAPI = {
   registro: (data) => api.post('/auth/registro', data).then(r => r.data),
   login: (data) => api.post('/auth/login', data).then(r => r.data),
+  google: (credential) => api.post('/auth/google', { credential }).then(r => r.data),
   yo: () => api.get('/auth/yo').then(r => r.data),
   actualizarPerfil: (data) => api.put('/auth/perfil', data).then(r => r.data),
 }
