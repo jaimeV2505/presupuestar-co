@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Search, Plus, Trash2, Share2, FileSpreadsheet, FileText,
-         Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat } from 'lucide-react'
+         Eye, CheckCircle2, X, MessageCircle, Copy as CopyIcon, Pencil, Calculator, Camera, Upload, HardHat, MoreVertical } from 'lucide-react'
 import { otrosiesAPI, proyectosAPI, preciosAPI, shareAPI, exportarAPI, avancesAPI, gastosAPI, cuentasAPI, onboardingAPI , apusAPI, proveedoresAPI, insumosAPI, disenosAPI, cronogramaAPI, mercadoAPI } from '../services/api'
 import { comprimirImagen } from '../utils/imagen'
 import InfoTip from '../components/InfoTip'
@@ -133,6 +133,7 @@ export default function Editor() {
   const [cobrosData, setCobrosData] = useState(null)
   const [abonando, setAbonando] = useState(null)   // {cuenta, monto, nota}
   const [showPanel, setShowPanel] = useState(false) // panel lateral de herramientas
+  const [showMenuMobile, setShowMenuMobile] = useState(false) // menu "..." del header en mobile
   const [hiloTexto, setHiloTexto] = useState({})    // {avanceId: texto} respuesta al cliente
   const [liquidacion, setLiquidacion] = useState(null)  // preview antes de crear
   const [tipEditor, setTipEditor] = useState(!localStorage.getItem('tip_editor'))
@@ -1019,12 +1020,12 @@ export default function Editor() {
               )}
             </button>
             <button onClick={() => setShowPreview(true)}
-                    className="flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"
+                    className="hidden sm:flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"
                     title="Ver como lo verá tu cliente">
               <Eye className="w-4 h-4" /> <span className="hidden sm:inline">Ver</span>
             </button>
             <button onClick={() => { cargarProveedores(); setShowProveedores(true) }}
-                    className="flex items-center gap-1.5 border border-slate-200 hover:border-emerald-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"
+                    className="hidden sm:flex items-center gap-1.5 border border-slate-200 hover:border-emerald-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition"
                     title="Mis proveedores y sus precios">
               🏪 <span className="hidden sm:inline">Proveedores</span>
             </button>
@@ -1033,10 +1034,39 @@ export default function Editor() {
                       try { setBalanceData(await proyectosAPI.balance(id)); setShowBalance(true) }
                       catch (e) { toast.error(e.message) }
                     }}
-                    className="flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition">
+                    className="hidden sm:flex items-center gap-1.5 border border-slate-200 hover:border-navy-300 text-slate-600 text-sm font-medium px-3 py-2 rounded-xl transition">
               📊 <span className="hidden sm:inline">Balance</span>
             </button>
             )}
+            {/* menu colapsado -- solo mobile, agrupa Ver/Proveedores/Balance */}
+            <div className="relative sm:hidden">
+              <button onClick={() => setShowMenuMobile(v => !v)}
+                      className="flex items-center border border-slate-200 text-slate-600 p-2 rounded-xl" title="Más opciones">
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {showMenuMobile && (
+                <div className="absolute right-0 top-11 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden py-1">
+                  <button onClick={() => { setShowMenuMobile(false); setShowPreview(true) }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                    <Eye className="w-4 h-4 text-slate-400" /> Ver
+                  </button>
+                  <button onClick={() => { setShowMenuMobile(false); cargarProveedores(); setShowProveedores(true) }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                    🏪 Proveedores
+                  </button>
+                  {esPublico && (
+                    <button onClick={async () => {
+                              setShowMenuMobile(false)
+                              try { setBalanceData(await proyectosAPI.balance(id)); setShowBalance(true) }
+                              catch (e) { toast.error(e.message) }
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                      📊 Balance
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             {(esPublico || (['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado))) && (
             <button onClick={async () => {
                       try {
