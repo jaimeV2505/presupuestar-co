@@ -73,6 +73,7 @@ class Usuario(Base):
     id = Column(Integer, primary_key=True)
     email = Column(String(120), unique=True, nullable=False, index=True)
     password_hash = Column(String(200), nullable=False)
+    google_id = Column(String(60), unique=True, nullable=True, index=True)  # sub de Google, si inicio con "Continuar con Google"
     nombre = Column(String(120), nullable=False)
     empresa = Column(String(160), default="")
     telefono = Column(String(30), default="")
@@ -396,6 +397,7 @@ def init_db():
                     "ALTER TABLE tickets_soporte ADD COLUMN IF NOT EXISTS respuesta TEXT DEFAULT ''",
                     "ALTER TABLE tickets_soporte ADD COLUMN IF NOT EXISTS respondido TIMESTAMP",
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS slug VARCHAR(80)",
+                    "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS google_id VARCHAR(60)",
                     "ALTER TABLE eventos_share ADD COLUMN IF NOT EXISTS firma_imagen TEXT DEFAULT ''",
                     "ALTER TABLE encuestas ADD COLUMN IF NOT EXISTS publico BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS firma_b64 TEXT DEFAULT ''",
