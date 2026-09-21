@@ -87,8 +87,7 @@ export default function Login({ modo = 'login' }) {
       toast.success(`¡Bienvenido, ${usuario.nombre}!`)
       nav('/dashboard')
     } catch (err) {
-      console.error('DEBUG error real de Google:', err)
-      toast.error(`No se pudo entrar con Google: ${err?.response?.data?.detail || err?.message || 'error desconocido'}`)
+      toast.error(err?.response?.data?.detail || 'No se pudo entrar con Google — intenta de nuevo')
     }
   }
 

@@ -255,12 +255,14 @@ def login_google(req: GoogleAuthRequest, db: Session = Depends(get_db)):
     """Verifica el ID token de Google, y crea la cuenta o la vincula si ya existe por email."""
     from google.oauth2 import id_token as _google_id_token
     from google.auth.transport import requests as _google_requests
+    _rl_verificar("google-token", db)
     client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
     if not client_id:
         raise HTTPException(500, "Login con Google no configurado")
     try:
         payload = _google_id_token.verify_oauth2_token(req.credential, _google_requests.Request(), client_id)
     except Exception:
+        _rl_fallo("google-token", db, max_intentos=20, bloqueo_min=10)
         raise HTTPException(401, "Token de Google invalido o expirado")
     google_id = payload.get("sub")
     email = (payload.get("email") or "").lower().strip()
@@ -282,10 +284,12 @@ def login_google(req: GoogleAuthRequest, db: Session = Depends(get_db)):
                     password_hash=_hash_password(_secrets.token_urlsafe(32)),  # inutilizable — solo entra por Google
                 )
                 db.add(user)
-            db.commit()
-    except Exception as _e:
+        db.commit()
+    except Exception:
         db.rollback()
-        raise HTTPException(500, f"DEBUG error real: {type(_e).__name__}: {_e}")
+        logger.exception("Fallo creando/vinculando cuenta de Google")
+        raise HTTPException(500, "No pudimos completar el ingreso con Google — intenta de nuevo")
+    _rl_exito("google-token", db)
     return {"token": crear_token(user.id), "usuario": _user_out(user)}
 
 
