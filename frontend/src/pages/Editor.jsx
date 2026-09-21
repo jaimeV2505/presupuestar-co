@@ -1195,10 +1195,10 @@ export default function Editor() {
               <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
                 {itemsCap.map(it => (
                   <div key={it._idx}>
-                  <div className="p-3 flex items-center gap-3">
+                  <div className="p-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-700 leading-snug">{it.descripcion}</p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {it.precio_editado && <span className="text-[10px] text-amber-600 font-medium">precio ajustado</span>}
                         {it.calc && (it.calc.largo || it.calc.n) && (
                           <span className="text-[10px] text-blue-500 font-medium">
@@ -1214,7 +1214,7 @@ export default function Editor() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0">
                       {tipoCalc(it.unidad) && (
                         <button onClick={() => setCalcAbierta(calcAbierta === it._idx ? null : it._idx)}
                                 className={`p-1.5 rounded-lg transition ${calcAbierta === it._idx ? 'bg-blue-100 text-blue-600' : 'hover:bg-slate-100 text-slate-300 hover:text-blue-500'}`}
@@ -1225,17 +1225,17 @@ export default function Editor() {
                       <div className="text-right">
                         <input type="number" disabled={selladoUI} step="any" min="0" value={it.cantidad}
                                onChange={e => actualizarItem(it._idx, 'cantidad', e.target.value)}
-                               className="w-20 text-right text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:border-navy-400 outline-none" />
+                               className="w-16 sm:w-20 text-right text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:border-navy-400 outline-none" />
                         <p className="text-[10px] text-slate-400 mt-0.5 text-center">{it.unidad}</p>
                       </div>
                       <span className="text-slate-300">×</span>
                       <div className="text-right">
                         <input type="number" disabled={selladoUI} step="any" min="0" value={it.precio_unitario}
                                onChange={e => actualizarItem(it._idx, 'precio_unitario', e.target.value)}
-                               className="w-28 text-right text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:border-navy-400 outline-none" />
+                               className="w-24 sm:w-28 text-right text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:border-navy-400 outline-none" />
                         <p className="text-[10px] text-slate-400 mt-0.5 text-center">precio unit.</p>
                       </div>
-                      <div className="w-28 text-right font-semibold text-sm text-slate-800">
+                      <div className="w-24 sm:w-28 text-right font-semibold text-sm text-slate-800">
                         {COP((parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0))}
                       </div>
                       {!selladoUI && (
@@ -3855,7 +3855,7 @@ export default function Editor() {
                   <div className="space-y-1.5">
                     {itemsCap.map(it => (
                       <div key={it._idx} className="flex justify-between gap-2 text-[11px]">
-                        <span className="text-slate-500 leading-snug">{it.descripcion}</span>
+                        <span className="text-slate-500 leading-snug flex-1 min-w-0">{it.descripcion}</span>
                         <span className="text-slate-600 whitespace-nowrap shrink-0">
                           {it.cantidad} {it.unidad} · {COP((parseFloat(it.cantidad)||0)*(parseFloat(it.precio_unitario)||0))}
                         </span>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate , Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { pedirTexto, confirmarDialogo } from '../components/Dialogo'
-import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2, LifeBuoy, Camera, X, Bell, TrendingUp, Users } from 'lucide-react'
+import { Plus, FileText, Eye, CheckCircle2, Copy, Trash2, LogOut, Settings, Building2, LifeBuoy, Camera, X, Bell, TrendingUp, Users, MoreVertical } from 'lucide-react'
 import { proyectosAPI, pagosAPI, soporteAPI, notificacionesAPI, clientesAPI, onboardingAPI } from '../services/api'
 import { comprimirImagen } from '../utils/imagen'
 
@@ -178,6 +178,7 @@ export default function Dashboard() {
   const [metricas, setMetricas] = useState(null)
   const [notifs, setNotifs] = useState({ no_leidas: 0, notificaciones: [] })
   const [showNotifs, setShowNotifs] = useState(false)
+  const [showMenuMobile, setShowMenuMobile] = useState(false)
   const [plantillas, setPlantillas] = useState([])
   const [plantillaSel, setPlantillaSel] = useState(null)  // null = en blanco
   const [creandoTpl, setCreandoTpl] = useState(false)
@@ -273,20 +274,20 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             {infoPago?.es_admin && (
-              <button onClick={() => nav('/admin')} className="text-xs bg-amber-400/20 text-amber-300 px-3 py-1.5 rounded-full font-medium">
+              <button onClick={() => nav('/admin')} className="hidden sm:inline-block text-xs bg-amber-400/20 text-amber-300 px-3 py-1.5 rounded-full font-medium">
                 Admin
               </button>
             )}
             {infoPago?.plan === 'pro' ? (
-              <button onClick={() => nav('/pro')} className="text-xs bg-emerald-400/20 text-emerald-300 px-3 py-1.5 rounded-full font-bold">
+              <button onClick={() => nav('/pro')} className="text-xs bg-emerald-400/20 text-emerald-300 px-3 py-1.5 rounded-full font-bold shrink-0">
                 ⭐ Pro
               </button>
             ) : (
-              <button onClick={() => nav('/pro')} className="text-xs bg-white/10 hover:bg-emerald-500/30 px-3 py-1.5 rounded-full transition">
-                Plan Gratis → <span className="font-bold text-emerald-300">Pasar a Pro</span>
+              <button onClick={() => nav('/pro')} className="text-xs bg-white/10 hover:bg-emerald-500/30 px-3 py-1.5 rounded-full transition shrink-0">
+                <span className="hidden sm:inline">Plan Gratis → </span><span className="font-bold text-emerald-300">Pasar a Pro</span>
               </button>
             )}
-            <button onClick={() => nav('/clientes')} className="p-2 hover:bg-white/10 rounded-lg" title="Mis clientes">
+            <button onClick={() => nav('/clientes')} className="hidden sm:flex p-2 hover:bg-white/10 rounded-lg" title="Mis clientes">
               <Users className="w-4 h-4" />
             </button>
             <div className="relative">
@@ -332,15 +333,49 @@ export default function Dashboard() {
             <button onClick={() => {
                       setShowSoporte(true); setTicketEnviado(null); setTabSoporte('nuevo')
                       soporteAPI.misTickets().then(setMisTickets).catch(() => {})
-                    }} className="p-2 hover:bg-white/10 rounded-lg" title="Soporte">
+                    }} className="hidden sm:flex p-2 hover:bg-white/10 rounded-lg" title="Soporte">
               <LifeBuoy className="w-4 h-4" />
             </button>
-            <button onClick={() => nav('/perfil')} className="p-2 hover:bg-white/10 rounded-lg" title="Perfil">
+            <button onClick={() => nav('/perfil')} className="hidden sm:flex p-2 hover:bg-white/10 rounded-lg" title="Perfil">
               <Settings className="w-4 h-4" />
             </button>
-            <button onClick={salir} className="p-2 hover:bg-white/10 rounded-lg" title="Salir">
+            <button onClick={salir} className="hidden sm:flex p-2 hover:bg-white/10 rounded-lg" title="Salir">
               <LogOut className="w-4 h-4" />
             </button>
+            {/* menu colapsado -- solo mobile, agrupa lo que arriba se esconde con hidden sm:flex */}
+            <div className="relative sm:hidden">
+              <button onClick={() => setShowMenuMobile(v => !v)} className="p-2 hover:bg-white/10 rounded-lg" title="Más opciones">
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {showMenuMobile && (
+                <div className="absolute right-0 top-11 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden py-1">
+                  {infoPago?.es_admin && (
+                    <button onClick={() => { setShowMenuMobile(false); nav('/admin') }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                      ⚙️ Admin
+                    </button>
+                  )}
+                  <button onClick={() => { setShowMenuMobile(false); nav('/clientes') }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                    <Users className="w-4 h-4 text-slate-400" /> Mis clientes
+                  </button>
+                  <button onClick={() => {
+                            setShowMenuMobile(false); setShowSoporte(true); setTicketEnviado(null); setTabSoporte('nuevo')
+                            soporteAPI.misTickets().then(setMisTickets).catch(() => {})
+                          }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                    <LifeBuoy className="w-4 h-4 text-slate-400" /> Soporte
+                  </button>
+                  <button onClick={() => { setShowMenuMobile(false); nav('/perfil') }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                    <Settings className="w-4 h-4 text-slate-400" /> Perfil
+                  </button>
+                  <button onClick={() => { setShowMenuMobile(false); salir() }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 border-t border-slate-100 mt-1">
+                    <LogOut className="w-4 h-4" /> Salir
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
