@@ -20,6 +20,7 @@ LISTA_BLANCA = {
     # auth propio del flujo de identidad
     ("auth.py", "POST", "/registro"): "crear cuenta",
     ("auth.py", "POST", "/login"): "iniciar sesion",
+    ("auth.py", "POST", "/google"): "iniciar sesion con Google (verificado contra Google, no requiere sesion previa)",
     ("auth.py", "POST", "/olvide"): "recuperar clave (token por correo)",
     ("auth.py", "POST", "/restablecer"): "restablecer con token",
     # el universo del CLIENTE: autenticado por share_token opaco (40 chars)
