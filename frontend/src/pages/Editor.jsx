@@ -1038,35 +1038,37 @@ export default function Editor() {
               📊 <span className="hidden sm:inline">Balance</span>
             </button>
             )}
-            {/* menu colapsado -- solo mobile, agrupa Ver/Proveedores/Balance */}
-            <div className="relative sm:hidden">
-              <button onClick={() => setShowMenuMobile(v => !v)}
-                      className="flex items-center border border-slate-200 text-slate-600 p-2 rounded-xl" title="Más opciones">
-                <MoreVertical className="w-4 h-4" />
-              </button>
-              {showMenuMobile && (
-                <div className="absolute right-0 top-11 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden py-1">
-                  <button onClick={() => { setShowMenuMobile(false); setShowPreview(true) }}
+          </div>
+          {/* menu colapsado -- solo mobile, agrupa Ver/Proveedores/Balance -- FUERA del contenedor con overflow-x-auto de arriba, si no el menu queda recortado */}
+          <div className="relative sm:hidden shrink-0">
+            <button onClick={() => setShowMenuMobile(v => !v)}
+                    className="flex items-center border border-slate-200 text-slate-600 p-2 rounded-xl" title="Más opciones">
+              <MoreVertical className="w-4 h-4" />
+            </button>
+            {showMenuMobile && (
+              <div className="absolute right-0 top-11 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden py-1">
+                <button onClick={() => { setShowMenuMobile(false); setShowPreview(true) }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                  <Eye className="w-4 h-4 text-slate-400" /> Ver
+                </button>
+                <button onClick={() => { setShowMenuMobile(false); cargarProveedores(); setShowProveedores(true) }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                  🏪 Proveedores
+                </button>
+                {esPublico && (
+                  <button onClick={async () => {
+                            setShowMenuMobile(false)
+                            try { setBalanceData(await proyectosAPI.balance(id)); setShowBalance(true) }
+                            catch (e) { toast.error(e.message) }
+                          }}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                    <Eye className="w-4 h-4 text-slate-400" /> Ver
+                    📊 Balance
                   </button>
-                  <button onClick={() => { setShowMenuMobile(false); cargarProveedores(); setShowProveedores(true) }}
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                    🏪 Proveedores
-                  </button>
-                  {esPublico && (
-                    <button onClick={async () => {
-                              setShowMenuMobile(false)
-                              try { setBalanceData(await proyectosAPI.balance(id)); setShowBalance(true) }
-                              catch (e) { toast.error(e.message) }
-                            }}
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                      📊 Balance
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             {(esPublico || (['aceptado', 'entrega_solicitada', 'terminado'].includes(p.estado))) && (
             <button onClick={async () => {
                       try {
