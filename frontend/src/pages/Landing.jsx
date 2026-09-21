@@ -434,8 +434,8 @@ function DockShowcase() {
   const Mock = MOCKS_DOCK[sel]
   const det = DETALLE_HERRAMIENTA[sel]
   return (
-    <div className="max-w-5xl mx-auto mt-10 grid lg:grid-cols-5 gap-6 items-start text-left">
-      <div key={'d' + sel} className="lg:col-span-2 lg:pt-6 animate-[aparecer_.35s_ease-out]">
+    <div className="max-w-5xl mx-auto mt-10 grid lg:grid-cols-5 gap-6 items-start text-left min-w-0 overflow-x-hidden px-5 sm:px-0">
+      <div key={'d' + sel} className="lg:col-span-2 lg:pt-6 animate-[aparecer_.35s_ease-out] min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-[10px] font-black tracking-widest text-amber-400">{HERRAMIENTAS[sel].e} {HERRAMIENTAS[sel].t.toUpperCase()}</p>
           {auto && <span className="text-[9px] text-navy-400">▶ recorrido automático</span>}
@@ -449,7 +449,7 @@ function DockShowcase() {
           ))}
         </ul>
       </div>
-      <div className="lg:col-span-3">
+      <div className="lg:col-span-3 min-w-0">
         <div className="bg-white rounded-2xl shadow-2xl shadow-navy-900/50 border border-slate-200 overflow-hidden text-left">
         <div className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-50 border-b border-slate-200 min-w-0">
           <span className="w-2.5 h-2.5 rounded-full bg-red-300 shrink-0" />
