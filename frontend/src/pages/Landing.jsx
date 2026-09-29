@@ -714,7 +714,7 @@ export default function Landing() {
         <div className="relative max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight">
-              {'Presupuestos de obra que se defienden solos.'.split(' ').map((p, i) => (
+              {'Presupuestos de obra que se defienden solos con Fabio.'.split(' ').map((p, i) => (
                 <span key={i} className="inline-block mr-[0.28em] opacity-0 animate-[palabra_.5s_ease-out_forwards]"
                       style={{ animationDelay: `${i * 90}ms` }}>{p}</span>
               ))}
