@@ -224,7 +224,16 @@ export default function Dashboard() {
       const p = await proyectosAPI.crear(nuevo)
       toast.success('Proyecto creado')
       nav(`/editor/${p.id}`)
-    } catch (e) { toast.error(e.message) }
+    } catch (e) {
+      if (e.response?.status === 402) {
+        setShowNuevo(false)
+        setTicket({ asunto: 'Quiero más presupuestos', descripcion: '', fotos: [] })
+        setTabSoporte('nuevo'); setTicketEnviado(null); setShowSoporte(true)
+        toast('Llegaste al límite gratis — contanos y te damos más acceso 👇', { icon: '🔓', duration: 5000 })
+      } else {
+        toast.error(e.response?.data?.detail || e.message)
+      }
+    }
   }
 
   const duplicar = async (proy, e) => {

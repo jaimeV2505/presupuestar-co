@@ -726,7 +726,7 @@ export default function Landing() {
             <div className="mt-8 flex flex-wrap gap-3 opacity-0 animate-[palabra_.6s_ease-out_1.1s_forwards]">
               <Link to="/registro"
                     className="cta-brillo text-navy-900 font-black rounded-2xl px-7 py-3.5 text-sm shadow-xl shadow-amber-500/20 hover:scale-105 transition">
-                Empieza gratis — 3 presupuestos al mes
+                Empieza gratis — 5 presupuestos de por vida
               </Link>
               <Link to="/login" className="border border-navy-500 text-navy-100 rounded-2xl px-6 py-3.5 text-sm font-bold hover:bg-navy-800 transition">
                 Ya tengo cuenta
@@ -915,7 +915,7 @@ export default function Landing() {
               <p className="text-4xl font-black mt-2">$0 <span className="text-sm font-medium text-navy-300">/ siempre</span></p>
               <p className="text-[12px] text-navy-300 mt-1">Para cotizar tus primeras obras</p>
               <ul className="mt-5 space-y-2.5 text-sm text-navy-100">
-                <li>✓ <strong>3 presupuestos al mes</strong> con TODO el poder</li>
+                <li>✓ <strong>5 presupuestos de por vida</strong> con TODO el poder</li>
                 <li>✓ APUs, análisis 🔬, recetario y constructor</li>
                 <li>✓ Enlace del cliente + firma electrónica</li>
                 <li>✓ Excel del formato oficial y anexo PDF</li>
@@ -947,7 +947,7 @@ export default function Landing() {
       {/* CTA FINAL */}
       <section className="py-24 px-5 text-center bg-gradient-to-b from-navy-900 to-navy-800 grid-plano">
         <h2 className="text-3xl sm:text-4xl font-black">Tu próxima obra empieza aquí</h2>
-        <p className="text-navy-300 mt-3 text-sm">Gratis: 3 presupuestos al mes con TODO el poder. Sin tarjeta.</p>
+        <p className="text-navy-300 mt-3 text-sm">Gratis: 5 presupuestos de por vida con TODO el poder. Sin tarjeta.</p>
         <Link to="/registro"
               className="cta-brillo inline-block mt-8 text-navy-900 font-black rounded-2xl px-9 py-4 shadow-xl shadow-amber-500/20 hover:scale-105 transition">
           Crear mi cuenta gratis

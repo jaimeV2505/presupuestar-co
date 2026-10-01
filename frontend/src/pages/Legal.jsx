@@ -61,8 +61,9 @@ export default function Legal() {
         </S>
 
         <S t="6. Planes, pagos y derecho de retracto">
-          <p>El plan Gratis permite 3 presupuestos por mes. El plan Pro es una suscripción mensual pagada a
-          través de Wompi (Bancolombia). Conforme a la Ley 1480 de 2011, el usuario puede ejercer el
+          <p>El plan Gratis permite 5 presupuestos de por vida. Durante la fase de lanzamiento, el acceso
+          adicional se otorga sin costo, de forma manual, a solicitud por el canal de soporte. Cuando el
+          plan Pro de pago esté disponible, conforme a la Ley 1480 de 2011, el usuario podrá ejercer el
           <strong> derecho de retracto dentro de los 5 días hábiles</strong> siguientes al pago, solicitando
           la devolución por el canal de soporte, siempre que aplique según la ley.</p>
         </S>

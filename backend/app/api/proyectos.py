@@ -14,11 +14,11 @@ from app.services.calculo_presupuesto import calcular_totales, validar_items
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-LIMITE_GRATIS = 3  # presupuestos por mes en plan gratis
-
-
-def _mes_actual() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m")
+LIMITE_GRATIS = 5  # presupuestos DE POR VIDA en plan gratis (antes: 3 por mes).
+# Decision de lanzamiento: se desactiva el cobro automatico por ahora. Quien llega
+# al limite pide mas acceso por soporte, y se le otorga manualmente caso por caso.
+# user.presupuestos_mes ahora cuenta TOTAL (nunca se resetea); user.mes_actual
+# queda sin uso activo (se deja la columna para no requerir migracion).
 
 
 def _es_pro_vigente(user: Usuario) -> bool:
@@ -31,27 +31,22 @@ def _es_pro_vigente(user: Usuario) -> bool:
 
 
 def _verificar_limite(user: Usuario, db: Session):
-    """Plan gratis (o pro VENCIDO): limite de 3 presupuestos al mes. Pro vigente: ilimitado.
+    """Plan gratis (o pro VENCIDO): limite de 5 presupuestos DE POR VIDA. Pro vigente: ilimitado.
     Solo verifica -- de solo lectura, se llama al INICIO del endpoint antes de
     validar el resto del request. El incremento real ocurre en _contar_presupuesto,
-    al final, solo si la creacion fue exitosa (para no gastarle un cupo mensual
-    a un intento que fallo por otra razon, ej. nombre vacio).
+    al final, solo si la creacion fue exitosa (para no gastarle un cupo a un
+    intento que fallo por otra razon, ej. nombre vacio).
     """
     # auditoria pre-live: el Pro VENCIDO vuelve a ser gratis (plan_vence manda)
     if _es_pro_vigente(user):
         return
     if user.plan not in ("gratis", "pro"):   # cortesias/admin pasan; el pro VENCIDO cae a la puerta
         return
-    mes = _mes_actual()
-    if user.mes_actual != mes:
-        user.mes_actual = mes
-        user.presupuestos_mes = 0
-        db.commit()
     if user.presupuestos_mes >= LIMITE_GRATIS:
         raise HTTPException(
             402,
-            f"Plan gratis: limite de {LIMITE_GRATIS} presupuestos/mes alcanzado. "
-            f"Pasa a Pro para presupuestos ilimitados."
+            f"Llegaste al limite de {LIMITE_GRATIS} presupuestos gratis. "
+            f"Escribinos por soporte y te damos mas acceso."
         )
 
 
